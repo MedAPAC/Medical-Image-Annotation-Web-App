@@ -1,4 +1,4 @@
-### Changes in 19.08.2024:
+### Changes in 19.08.2025:
 ### Scroller For Slices
 ![Scroller Demo](assets/scroller.gif)
 <br></br>
