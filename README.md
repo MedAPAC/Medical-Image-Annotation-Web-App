@@ -6,4 +6,4 @@
 ![Bounding Box Demo](assets/boundingbox.gif)
 <br> </br>
 ### Polygon Drawing
-![Polygon Demo](assets/scroller.gif)
+![Polygon Demo](assets/polygon.gif)
