@@ -16,6 +16,7 @@ const AnnotationCanvas = forwardRef(
     const drawingModeRef = useRef(null);
     const drawingActiveRef = useRef(false);
     const polygonPoints = useRef([]);
+    const polygonHandles = useRef([]);
     const polylinePoints = useRef([]);
     const labelRef = useRef(selectedLabel);
 
@@ -125,7 +126,7 @@ const AnnotationCanvas = forwardRef(
             top: pointer.y,
             width: 1,
             height: 1,
-            fill: "rgba(0,255,0,0.2)",
+            fill: "rgba(0,255,0,0.15)",
             stroke: "green",
             strokeWidth: 2,
             selectable: false,
@@ -211,7 +212,7 @@ const AnnotationCanvas = forwardRef(
             top: previewBox.current.top,
             width: previewBox.current.getScaledWidth(),
             height: previewBox.current.getScaledHeight(),
-            fill: "rgba(0,255,0,0.3)",
+            fill: "rgba(0,255,0,0.15)",
             stroke: "green",
             strokeWidth: 2,
             selectable: true,
@@ -241,22 +242,73 @@ const AnnotationCanvas = forwardRef(
         const pointer = fabricCanvas.getPointer(options.e);
 
         switch (drawingModeRef.current) {
-          case "polygon":
-            polygonPoints.current.push({ x: pointer.x, y: pointer.y });
-            const polygonPreview = new fabric.Polyline(polygonPoints.current, {
-              fill: "rgba(255, 0, 0, 0.3)",
-              stroke: "red",
-              strokeWidth: 2,
-              selectable: false,
-              evented: false,
-              customType: "polygon-preview",
-            });
-            fabricCanvas.getObjects().forEach((obj) => {
-              if (obj.customType === "polygon-preview")
-                fabricCanvas.remove(obj);
-            });
-            fabricCanvas.add(polygonPreview);
-            break;
+case "polygon":
+  const lastPoint =
+    polygonPoints.current[polygonPoints.current.length - 1];
+  const newPoint = { x: pointer.x, y: pointer.y };
+
+  if (lastPoint) {
+    const dx = newPoint.x - lastPoint.x;
+    const dy = newPoint.y - lastPoint.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const threshold = 30;
+    if (dist > threshold) {
+      const midPoint = {
+        x: lastPoint.x + dx / 2,
+        y: lastPoint.y + dy / 2,
+      };
+      polygonPoints.current.push(midPoint);
+
+      // also add a visible circle for midpoint
+      const midHandle = new fabric.Circle({
+        left: midPoint.x - 5,
+        top: midPoint.y - 5,
+        radius: 5,
+        fill: "white",
+        stroke: "black",
+        strokeWidth: 2,
+        selectable: false,
+        evented: false,
+        customType: "polygon-handle",
+      });
+      polygonHandles.current.push(midHandle);
+      fabricCanvas.add(midHandle);
+    }
+  }
+
+  polygonPoints.current.push(newPoint);
+
+  // add visible circle handle
+  const handle = new fabric.Circle({
+    left: newPoint.x - 5,
+    top: newPoint.y - 5,
+    radius: 5,
+    fill: "white",
+    stroke: "black",
+    strokeWidth: 2,
+    selectable: false,
+    evented: false,
+    customType: "polygon-handle",
+  });
+  polygonHandles.current.push(handle);
+  fabricCanvas.add(handle);
+
+  // update polygon preview
+  const polygonPreview = new fabric.Polyline(polygonPoints.current, {
+    fill: "rgba(255, 0, 0, 0.15)",
+    stroke: "red",
+    strokeWidth: 2,
+    selectable: false,
+    evented: false,
+    customType: "polygon-preview",
+  });
+
+  fabricCanvas.getObjects().forEach((obj) => {
+    if (obj.customType === "polygon-preview") fabricCanvas.remove(obj);
+  });
+  fabricCanvas.add(polygonPreview);
+  break;
+
 
           case "polyline":
             polylinePoints.current.push({ x: pointer.x, y: pointer.y });
@@ -281,7 +333,7 @@ const AnnotationCanvas = forwardRef(
               top: pointer.y - 30,
               rx: 50,
               ry: 30,
-              fill: "rgba(0,0,255,0.3)",
+              fill: "rgba(0,0,255,0.15)",
               stroke: "blue",
               strokeWidth: 2,
               selectable: true,
@@ -297,7 +349,7 @@ const AnnotationCanvas = forwardRef(
               top: pointer.y,
               width: 120,
               height: 80,
-              fill: "rgba(255,165,0,0.3)",
+              fill: "rgba(255,165,0,0.15)",
               stroke: "orange",
               strokeWidth: 2,
               selectable: true,
@@ -337,21 +389,32 @@ const AnnotationCanvas = forwardRef(
             }
           });
 
-          if (
-            drawingModeRef.current === "polygon" &&
-            polygonPoints.current.length > 2
-          ) {
-            const polygon = new fabric.Polygon(polygonPoints.current, {
-              fill: "rgba(255, 0, 0, 0.3)",
-              stroke: "red",
-              strokeWidth: 2,
-              selectable: true,
-              customType: "polygon",
-            });
-            canvas.add(polygon);
-            addLabelToShape(polygon, labelRef.current);
-            polygonPoints.current = [];
-          }
+if (drawingModeRef.current === "polygon" && polygonPoints.current.length > 2) {
+  const polygon = new fabric.Polygon(polygonPoints.current, {
+    fill: "rgba(255, 0, 0, 0.15)",
+    stroke: "red",
+    strokeWidth: 2,
+    selectable: true,
+    customType: "polygon",
+  });
+
+  canvas.add(polygon);
+  addLabelToShape(polygon, labelRef.current);
+
+  // Make handles draggable
+  polygonHandles.current.forEach((handle, index) => {
+    handle.set({ selectable: true, evented: true, hasControls: false });
+    handle.handleIndex = index; // attach index
+    handle.on("moving", () => {
+      polygonPoints.current[handle.handleIndex] = { x: handle.left, y: handle.top };
+      polygon.set({ points: polygonPoints.current });
+      canvas.renderAll();
+    });
+  });
+
+}
+
+
 
           if (
             drawingModeRef.current === "polyline" &&
