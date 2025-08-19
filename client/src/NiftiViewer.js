@@ -3,20 +3,29 @@ import * as nifti from "nifti-reader-js";
 import "./i18n";
 import { useTranslation } from "react-i18next";
 
-function NiftiViewer({ url, windowCenter = null, windowWidth = null, onSliceChange }) {
+function NiftiViewer({
+  url,
+  windowCenter = null,
+  windowWidth = null,
+  onSliceChange,
+  width = 600,
+  height = 600,
+}) {
   const [niftiHeader, setNiftiHeader] = useState(null);
   const [niftiImage, setNiftiImage] = useState(null);
   const [currentSlice, setCurrentSlice] = useState(0);
   const [defaultWC, setDefaultWC] = useState(null);
   const [defaultWW, setDefaultWW] = useState(null);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     if (onSliceChange) {
       onSliceChange(currentSlice);
     }
-  }, [currentSlice, onSliceChange]);  const canvasRef = useRef(null);
+  }, [currentSlice, onSliceChange]);
 
+  // keyboard slice navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!niftiHeader) return;
@@ -33,6 +42,7 @@ function NiftiViewer({ url, windowCenter = null, windowWidth = null, onSliceChan
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [niftiHeader]);
 
+  // load nifti file
   useEffect(() => {
     async function loadNifti() {
       const response = await fetch(url);
@@ -46,6 +56,7 @@ function NiftiViewer({ url, windowCenter = null, windowWidth = null, onSliceChan
         const image = nifti.readImage(header, dataBuffer);
         setNiftiHeader(header);
         setNiftiImage(image);
+        setCurrentSlice(0); // reset to first slice on new load
       } else {
         console.error("Invalid NIfTI file.");
       }
@@ -54,6 +65,7 @@ function NiftiViewer({ url, windowCenter = null, windowWidth = null, onSliceChan
     loadNifti();
   }, [url]);
 
+  // draw slice
   useEffect(() => {
     if (!niftiHeader || !niftiImage) return;
 
@@ -120,7 +132,14 @@ function NiftiViewer({ url, windowCenter = null, windowWidth = null, onSliceChan
       imageData.data[i * 4 + 3] = 255;
     }
 
-    ctx.putImageData(imageData, 0, 0);
+    // scale to fit canvas
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    tempCanvas.getContext("2d").putImageData(imageData, 0, 0);
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(tempCanvas, 0, 0, width, height);
   }, [
     niftiHeader,
     niftiImage,
@@ -129,32 +148,65 @@ function NiftiViewer({ url, windowCenter = null, windowWidth = null, onSliceChan
     windowWidth,
     defaultWC,
     defaultWW,
+    width,
+    height,
   ]);
 
   if (!niftiHeader) return <div>Loading...</div>;
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <canvas
         ref={canvasRef}
-        width={niftiHeader.dims[1]}
-        height={niftiHeader.dims[2]}
-        style={{ border: "1px solid black" }}
+        width={width}
+        height={height}
+        style={{ border: "1px solid black", background: "#000" }}
       />
-      <div className="mt-2 space-x-2">
-        <button onClick={() => setCurrentSlice(Math.max(currentSlice - 1, 0))}>
+
+      <div style={{ marginTop: "8px" }}>
+        Slice {currentSlice + 1} / {niftiHeader.dims[3]}
+      </div>
+
+      <div style={{ marginTop: "8px", display: "flex", gap: "12px" }}>
+        <button
+          onClick={() => setCurrentSlice(Math.max(currentSlice - 1, 0))}
+          disabled={currentSlice === 0}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "6px",
+            background: "#ddd",
+            cursor: currentSlice === 0 ? "not-allowed" : "pointer",
+          }}
+        >
           {t("prev")}
         </button>
         <button
           onClick={() =>
             setCurrentSlice(Math.min(currentSlice + 1, niftiHeader.dims[3] - 1))
           }
+          disabled={currentSlice === niftiHeader.dims[3] - 1}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "6px",
+            background: "#ddd",
+            cursor:
+              currentSlice === niftiHeader.dims[3] - 1 ? "not-allowed" : "pointer",
+          }}
         >
           {t("nxt")}
         </button>
-        <span>
-          Slice {currentSlice + 1} / {niftiHeader.dims[3]}
-        </span>
+      </div>
+
+      {/* Slider for scrolling through slices */}
+      <div style={{ marginTop: "8px", width: "100%" }}>
+        <input
+          type="range"
+          min={0}
+          max={niftiHeader.dims[3] - 1}
+          value={currentSlice}
+          onChange={(e) => setCurrentSlice(Number(e.target.value))}
+          style={{ width: "100%" }}
+        />
       </div>
     </div>
   );
