@@ -82,7 +82,6 @@ function DicomViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [imageIds]);
 
-  // Ensure currentIndex is valid when imageIds change
   useEffect(() => {
     if (currentIndex >= imageIds.length && imageIds.length > 0) {
       setCurrentIndex(imageIds.length - 1);
@@ -131,7 +130,6 @@ function DicomViewer({
         </button>
       </div>
 
-      {/* Slider under buttons */}
       {imageIds.length > 1 && (
         <div style={{ marginTop: "8px", width: "100%" }}>
           <input

@@ -20,12 +20,10 @@ const AnnotationCanvas = forwardRef(
     const polylinePoints = useRef([]);
     const labelRef = useRef(selectedLabel);
 
-    // for bounding box
     const isDrawingBox = useRef(false);
     const boxStart = useRef(null);
     const previewBox = useRef(null);
 
-    // crosshair lines
     const crosshairLines = useRef({ horizontal: null, vertical: null });
 
     useImperativeHandle(ref, () => ({
@@ -140,7 +138,6 @@ const AnnotationCanvas = forwardRef(
       const handleMouseMove = (options) => {
         const pointer = fabricCanvas.getPointer(options.e);
 
-        // update crosshair lines
         if (drawingModeRef.current === "rectangle") {
           if (!crosshairLines.current.horizontal) {
             crosshairLines.current.horizontal = new fabric.Line(
@@ -226,7 +223,6 @@ const AnnotationCanvas = forwardRef(
           addLabelToShape(finalized, labelRef.current);
           deactivateDrawing();
 
-          // remove crosshair lines after drawing ends
           if (crosshairLines.current.horizontal) {
             fabricCanvas.remove(crosshairLines.current.horizontal);
             crosshairLines.current.horizontal = null;
@@ -259,7 +255,6 @@ case "polygon":
       };
       polygonPoints.current.push(midPoint);
 
-      // also add a visible circle for midpoint
       const midHandle = new fabric.Circle({
         left: midPoint.x - 5,
         top: midPoint.y - 5,
@@ -278,7 +273,6 @@ case "polygon":
 
   polygonPoints.current.push(newPoint);
 
-  // add visible circle handle
   const handle = new fabric.Circle({
     left: newPoint.x - 5,
     top: newPoint.y - 5,
@@ -293,7 +287,6 @@ case "polygon":
   polygonHandles.current.push(handle);
   fabricCanvas.add(handle);
 
-  // update polygon preview
   const polygonPreview = new fabric.Polyline(polygonPoints.current, {
     fill: "rgba(255, 0, 0, 0.15)",
     stroke: "red",
@@ -401,10 +394,9 @@ if (drawingModeRef.current === "polygon" && polygonPoints.current.length > 2) {
   canvas.add(polygon);
   addLabelToShape(polygon, labelRef.current);
 
-  // Make handles draggable
   polygonHandles.current.forEach((handle, index) => {
     handle.set({ selectable: true, evented: true, hasControls: false });
-    handle.handleIndex = index; // attach index
+    handle.handleIndex = index; 
     handle.on("moving", () => {
       polygonPoints.current[handle.handleIndex] = { x: handle.left, y: handle.top };
       polygon.set({ points: polygonPoints.current });

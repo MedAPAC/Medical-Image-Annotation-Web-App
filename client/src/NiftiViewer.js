@@ -25,7 +25,6 @@ function NiftiViewer({
     }
   }, [currentSlice, onSliceChange]);
 
-  // keyboard slice navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!niftiHeader) return;
@@ -42,7 +41,6 @@ function NiftiViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [niftiHeader]);
 
-  // load nifti file
   useEffect(() => {
     async function loadNifti() {
       const response = await fetch(url);
@@ -56,7 +54,7 @@ function NiftiViewer({
         const image = nifti.readImage(header, dataBuffer);
         setNiftiHeader(header);
         setNiftiImage(image);
-        setCurrentSlice(0); // reset to first slice on new load
+        setCurrentSlice(0); 
       } else {
         console.error("Invalid NIfTI file.");
       }
@@ -65,7 +63,6 @@ function NiftiViewer({
     loadNifti();
   }, [url]);
 
-  // draw slice
   useEffect(() => {
     if (!niftiHeader || !niftiImage) return;
 
@@ -132,7 +129,6 @@ function NiftiViewer({
       imageData.data[i * 4 + 3] = 255;
     }
 
-    // scale to fit canvas
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = w;
     tempCanvas.height = h;
@@ -197,7 +193,6 @@ function NiftiViewer({
         </button>
       </div>
 
-      {/* Slider for scrolling through slices */}
       <div style={{ marginTop: "8px", width: "100%" }}>
         <input
           type="range"
