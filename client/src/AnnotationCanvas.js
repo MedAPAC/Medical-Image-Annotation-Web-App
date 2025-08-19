@@ -24,6 +24,9 @@ const AnnotationCanvas = forwardRef(
     const boxStart = useRef(null);
     const previewBox = useRef(null);
 
+    // crosshair lines
+    const crosshairLines = useRef({ horizontal: null, vertical: null });
+
     useImperativeHandle(ref, () => ({
       exportAnnotations: () => {
         if (!fabricRef.current) return null;
@@ -134,8 +137,54 @@ const AnnotationCanvas = forwardRef(
       };
 
       const handleMouseMove = (options) => {
+        const pointer = fabricCanvas.getPointer(options.e);
+
+        // update crosshair lines
+        if (drawingModeRef.current === "rectangle") {
+          if (!crosshairLines.current.horizontal) {
+            crosshairLines.current.horizontal = new fabric.Line(
+              [0, pointer.y, fabricCanvas.getWidth(), pointer.y],
+              {
+                stroke: "red",
+                strokeDashArray: [5, 5],
+                selectable: false,
+                evented: false,
+                excludeFromExport: true,
+              }
+            );
+            fabricCanvas.add(crosshairLines.current.horizontal);
+          } else {
+            crosshairLines.current.horizontal.set({
+              x1: 0,
+              y1: pointer.y,
+              x2: fabricCanvas.getWidth(),
+              y2: pointer.y,
+            });
+          }
+
+          if (!crosshairLines.current.vertical) {
+            crosshairLines.current.vertical = new fabric.Line(
+              [pointer.x, 0, pointer.x, fabricCanvas.getHeight()],
+              {
+                stroke: "red",
+                strokeDashArray: [5, 5],
+                selectable: false,
+                evented: false,
+                excludeFromExport: true,
+              }
+            );
+            fabricCanvas.add(crosshairLines.current.vertical);
+          } else {
+            crosshairLines.current.vertical.set({
+              x1: pointer.x,
+              y1: 0,
+              x2: pointer.x,
+              y2: fabricCanvas.getHeight(),
+            });
+          }
+        }
+
         if (drawingModeRef.current === "rectangle" && isDrawingBox.current) {
-          const pointer = fabricCanvas.getPointer(options.e);
           const startX = boxStart.current.x;
           const startY = boxStart.current.y;
 
@@ -148,8 +197,9 @@ const AnnotationCanvas = forwardRef(
             width: Math.abs(width),
             height: Math.abs(height),
           });
-          fabricCanvas.renderAll();
         }
+
+        fabricCanvas.renderAll();
       };
 
       const handleMouseUp = () => {
@@ -174,6 +224,16 @@ const AnnotationCanvas = forwardRef(
           fabricCanvas.add(finalized);
           addLabelToShape(finalized, labelRef.current);
           deactivateDrawing();
+
+          // remove crosshair lines after drawing ends
+          if (crosshairLines.current.horizontal) {
+            fabricCanvas.remove(crosshairLines.current.horizontal);
+            crosshairLines.current.horizontal = null;
+          }
+          if (crosshairLines.current.vertical) {
+            fabricCanvas.remove(crosshairLines.current.vertical);
+            crosshairLines.current.vertical = null;
+          }
         }
       };
 
@@ -382,19 +442,11 @@ const AnnotationCanvas = forwardRef(
           fabricCanvas.isDrawingMode = false;
         }
       }
-     if (canvasRef.current) {
-      if (mode === "rectangle") {
-         const svg = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">             <line x1="12" y1="0" x2="12" y2="24" stroke="red" stroke-width="2"/>
-             <line x1="0" y1="12" x2="24" y2="12" stroke="red" stroke-width="2"/>
-             <circle cx="12" cy="12" r="2" fill="red"/>
-           </svg>`;
-         const base64 = window.btoa(svg);
-         canvasRef.current.style.cursor = `url("data:image/svg+xml;base64,${base64}") 12 12, crosshair`;
-       } else {
-         canvasRef.current.style.cursor = "crosshair";
-       }
-     }
+
+      if (canvasRef.current) {
+        canvasRef.current.style.cursor =
+          mode === "rectangle" ? "none" : "crosshair";
+      }
     }, [mode, brushColor, brushSize, toolChangeId]);
 
     return (
