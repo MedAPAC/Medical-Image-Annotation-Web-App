@@ -19,6 +19,11 @@ const AnnotationCanvas = forwardRef(
     const polylinePoints = useRef([]);
     const labelRef = useRef(selectedLabel);
 
+    // for bounding box
+    const isDrawingBox = useRef(false);
+    const boxStart = useRef(null);
+    const previewBox = useRef(null);
+
     useImperativeHandle(ref, () => ({
       exportAnnotations: () => {
         if (!fabricRef.current) return null;
@@ -106,23 +111,86 @@ const AnnotationCanvas = forwardRef(
         });
       };
 
+      const handleMouseDown = (options) => {
+        const pointer = fabricCanvas.getPointer(options.e);
+
+        if (drawingModeRef.current === "rectangle") {
+          isDrawingBox.current = true;
+          boxStart.current = pointer;
+          previewBox.current = new fabric.Rect({
+            left: pointer.x,
+            top: pointer.y,
+            width: 1,
+            height: 1,
+            fill: "rgba(0,255,0,0.2)",
+            stroke: "green",
+            strokeWidth: 2,
+            selectable: false,
+            evented: false,
+            customType: "bounding-box-preview",
+          });
+          fabricCanvas.add(previewBox.current);
+        }
+      };
+
+      const handleMouseMove = (options) => {
+        if (drawingModeRef.current === "rectangle" && isDrawingBox.current) {
+          const pointer = fabricCanvas.getPointer(options.e);
+          const startX = boxStart.current.x;
+          const startY = boxStart.current.y;
+
+          const width = pointer.x - startX;
+          const height = pointer.y - startY;
+
+          previewBox.current.set({
+            left: width < 0 ? pointer.x : startX,
+            top: height < 0 ? pointer.y : startY,
+            width: Math.abs(width),
+            height: Math.abs(height),
+          });
+          fabricCanvas.renderAll();
+        }
+      };
+
+      const handleMouseUp = () => {
+        if (drawingModeRef.current === "rectangle" && isDrawingBox.current) {
+          isDrawingBox.current = false;
+
+          const finalized = new fabric.Rect({
+            left: previewBox.current.left,
+            top: previewBox.current.top,
+            width: previewBox.current.getScaledWidth(),
+            height: previewBox.current.getScaledHeight(),
+            fill: "rgba(0,255,0,0.3)",
+            stroke: "green",
+            strokeWidth: 2,
+            selectable: true,
+            customType: "bounding-box",
+          });
+
+          fabricCanvas.remove(previewBox.current);
+          previewBox.current = null;
+
+          fabricCanvas.add(finalized);
+          addLabelToShape(finalized, labelRef.current);
+          deactivateDrawing();
+        }
+      };
+
       const handleClick = (options) => {
         const pointer = fabricCanvas.getPointer(options.e);
 
         switch (drawingModeRef.current) {
           case "polygon":
             polygonPoints.current.push({ x: pointer.x, y: pointer.y });
-            const polygonPreview = new fabric.Polyline(
-              polygonPoints.current,
-              {
-                fill: "rgba(255, 0, 0, 0.3)",
-                stroke: "red",
-                strokeWidth: 2,
-                selectable: false,
-                evented: false,
-                customType: "polygon-preview",
-              }
-            );
+            const polygonPreview = new fabric.Polyline(polygonPoints.current, {
+              fill: "rgba(255, 0, 0, 0.3)",
+              stroke: "red",
+              strokeWidth: 2,
+              selectable: false,
+              evented: false,
+              customType: "polygon-preview",
+            });
             fabricCanvas.getObjects().forEach((obj) => {
               if (obj.customType === "polygon-preview")
                 fabricCanvas.remove(obj);
@@ -132,38 +200,19 @@ const AnnotationCanvas = forwardRef(
 
           case "polyline":
             polylinePoints.current.push({ x: pointer.x, y: pointer.y });
-            const polylinePreview = new fabric.Polyline(
-              polylinePoints.current,
-              {
-                fill: null,
-                stroke: "blue",
-                strokeWidth: 2,
-                selectable: false,
-                evented: false,
-                customType: "polyline-preview",
-              }
-            );
+            const polylinePreview = new fabric.Polyline(polylinePoints.current, {
+              fill: null,
+              stroke: "blue",
+              strokeWidth: 2,
+              selectable: false,
+              evented: false,
+              customType: "polyline-preview",
+            });
             fabricCanvas.getObjects().forEach((obj) => {
               if (obj.customType === "polyline-preview")
                 fabricCanvas.remove(obj);
             });
             fabricCanvas.add(polylinePreview);
-            break;
-
-          case "rectangle":
-            const rect = new fabric.Rect({
-              left: pointer.x,
-              top: pointer.y,
-              width: 100,
-              height: 60,
-              fill: "rgba(0,255,0,0.3)",
-              stroke: "green",
-              strokeWidth: 2,
-              selectable: true,
-            });
-            fabricCanvas.add(rect);
-            addLabelToShape(rect, labelRef.current);
-            deactivateDrawing();
             break;
 
           case "ellipse":
@@ -288,7 +337,15 @@ const AnnotationCanvas = forwardRef(
       });
 
       window.addEventListener("keydown", handleKey);
-      fabricCanvas.on("mouse:down", handleClick);
+      fabricCanvas.on("mouse:down", handleMouseDown);
+      fabricCanvas.on("mouse:move", handleMouseMove);
+      fabricCanvas.on("mouse:up", handleMouseUp);
+      fabricCanvas.on("mouse:down", (options) => {
+        if (drawingModeRef.current !== "rectangle") {
+          handleClick(options);
+        }
+      });
+
       return () => {
         window.removeEventListener("keydown", handleKey);
         fabricCanvas.dispose();
@@ -305,7 +362,6 @@ const AnnotationCanvas = forwardRef(
         }
       });
 
-      // Clear unfinished points
       polygonPoints.current = [];
       polylinePoints.current = [];
 
@@ -326,7 +382,20 @@ const AnnotationCanvas = forwardRef(
           fabricCanvas.isDrawingMode = false;
         }
       }
-    }, [mode, brushColor, brushSize,toolChangeId]);
+     if (canvasRef.current) {
+      if (mode === "rectangle") {
+         const svg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">             <line x1="12" y1="0" x2="12" y2="24" stroke="red" stroke-width="2"/>
+             <line x1="0" y1="12" x2="24" y2="12" stroke="red" stroke-width="2"/>
+             <circle cx="12" cy="12" r="2" fill="red"/>
+           </svg>`;
+         const base64 = window.btoa(svg);
+         canvasRef.current.style.cursor = `url("data:image/svg+xml;base64,${base64}") 12 12, crosshair`;
+       } else {
+         canvasRef.current.style.cursor = "crosshair";
+       }
+     }
+    }, [mode, brushColor, brushSize, toolChangeId]);
 
     return (
       <canvas
