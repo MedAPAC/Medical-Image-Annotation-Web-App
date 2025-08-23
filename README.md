@@ -1,4 +1,10 @@
-### Changes in 19.08.2025:
+
+### Update on 23.08.2025:
+![Polygon Edit Demo](assets/editpolygon.gif)
+
+
+
+### Update on 19.08.2025:
 ### Scroller For Slices
 ![Scroller Demo](assets/scroller.gif)
 <br></br>
