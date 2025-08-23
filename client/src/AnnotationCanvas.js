@@ -394,16 +394,39 @@ if (drawingModeRef.current === "polygon" && polygonPoints.current.length > 2) {
   canvas.add(polygon);
   addLabelToShape(polygon, labelRef.current);
 
-  polygonHandles.current.forEach((handle, index) => {
-    handle.set({ selectable: true, evented: true, hasControls: false });
-    handle.handleIndex = index; 
-    handle.on("moving", () => {
-      polygonPoints.current[handle.handleIndex] = { x: handle.left, y: handle.top };
-      polygon.set({ points: polygonPoints.current });
-      canvas.renderAll();
-    });
-  });
+  polygonHandles.current.forEach((h) => canvas.remove(h));
+  polygonHandles.current = [];
 
+  polygon.points.forEach((point, index) => {
+    const handle = new fabric.Circle({
+      left: point.x,
+      top: point.y,
+      radius: 5,
+      fill: "white",
+      stroke: "black",
+      strokeWidth: 2,
+      selectable: true,
+      hasControls: false,
+      hasBorders: false,
+      originX: "center",
+      originY: "center",
+      customType: "polygon-handle",
+      handleIndex: index,
+    });
+
+    handle.on("moving", function () {
+polygon.points[handle.handleIndex].x = handle.left;
+polygon.points[handle.handleIndex].y = handle.top;
+
+polygon.dirty = true; 
+polygon.setCoords();  
+canvas.requestRenderAll();
+
+    });
+
+    polygonHandles.current.push(handle);
+    canvas.add(handle);
+  });
 }
 
 
@@ -460,6 +483,68 @@ if (drawingModeRef.current === "polygon" && polygonPoints.current.length > 2) {
           handleClick(options);
         }
       });
+fabricCanvas.on("selection:created", (e) => {
+  if (e.target && e.target.customType === "polygon") {
+    const polygon = e.target;
+
+    // remove any existing handles
+    polygonHandles.current.forEach((h) => fabricCanvas.remove(h));
+    polygonHandles.current = [];
+
+    // create handles for this polygon
+    polygon.points.forEach((point, index) => {
+      const handle = new fabric.Circle({
+        left: polygon.left + point.x,
+        top: polygon.top + point.y,
+        radius: 5,
+        fill: "white",
+        stroke: "black",
+        strokeWidth: 2,
+        selectable: true,
+        hasControls: false,
+        hasBorders: false,
+        originX: "center",
+        originY: "center",
+        customType: "polygon-handle",
+        handleIndex: index,
+      });
+
+      // Dragging handle updates polygon
+      handle.on("moving", function () {
+        polygon.points[handle.handleIndex].x = handle.left - polygon.left;
+        polygon.points[handle.handleIndex].y = handle.top - polygon.top;
+
+        polygon.dirty = true;
+        polygon.setCoords();
+        fabricCanvas.requestRenderAll();
+      });
+
+      polygonHandles.current.push(handle);
+      fabricCanvas.add(handle);
+    });
+
+    // Keep handles synced while polygon moves
+    polygon.on("moving", () => {
+      polygonHandles.current.forEach((handle, i) => {
+        handle.left = polygon.left + polygon.points[i].x;
+        handle.top = polygon.top + polygon.points[i].y;
+        handle.setCoords();
+      });
+      fabricCanvas.requestRenderAll();
+    });
+  }
+});
+
+
+fabricCanvas.on("selection:cleared", () => {
+  const active = fabricCanvas.getActiveObject();
+  if (!active || active.customType !== "polygon") {
+    polygonHandles.current.forEach((h) => fabricCanvas.remove(h));
+    polygonHandles.current = [];
+    fabricCanvas.requestRenderAll();
+  }
+});
+
 
       return () => {
         window.removeEventListener("keydown", handleKey);
