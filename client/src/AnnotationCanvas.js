@@ -429,8 +429,6 @@ canvas.requestRenderAll();
   });
 }
 
-
-
           if (
             drawingModeRef.current === "polyline" &&
             polylinePoints.current.length > 1
@@ -486,21 +484,22 @@ canvas.requestRenderAll();
 fabricCanvas.on("selection:created", (e) => {
   if (e.target && e.target.customType === "polygon") {
     const polygon = e.target;
+    if (polygon._handles) {
+      polygon._handles.forEach((h) => fabricCanvas.remove(h));
+    }
+    polygon._handles = [];
 
-    // remove any existing handles
-    polygonHandles.current.forEach((h) => fabricCanvas.remove(h));
-    polygonHandles.current = [];
-
-    // create handles for this polygon
     polygon.points.forEach((point, index) => {
+      const absX = polygon.left + point.x * polygon.scaleX;
+      const absY = polygon.top + point.y * polygon.scaleY;
+
       const handle = new fabric.Circle({
-        left: polygon.left + point.x,
-        top: polygon.top + point.y,
+        left: absX,
+        top: absY,
         radius: 5,
         fill: "white",
         stroke: "black",
         strokeWidth: 2,
-        selectable: true,
         hasControls: false,
         hasBorders: false,
         originX: "center",
@@ -509,40 +508,44 @@ fabricCanvas.on("selection:created", (e) => {
         handleIndex: index,
       });
 
-      // Dragging handle updates polygon
       handle.on("moving", function () {
-        polygon.points[handle.handleIndex].x = handle.left - polygon.left;
-        polygon.points[handle.handleIndex].y = handle.top - polygon.top;
+        const localX = (handle.left - polygon.left) / polygon.scaleX;
+        const localY = (handle.top - polygon.top) / polygon.scaleY;
+
+        polygon.points[handle.handleIndex].x = localX;
+        polygon.points[handle.handleIndex].y = localY;
 
         polygon.dirty = true;
         polygon.setCoords();
         fabricCanvas.requestRenderAll();
       });
 
-      polygonHandles.current.push(handle);
+      polygon._handles.push(handle);
       fabricCanvas.add(handle);
     });
 
-    // Keep handles synced while polygon moves
     polygon.on("moving", () => {
-      polygonHandles.current.forEach((handle, i) => {
-        handle.left = polygon.left + polygon.points[i].x;
-        handle.top = polygon.top + polygon.points[i].y;
-        handle.setCoords();
-      });
-      fabricCanvas.requestRenderAll();
+     if (polygon._handles) {
+       polygon._handles.forEach((handle, i) => {
+          handle.left = polygon.left + polygon.points[i].x * polygon.scaleX;
+          handle.top = polygon.top + polygon.points[i].y * polygon.scaleY;
+          handle.setCoords();
+        });
+        fabricCanvas.requestRenderAll();
+      }
     });
   }
 });
 
 
+
 fabricCanvas.on("selection:cleared", () => {
-  const active = fabricCanvas.getActiveObject();
-  if (!active || active.customType !== "polygon") {
-    polygonHandles.current.forEach((h) => fabricCanvas.remove(h));
-    polygonHandles.current = [];
-    fabricCanvas.requestRenderAll();
-  }
+  fabricCanvas.getObjects("polygon").forEach((poly) => {
+    if (poly._handles) {
+      poly._handles.forEach((h) => fabricCanvas.remove(h));
+    }
+  });
+  fabricCanvas.requestRenderAll();
 });
 
 
