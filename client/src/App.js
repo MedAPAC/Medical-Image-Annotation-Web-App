@@ -50,8 +50,14 @@ function App() {
   const { t, i18n } = useTranslation();
   const [classificationByFile, setClassificationByFile] = React.useState({});
   const [showSlices, setShowSlices] = useState(false);
+const [dragStart, setDragStart] = useState(null);
+const [dragEnd, setDragEnd] = useState(null);
+
   const [totalSlices, setTotalSlices] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [isZoomMode, setIsZoomMode] = useState(false);
+const [zoomRegion, setZoomRegion] = useState(null);
+
   const currentClassification = classificationByFile[selectedFileName] || null;
   const [classificationByFileAndSlice, setClassificationByFileAndSlice] =
     useState({});
@@ -707,64 +713,115 @@ return (
                       : classificationByFileAndSlice[selectedFileName]?.[currentSlice] === "negative"
                       ? "red"
                       : "#cbd5e1"),
-                  transform: `scale(${zoomLevel})`,
-                  transformOrigin: "center center",
+                         transform: `scale(${zoomLevel})`,
+             transformOrigin: zoomRegion
+  ? `${(zoomRegion.x + zoomRegion.width / 2) / 6}% ${(zoomRegion.y + zoomRegion.height / 2) / 6}%`
+  : "center center",
+
                   transition: "transform 0.2s ease",
                 }}
               >
                 <h2 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px" }}>
                   {file.originalName}
                 </h2>
-                <div
-                  style={{
-                    position: "relative",
-                    width: "600px",
-                    height: "600px",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  {isDicom ? (
-                    <DicomViewer
-                      imageIds={imageIds}
-                      windowCenter={windowCenter}
-                      windowWidth={windowWidth}
-                      onSliceChange={setCurrentSlice}
-                      setTotalSlices={setTotalSlices}
-                    />
-                  ) : (
-                    <NiftiViewer
-                      url={`http://localhost:5000/uploads/${file.filename}`}
-                      windowCenter={windowCenter}
-                      windowWidth={windowWidth}
-                      onSliceChange={setCurrentSlice}
-                      setTotalSlices={setTotalSlices}
-                    />
-                  )}
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
-                      zIndex: 10,
-                    }}
-                  >
-                    <AnnotationCanvas
-                      ref={annotationRefs.current[file.originalName]}
-                      mode={selectedShape}
-                      width={600}
-                      height={600}
-                      selectedLabel={selectedLabel}
-                      brushColor={brushColor}
-                      brushSize={brushSize}
-                      toolChangeId={toolChangeId}
-                      annotationOpacity={annotationOpacity}
-                    />
-                  </div>
-                </div>
+               <div
+  style={{
+    position: "relative",
+    width: "600px",
+    height: "600px",
+    borderRadius: "12px",
+    overflow: "hidden",
+    border: "1px solid #e2e8f0",
+    cursor: isZoomMode ? "crosshair" : "default",
+  }}
+  onMouseDown={(e) => {
+    if (!isZoomMode) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    setDragEnd(null);
+  }}
+  onMouseMove={(e) => {
+    if (!isZoomMode || !dragStart) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }}
+  onMouseUp={() => {
+    if (isZoomMode && dragStart && dragEnd) {
+      const dx = Math.abs(dragEnd.x - dragStart.x);
+      const dy = Math.abs(dragEnd.y - dragStart.y);
+
+      // Simple zoom factor based on ROI size
+      const zoom = Math.min(600 / dx, 600 / dy);
+      setZoomLevel(Math.min(Math.max(zoom, 1), 5)); // clamp 1–5
+      setZoomRegion({ x: dragStart.x, y: dragStart.y, width: dx, height: dy });
+
+      // Exit zoom mode automatically
+      setIsZoomMode(false);
+    }
+    setDragStart(null);
+    setDragEnd(null);
+  }}
+>
+  {/* Your DicomViewer / NiftiViewer */}
+  {isDicom ? (
+    <DicomViewer
+      imageIds={imageIds}
+      windowCenter={windowCenter}
+      windowWidth={windowWidth}
+      onSliceChange={setCurrentSlice}
+      setTotalSlices={setTotalSlices}
+    />
+  ) : (
+    <NiftiViewer
+      url={`http://localhost:5000/uploads/${file.filename}`}
+      windowCenter={windowCenter}
+      windowWidth={windowWidth}
+      onSliceChange={setCurrentSlice}
+      setTotalSlices={setTotalSlices}
+    />
+  )}
+
+  {/* Annotation Overlay */}
+  <div
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      zIndex: 10,
+    }}
+  >
+    <AnnotationCanvas
+      ref={annotationRefs.current[file.originalName]}
+      mode={selectedShape}
+      width={600}
+      height={600}
+      selectedLabel={selectedLabel}
+      brushColor={brushColor}
+      brushSize={brushSize}
+      toolChangeId={toolChangeId}
+      annotationOpacity={annotationOpacity}
+    />
+  </div>
+
+  {/* ROI Selection Rectangle (draw feedback) */}
+  {dragStart && dragEnd && (
+    <div
+      style={{
+        position: "absolute",
+        left: Math.min(dragStart.x, dragEnd.x),
+        top: Math.min(dragStart.y, dragEnd.y),
+        width: Math.abs(dragEnd.x - dragStart.x),
+        height: Math.abs(dragEnd.y - dragStart.y),
+        border: "2px dashed #3b82f6",
+        backgroundColor: "rgba(59,130,246,0.2)",
+        pointerEvents: "none",
+      }}
+    />
+  )}
+</div>
+
               </div>
             );
           })()}
@@ -962,35 +1019,44 @@ return (
             </div>
 
             {/* Zoom Controls */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <span style={{ fontWeight: 500, color: "#334155" }}>{t("zoom")}:</span>
-              <button
-                onClick={() => setZoomLevel((prev) => Math.min(prev + 0.1, 3))}
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#3b82f6",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("zoomIn")}
-              </button>
-              <button
-                onClick={() => setZoomLevel((prev) => Math.max(prev - 0.1, 0.5))}
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#3b82f6",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("zoomOut")}
-              </button>
-            </div>
+<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+  <span style={{ fontWeight: 500, color: "#334155" }}>{t("zoom")}:</span>
+
+  {/* Zoom ROI Mode Toggle */}
+  <button
+    onClick={() => setIsZoomMode((prev) => !prev)}
+    style={{
+      padding: "8px",
+      backgroundColor: isZoomMode ? "#f59e0b" : "#3b82f6",
+      color: "#fff",
+      border: "none",
+      borderRadius: "6px",
+      cursor: "pointer",
+    }}
+  >
+    {isZoomMode ? t("cancelZoom") : t("selectZoomArea")}
+  </button>
+
+  {/* Reset Zoom */}
+  <button
+    onClick={() => {
+      setZoomLevel(1);
+      setZoomRegion(null);
+      setIsZoomMode(false);
+    }}
+    style={{
+      padding: "8px",
+      backgroundColor: "#64748b",
+      color: "#fff",
+      border: "none",
+      borderRadius: "6px",
+      cursor: "pointer",
+    }}
+  >
+    {t("resetZoom")}
+  </button>
+</div>
+
           </>
         )}
       </div>
