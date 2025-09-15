@@ -49,6 +49,9 @@ function App() {
   const annotationRefs = useRef({});
   const { t, i18n } = useTranslation();
   const [classificationByFile, setClassificationByFile] = React.useState({});
+  const [showSlices, setShowSlices] = useState(false);
+  const [totalSlices, setTotalSlices] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const currentClassification = classificationByFile[selectedFileName] || null;
   const [classificationByFileAndSlice, setClassificationByFileAndSlice] =
     useState({});
@@ -157,6 +160,7 @@ function App() {
       alert("Failed to Save Changes. Please Try Again!.");
     }
   };
+
 
   useEffect(() => {
     if (page === "annotate") {
@@ -392,6 +396,7 @@ return (
       flexDirection: "column",
     }}
   >
+    {/* Top Navbar */}
     <div
       style={{
         display: "flex",
@@ -484,6 +489,7 @@ return (
       </div>
     </div>
 
+    {/* Main Layout */}
     <div
       style={{
         flex: 1,
@@ -493,6 +499,7 @@ return (
         padding: "16px",
       }}
     >
+      {/* Left Sidebar (Tools) */}
       <div
         style={{
           flexBasis: "250px",
@@ -507,6 +514,7 @@ return (
           boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
         }}
       >
+        {/* Window Center/Width */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#334155" }}>
             <span style={{ fontWeight: 500 }}>{t("windowCenter")}</span>
@@ -557,6 +565,7 @@ return (
           </button>
         </div>
 
+        {/* Labels */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <input
             type="text"
@@ -587,6 +596,7 @@ return (
           </select>
         </div>
 
+        {/* Shape Tools */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           {shapes.map(({ name, icon: Icon }) => (
             <button
@@ -615,6 +625,7 @@ return (
           ))}
         </div>
 
+        {/* Opacity */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{ fontWeight: 500, color: "#334155" }}>{t("opacity")}:</span>
           <input
@@ -663,6 +674,7 @@ return (
         )}
       </div>
 
+      {/* Viewer */}
       <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
         {selectedFileName &&
           (() => {
@@ -695,6 +707,9 @@ return (
                       : classificationByFileAndSlice[selectedFileName]?.[currentSlice] === "negative"
                       ? "red"
                       : "#cbd5e1"),
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: "center center",
+                  transition: "transform 0.2s ease",
                 }}
               >
                 <h2 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px" }}>
@@ -710,23 +725,23 @@ return (
                     border: "1px solid #e2e8f0",
                   }}
                 >
-                  <div>
-                    {isDicom ? (
-                      <DicomViewer
-                        imageIds={imageIds}
-                        windowCenter={windowCenter}
-                        windowWidth={windowWidth}
-                        onSliceChange={setCurrentSlice}
-                      />
-                    ) : (
-                      <NiftiViewer
-                        url={`http://localhost:5000/uploads/${file.filename}`}
-                        windowCenter={windowCenter}
-                        windowWidth={windowWidth}
-                        onSliceChange={setCurrentSlice}
-                      />
-                    )}
-                  </div>
+                  {isDicom ? (
+                    <DicomViewer
+                      imageIds={imageIds}
+                      windowCenter={windowCenter}
+                      windowWidth={windowWidth}
+                      onSliceChange={setCurrentSlice}
+                      setTotalSlices={setTotalSlices}
+                    />
+                  ) : (
+                    <NiftiViewer
+                      url={`http://localhost:5000/uploads/${file.filename}`}
+                      windowCenter={windowCenter}
+                      windowWidth={windowWidth}
+                      onSliceChange={setCurrentSlice}
+                      setTotalSlices={setTotalSlices}
+                    />
+                  )}
                   <div
                     style={{
                       position: "absolute",
@@ -755,6 +770,7 @@ return (
           })()}
       </div>
 
+      {/* Right Sidebar */}
       <div
         style={{
           flexBasis: "250px",
@@ -771,6 +787,7 @@ return (
       >
         {selectedFileName && (
           <>
+            {/* Classification */}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <span style={{ fontWeight: 500, color: "#334155" }}>
                 {t("classification")} (Slice {currentSlice + 1}):
@@ -838,6 +855,64 @@ return (
               </button>
             </div>
 
+            {/* Slice Navigator */}
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowSlices((prev) => !prev)}
+                style={{
+                  padding: "8px",
+                  backgroundColor: "#3b82f6",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  width: "100%",
+                }}
+              >
+                {t("slices")}
+              </button>
+              {showSlices && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "110%",
+                    left: 0,
+                    right: 0,
+                    background: "#fff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    maxHeight: "200px",
+                    overflowY: "auto",
+                    zIndex: 20,
+                  }}
+                >
+                  {Array.from({ length: totalSlices }, (_, i) => (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        setCurrentSlice(i);
+                        setShowSlices(false);
+                      }}
+                      style={{
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        background: i === currentSlice ? "#e0f2fe" : "#fff",
+                        borderBottom: "1px solid #f1f5f9",
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = "#f0f9ff")}
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background =
+                          i === currentSlice ? "#e0f2fe" : "#fff")
+                      }
+                    >
+                      Slice {i + 1}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Annotation Actions */}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <button
                 onClick={handleSaveAllAnnotations}
@@ -855,9 +930,7 @@ return (
               <button
                 onClick={() => {
                   const ref = annotationRefs.current[selectedFileName];
-                  if (ref?.current?.clearAnnotations) {
-                    ref.current.clearAnnotations();
-                  }
+                  if (ref?.current?.clearAnnotations) ref.current.clearAnnotations();
                 }}
                 style={{
                   padding: "8px",
@@ -873,9 +946,7 @@ return (
               <button
                 onClick={() => {
                   const ref = annotationRefs.current[selectedFileName];
-                  if (ref?.current?.deleteSelected) {
-                    ref.current.deleteSelected();
-                  }
+                  if (ref?.current?.deleteSelected) ref.current.deleteSelected();
                 }}
                 style={{
                   padding: "8px",
@@ -889,12 +960,45 @@ return (
                 {t("deleteSelected")}
               </button>
             </div>
+
+            {/* Zoom Controls */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <span style={{ fontWeight: 500, color: "#334155" }}>{t("zoom")}:</span>
+              <button
+                onClick={() => setZoomLevel((prev) => Math.min(prev + 0.1, 3))}
+                style={{
+                  padding: "8px",
+                  backgroundColor: "#3b82f6",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                {t("zoomIn")}
+              </button>
+              <button
+                onClick={() => setZoomLevel((prev) => Math.max(prev - 0.1, 0.5))}
+                style={{
+                  padding: "8px",
+                  backgroundColor: "#3b82f6",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                {t("zoomOut")}
+              </button>
+            </div>
           </>
         )}
       </div>
     </div>
   </div>
 );
+
+
 
 }
 
