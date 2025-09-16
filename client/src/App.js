@@ -13,7 +13,9 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import {
   Circle,
+  Sun,
   RectangleHorizontal,
+  Contrast,
   PenTool,
   Box,
   Shapes,
@@ -28,6 +30,7 @@ const shapes = [
   { name: "cuboid", icon: Box },
   { name: "brush", icon: Brush },
 ];
+
 
 function App() {
   const [page, setPage] = useState("upload");
@@ -52,7 +55,7 @@ function App() {
   const [showSlices, setShowSlices] = useState(false);
 const [dragStart, setDragStart] = useState(null);
 const [dragEnd, setDragEnd] = useState(null);
-
+const [openSection, setOpenSection] = useState(null);
   const [totalSlices, setTotalSlices] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isZoomMode, setIsZoomMode] = useState(false);
@@ -66,6 +69,7 @@ const [zoomRegion, setZoomRegion] = useState(null);
   const changeLang = (lng) => {
     i18n.changeLanguage(lng);
     axios.defaults.headers.common["Accept-Language"] = lng;
+    document.documentElement.lang = lng; 
   };
 
   const addFiles = (newFiles) => {
@@ -167,6 +171,11 @@ const [zoomRegion, setZoomRegion] = useState(null);
     }
   };
 
+    useEffect(() => {
+  if (page === "annotate") {
+    window.scrollTo(0, 0);
+  }
+}, [page]);
 
   useEffect(() => {
     if (page === "annotate") {
@@ -222,6 +231,7 @@ const [zoomRegion, setZoomRegion] = useState(null);
                 <option value="" disabled></option>
                 <option value="en">🇬🇧 EN</option>
                 <option value="fa">🇮🇷 فارسی</option>
+                <option value="nl">🇳🇱 NL</option> 
               </select>
             </div>
 
@@ -402,7 +412,6 @@ return (
       flexDirection: "column",
     }}
   >
-    {/* Top Navbar */}
     <div
       style={{
         display: "flex",
@@ -433,6 +442,7 @@ return (
           <option value="" disabled></option>
           <option value="en">🇬🇧 EN</option>
           <option value="fa">🇮🇷 فارسی</option>
+          <option value="nl">🇳🇱 NL</option> 
         </select>
       </div>
 
@@ -508,179 +518,174 @@ return (
 >
 
       {/* Left Sidebar (Tools) */}
-      <div
+<div
+  style={{
+    flexBasis: "250px",
+    flexShrink: 0,
+    display: "flex",
+    flexDirection: "column",
+    backgroundColor: "rgba(255,255,255,0.7)",
+    border: "1px solid #bae6fd",
+    borderRadius: "12px",
+    overflow: "hidden",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+  }}
+>
+  {[
+    { id: "window", title: t("windowSettings"), icon: Sun },
+    { id: "labels", title: t("labels"), icon: Shapes },
+    { id: "shapes", title: t("shapes"), icon: Circle },
+    { id: "opacity", title: t("opacity"), icon: Brush },
+    { id: "brush", title: t("brushSettings"), icon: PenTool },
+  ].map(({ id, title, icon: Icon }) => (
+    <div key={id} style={{ borderBottom: "1px solid #e2e8f0" }}>
+      <button
+        onClick={() => setOpenSection(openSection === id ? null : id)}
         style={{
-          flexBasis: "250px",
-          flexShrink: 0,
           display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-          backgroundColor: "rgba(255,255,255,0.7)",
-          border: "1px solid #bae6fd",
-          borderRadius: "12px",
-          padding: "12px",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          padding: "10px 12px",
+          background: openSection === id ? "#eff6ff" : "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 500,
+          color: "#334155",
         }}
       >
-        {/* Window Center/Width */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#334155" }}>
-            <span style={{ fontWeight: 500 }}>{t("windowCenter")}</span>
-            <input
-              type="number"
-              value={windowCenter ?? ""}
-              onChange={(e) =>
-                setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
-              }
-              style={{
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
-                padding: "4px 6px",
-                width: "80px",
-              }}
-            />
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#334155" }}>
-            <span style={{ fontWeight: 500 }}>{t("windowWidth")}</span>
-            <input
-              type="number"
-              value={windowWidth ?? ""}
-              onChange={(e) =>
-                setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
-              }
-              style={{
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
-                padding: "4px 6px",
-                width: "80px",
-              }}
-            />
-          </label>
-          <button
-            onClick={() => {
-              setWindowCenter(null);
-              setWindowWidth(null);
-            }}
-            style={{
-              padding: "6px 10px",
-              backgroundColor: "#e2e8f0",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-            }}
-          >
-            {t("reset")}
-          </button>
-        </div>
+        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Icon size={18} /> {title}
+        </span>
+        <span>{openSection === id ? "▲" : "▼"}</span>
+      </button>
 
-        {/* Labels */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <input
-            type="text"
-            placeholder={t("enterLabel")}
-            value={selectedLabel}
-            onChange={(e) => setSelectedLabel(e.target.value)}
-            style={{
-              padding: "6px",
-              border: "1px solid #e2e8f0",
-              borderRadius: "6px",
-            }}
-          />
-          <select
-            value={selectedLabel}
-            onChange={(e) => setSelectedLabel(e.target.value)}
-            style={{
-              padding: "6px",
-              border: "1px solid #e2e8f0",
-              borderRadius: "6px",
-            }}
-          >
-            <option value="">{t("selectLabel")}</option>
-            {labelOptions.map((label) => (
-              <option key={label} value={label}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Accordion Content */}
+      {openSection === id && (
+        <div style={{ padding: "10px 12px", background: "#fff" }}>
+          {id === "window" && (
+            <>
+              <label>
+                {t("windowCenter")}:
+                <input
+                  type="number"
+                  value={windowCenter ?? ""}
+                  onChange={(e) =>
+                    setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+              </label>
+              <label>
+                {t("windowWidth")}:
+                <input
+                  type="number"
+                  value={windowWidth ?? ""}
+                  onChange={(e) =>
+                    setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+              </label>
+              <button onClick={() => { setWindowCenter(null); setWindowWidth(null); }}>
+                {t("reset")}
+              </button>
+            </>
+          )}
 
-        {/* Shape Tools */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-          {shapes.map(({ name, icon: Icon }) => (
-            <button
-              key={name}
-              onClick={() => {
-                setSelectedShape(name);
-                setToolChangeId((prev) => prev + 1);
-              }}
-              style={{
-                padding: "6px",
-                borderRadius: "50%",
-                border: selectedShape === name ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                background: selectedShape === name ? "#eff6ff" : "#fff",
-                cursor: "pointer",
-              }}
-              title={name}
-            >
-              <Icon
-                style={{
-                  width: "20px",
-                  height: "20px",
-                  color: selectedShape === name ? "#1d4ed8" : "#334155",
-                }}
-              />
-            </button>
-          ))}
-        </div>
-
-        {/* Opacity */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontWeight: 500, color: "#334155" }}>{t("opacity")}:</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            value={annotationOpacity}
-            onChange={(e) => setAnnotationOpacity(Number(e.target.value))}
-            style={{ flex: 1 }}
-          />
-          <span style={{ fontWeight: 500 }}>{Math.round(annotationOpacity * 100)}%</span>
-        </div>
-
-        {/* Brush Settings */}
-        {selectedShape === "brush" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#334155" }}>
-              <span style={{ fontWeight: 500 }}>{t("brushColor")}:</span>
+          {id === "labels" && (
+            <>
               <input
-                type="color"
-                value={brushColor}
-                onChange={(e) => setBrushColor(e.target.value)}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
+                type="text"
+                placeholder={t("enterLabel")}
+                value={selectedLabel}
+                onChange={(e) => setSelectedLabel(e.target.value)}
               />
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#334155" }}>
-              <span style={{ fontWeight: 500 }}>{t("brushSize")}:</span>
+              <select
+                value={selectedLabel}
+                onChange={(e) => setSelectedLabel(e.target.value)}
+              >
+                <option value="">{t("selectLabel")}</option>
+                {labelOptions.map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {id === "shapes" && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {shapes.map(({ name, icon: ShapeIcon }) => (
+                <button
+                  key={name}
+                  onClick={() => {
+                    setSelectedShape(name);
+                    setToolChangeId((prev) => prev + 1);
+                  }}
+                  style={{
+                    padding: "6px",
+                    borderRadius: "50%",
+                    border:
+                      selectedShape === name
+                        ? "2px solid #2563eb"
+                        : "1px solid #cbd5e1",
+                    background:
+                      selectedShape === name ? "#eff6ff" : "#fff",
+                  }}
+                  title={name}
+                >
+                  <ShapeIcon
+                    size={20}
+                    color={selectedShape === name ? "#1d4ed8" : "#334155"}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {id === "opacity" && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <input
                 type="range"
-                min="1"
-                max="50"
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                style={{ flex: 1 }}
+                min="0"
+                max="1"
+                step="0.1"
+                value={annotationOpacity}
+                onChange={(e) => setAnnotationOpacity(Number(e.target.value))}
               />
-              <span style={{ fontWeight: 500 }}>{brushSize}</span>
-            </label>
-          </div>
-        )}
-      </div>
+              <span>{Math.round(annotationOpacity * 100)}%</span>
+            </div>
+          )}
+
+          {id === "brush" && selectedShape === "brush" && (
+            <>
+              <label>
+                {t("brushColor")}:
+                <input
+                  type="color"
+                  value={brushColor}
+                  onChange={(e) => setBrushColor(e.target.value)}
+                />
+              </label>
+              <label>
+                {t("brushSize")}:
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  value={brushSize}
+                  onChange={(e) => setBrushSize(Number(e.target.value))}
+                />
+                {brushSize}
+              </label>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  ))}
+</div>
+
       <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
         {selectedFileName &&
           (() => {
@@ -827,24 +832,53 @@ return (
           })()}
       </div>
 
-      {/* Right Sidebar */}
-      <div
+{/* Right Sidebar (Accordion Style like Left Sidebar) */}
+<div
+  style={{
+    flexBasis: "250px",
+    flexShrink: 0,
+    display: "flex",
+    flexDirection: "column",
+    backgroundColor: "rgba(255,255,255,0.7)",
+    border: "1px solid #bae6fd",
+    borderRadius: "12px",
+    overflow: "hidden",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+  }}
+>
+  {[
+    { id: "classification", title: t("classification"), icon: Circle },
+    { id: "slices", title: t("slices"), icon: RectangleHorizontal },
+    { id: "annotations", title: t("annotations"), icon: Brush },
+    { id: "zoom", title: t("zoom"), icon: Shapes },
+  ].map(({ id, title, icon: Icon }) => (
+    <div key={id} style={{ borderBottom: "1px solid #e2e8f0" }}>
+      {/* Accordion Header */}
+      <button
+        onClick={() => setOpenSection(openSection === id ? null : id)}
         style={{
-          flexBasis: "250px",
-          flexShrink: 0,
           display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-          backgroundColor: "rgba(255,255,255,0.7)",
-          border: "1px solid #bae6fd",
-          borderRadius: "12px",
-          padding: "12px",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          padding: "10px 12px",
+          background: openSection === id ? "#eff6ff" : "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 500,
+          color: "#334155",
         }}
       >
-        {selectedFileName && (
-          <>
-            {/* Classification */}
+        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Icon size={18} /> {title}
+        </span>
+        <span>{openSection === id ? "▲" : "▼"}</span>
+      </button>
+
+      {/* Accordion Content */}
+      {openSection === id && (
+        <div style={{ padding: "10px 12px", background: "#fff" }}>
+          {id === "classification" && selectedFileName && (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <span style={{ fontWeight: 500, color: "#334155" }}>
                 {t("classification")} (Slice {currentSlice + 1}):
@@ -911,8 +945,9 @@ return (
                 {t("clear")}
               </button>
             </div>
+          )}
 
-            {/* Slice Navigator */}
+          {id === "slices" && (
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setShowSlices((prev) => !prev)}
@@ -968,8 +1003,9 @@ return (
                 </div>
               )}
             </div>
+          )}
 
-            {/* Annotation Actions */}
+          {id === "annotations" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <button
                 onClick={handleSaveAllAnnotations}
@@ -1017,49 +1053,48 @@ return (
                 {t("deleteSelected")}
               </button>
             </div>
+          )}
 
-            {/* Zoom Controls */}
-<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-  <span style={{ fontWeight: 500, color: "#334155" }}>{t("zoom")}:</span>
-
-  {/* Zoom ROI Mode Toggle */}
-  <button
-    onClick={() => setIsZoomMode((prev) => !prev)}
-    style={{
-      padding: "8px",
-      backgroundColor: isZoomMode ? "#f59e0b" : "#3b82f6",
-      color: "#fff",
-      border: "none",
-      borderRadius: "6px",
-      cursor: "pointer",
-    }}
-  >
-    {isZoomMode ? t("cancelZoom") : t("selectZoomArea")}
-  </button>
-
-  {/* Reset Zoom */}
-  <button
-    onClick={() => {
-      setZoomLevel(1);
-      setZoomRegion(null);
-      setIsZoomMode(false);
-    }}
-    style={{
-      padding: "8px",
-      backgroundColor: "#64748b",
-      color: "#fff",
-      border: "none",
-      borderRadius: "6px",
-      cursor: "pointer",
-    }}
-  >
-    {t("resetZoom")}
-  </button>
+          {id === "zoom" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <button
+                onClick={() => setIsZoomMode((prev) => !prev)}
+                style={{
+                  padding: "8px",
+                  backgroundColor: isZoomMode ? "#f59e0b" : "#3b82f6",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                {isZoomMode ? t("cancelZoom") : t("selectZoomArea")}
+              </button>
+              <button
+                onClick={() => {
+                  setZoomLevel(1);
+                  setZoomRegion(null);
+                  setIsZoomMode(false);
+                }}
+                style={{
+                  padding: "8px",
+                  backgroundColor: "#64748b",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                {t("resetZoom")}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  ))}
 </div>
 
-          </>
-        )}
-      </div>
     </div>
   </div>
 );
