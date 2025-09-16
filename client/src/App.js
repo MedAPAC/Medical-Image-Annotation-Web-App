@@ -496,15 +496,17 @@ return (
     </div>
 
     {/* Main Layout */}
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "row",
-        gap: "16px",
-        padding: "16px",
-      }}
-    >
+<div
+  style={{
+    flex: 1,
+    display: "grid",
+    gridTemplateColumns: "250px 1fr 250px",
+    gap: "16px",
+    padding: "16px",
+    height: "100%",
+  }}
+>
+
       {/* Left Sidebar (Tools) */}
       <div
         style={{
