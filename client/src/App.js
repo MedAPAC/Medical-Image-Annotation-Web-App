@@ -681,8 +681,6 @@ return (
           </div>
         )}
       </div>
-
-      {/* Viewer */}
       <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
         {selectedFileName &&
           (() => {
