@@ -13,13 +13,14 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import {
   Circle,
-  Sun,
+  Settings,
+  Droplet,
   RectangleHorizontal,
   Tag,
   PenTool,
   HelpCircle,
   ZoomIn,
-  Box,
+  Edit3,
   Shapes,
   Layers,
   Brush,
@@ -49,7 +50,6 @@ function App() {
   const [brushColor, setBrushColor] = useState("#00FF00");
   const [brushSize, setBrushSize] = useState(10);
   const [toolChangeId, setToolChangeId] = useState(0);
-  const [sliceClassifications, setSliceClassifications] = useState({});
   const [annotationOpacity, setAnnotationOpacity] = useState(0.4);
   const annotationRefs = useRef({});
   const { t, i18n } = useTranslation();
@@ -528,7 +528,7 @@ return (
   }}
 >
 
-  {/* Left Sidebar (Tools) */}
+{/* Left Sidebar (Tools) */}
 <div
   style={{
     flexBasis: "250px",
@@ -543,195 +543,215 @@ return (
   }}
 >
   {[
-    { id: "window", title: t("window settings"), icon: Sun, color: "#3b82f6" },
-    { id: "labels", title: t("Labels"), icon: Shapes, color: "#6366f1" },
-    { id: "shapes", title: t("shapes"), icon: Circle, color: "#059669" },
-    { id: "opacity", title: t("opacity"), icon: Brush, color: "#f59e0b" },
-    { id: "brush", title: t("brushSettings"), icon: PenTool, color: "#f97316" },
-  ].map(({ id, title, icon: Icon, color }) => (
-    <div key={id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-      <button
-        onClick={() => setOpenSection(openSection === id ? null : id)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "100%",
-          padding: "12px 16px",
-          background: openSection === id ? "#e0f2fe" : "#f8fafc",
-          border: "none",
-          cursor: "pointer",
-          fontWeight: 600,
-          color: "#1e293b",
-          transition: "all 0.2s ease",
-        }}
-        onMouseOver={(e) => (e.currentTarget.style.background = "#dbeafe")}
-        onMouseOut={(e) =>
-          (e.currentTarget.style.background =
-            openSection === id ? "#e0f2fe" : "#f8fafc")
-        }
-      >
-        <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Icon size={20} color={color} /> {title}
-        </span>
-        <span style={{ fontSize: "14px", color: "#64748b" }}>
-          {openSection === id ? "▲" : "▼"}
-        </span>
-      </button>
+ { id: "window", title: t("Window Settings"), icon: Settings, color: "#3b82f6" },
+  { id: "labels", title: t("Labels"), icon: Tag, color: "#6366f1" },
+  { id: "shapes", title: t("Annotation Tools"), icon: Edit3, color: "#059669" },
+  { id: "opacity", title: t("Opacity Settings"), icon: Droplet, color: "#f59e0b" },
+  { id: "brush", title: t("Brush Settings"), icon: PenTool, color: "#f97316" },
+  ].map(({ id, title, icon: Icon, color }) => {
+    const isOpen = openSection === id;
 
-      {openSection === id && (
-        <div
+    return (
+      <div key={id} style={{ borderBottom: "1px solid #e2e8f0" }}>
+        <button
+          onClick={() => setOpenSection(isOpen ? null : id)}
           style={{
-            padding: "14px 16px",
-            background: "#ffffff",
-            borderRadius: "0 0 12px 12px",
             display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-            boxShadow: "inset 0 1px 0 #e5e7eb",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            padding: "12px 16px",
+            background: isOpen ? "#e0f2fe" : "#f8fafc",
+            border: "none",
+            cursor: "pointer",
+            fontWeight: 600,
+            color: "#1e293b",
+            transition: "all 0.2s ease",
           }}
+          onMouseOver={(e) => (e.currentTarget.style.background = "#dbeafe")}
+          onMouseOut={(e) =>
+            (e.currentTarget.style.background = isOpen ? "#e0f2fe" : "#f8fafc")
+          }
         >
-          {id === "window" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {["windowCenter", "windowWidth"].map((key) => (
-                <div key={key} style={{ display: "flex", flexDirection: "column" }}>
-                  <label style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px", marginBottom: "4px" }}>
-                    {t(key)}
-                  </label>
-                  <input
-                    type="number"
-                    value={key === "windowCenter" ? windowCenter ?? "" : windowWidth ?? ""}
-                    onChange={(e) =>
-                      key === "windowCenter"
-                        ? setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
-                        : setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
-                    }
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-                  />
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  setWindowCenter(null);
-                  setWindowWidth(null);
-                }}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: "#3b82f6",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: 500,
-                  fontSize: "14px",
-                  transition: "all 0.2s",
-                  alignSelf: "flex-start",
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
-              >
-                {t("reset")}
-              </button>
-            </div>
-          )}
+          <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Icon size={20} color={color} /> {title}
+          </span>
+          <span style={{ fontSize: "14px", color: "#64748b" }}>
+            {isOpen ? "▲" : "▼"}
+          </span>
+        </button>
 
-          {id === "labels" && (
-            <select
-              value={selectedLabel}
-              onChange={(e) => setSelectedLabel(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "14px",
-                outline: "none",
-                transition: "all 0.2s",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-            >
-              <option value="">{t("selectLabel")}</option>
-              {labelOptions.map((label) => (
-                <option key={label} value={label}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {id === "shapes" && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {shapes.map(({ name, icon: ShapeIcon }) => (
+        {/* Sidebar Content */}
+        {isOpen && (
+          <div
+            style={{
+              padding: "14px 16px",
+              background: "#ffffff",
+              borderRadius: "0 0 12px 12px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              boxShadow: "inset 0 1px 0 #e5e7eb",
+            }}
+          >
+            {/* Window Settings */}
+            {id === "window" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {["windowCenter", "windowWidth"].map((key) => (
+                  <div key={key} style={{ display: "flex", flexDirection: "column" }}>
+                    <label
+                      style={{
+                        fontWeight: 600,
+                        color: "#1e293b",
+                        fontSize: "14px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      {t(key)}
+                    </label>
+                    <input
+                      type="number"
+                      value={key === "windowCenter" ? windowCenter ?? "" : windowWidth ?? ""}
+                      onChange={(e) =>
+                        key === "windowCenter"
+                          ? setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
+                          : setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
+                      }
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+                    />
+                  </div>
+                ))}
                 <button
-                  key={name}
                   onClick={() => {
-                    setSelectedShape(name);
-                    setToolChangeId((prev) => prev + 1);
+                    setWindowCenter(null);
+                    setWindowWidth(null);
                   }}
                   style={{
-                    padding: "6px",
-borderRadius: "8px",
-                    border: selectedShape === name ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                    background: selectedShape === name ? "#eff6ff" : "#fff",
+                    padding: "8px 12px",
+                    backgroundColor: "#3b82f6",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
                     cursor: "pointer",
+                    fontWeight: 500,
+                    fontSize: "14px",
                     transition: "all 0.2s",
+                    alignSelf: "flex-start",
                   }}
-                  onMouseOver={(e) => { if (selectedShape !== name) e.currentTarget.style.background = "#f0f9ff"; }}
-                  onMouseOut={(e) => { if (selectedShape !== name) e.currentTarget.style.background = "#fff"; }}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
                 >
-                  <ShapeIcon size={20} color={selectedShape === name ? "#1d4ed8" : "#334155"} />
+                  {t("reset")}
                 </button>
-              ))}
-            </div>
-          )}
+              </div>
+            )}
 
-          {id === "opacity" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={annotationOpacity}
-                onChange={(e) => setAnnotationOpacity(Number(e.target.value))}
-                style={{ cursor: "pointer" }}
-              />
-              <span>{Math.round(annotationOpacity * 100)}%</span>
-            </div>
-          )}
+            {/* Labels */}
+            {id === "labels" && (
+              <select
+                value={selectedLabel}
+                onChange={(e) => setSelectedLabel(e.target.value)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "14px",
+                  outline: "none",
+                  transition: "all 0.2s",
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+              >
+                <option value="">{t("selectLabel")}</option>
+                {labelOptions.map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            )}
 
-          {id === "brush" && selectedShape === "brush" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                {t("brushColor")}:
-                <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} />
-              </label>
-              <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                {t("brushSize")}:
+            {/* Shapes */}
+            {id === "shapes" && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {shapes.map(({ name, icon: ShapeIcon }) => (
+                  <button
+                    key={name}
+                    onClick={() => {
+                      setSelectedShape(name);
+                      setToolChangeId((prev) => prev + 1);
+                    }}
+                    style={{
+                      padding: "6px",
+                      borderRadius: "8px",
+                      border: selectedShape === name ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                      background: selectedShape === name ? "#eff6ff" : "#fff",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseOver={(e) => {
+                      if (selectedShape !== name) e.currentTarget.style.background = "#f0f9ff";
+                    }}
+                    onMouseOut={(e) => {
+                      if (selectedShape !== name) e.currentTarget.style.background = "#fff";
+                    }}
+                  >
+                    <ShapeIcon size={20} color={selectedShape === name ? "#1d4ed8" : "#334155"} />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Opacity */}
+            {id === "opacity" && (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <input
                   type="range"
-                  min="1"
-                  max="50"
-                  value={brushSize}
-                  onChange={(e) => setBrushSize(Number(e.target.value))}
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={annotationOpacity}
+                  onChange={(e) => setAnnotationOpacity(Number(e.target.value))}
+                  style={{ cursor: "pointer" }}
                 />
-                <span>{brushSize}</span>
-              </label>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  ))}
+                <span>{Math.round(annotationOpacity * 100)}%</span>
+              </div>
+            )}
+
+            {/* Brush Settings */}
+            {id === "brush" && selectedShape === "brush" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {t("brushColor")}:
+                  <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} />
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {t("brushSize")}:
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                  />
+                  <span>{brushSize}</span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  })}
 </div>
 
 
@@ -1076,7 +1096,6 @@ borderRadius: "8px",
       {t("choose a slice")}
     </button>
 
-    {/* Dropdown list */}
     {showSlices && (
       <div
         ref={slicesRef}
@@ -1124,7 +1143,6 @@ borderRadius: "8px",
       </div>
     )}
 
-    {/* Draggable slider */}
 <div style={{ width: "80%", margin: "12px auto", textAlign: "center" }}>
   <input
     type="range"
@@ -1135,8 +1153,8 @@ borderRadius: "8px",
     style={{
       width: "100%",
       cursor: "pointer",
-      height: "6px",         // thinner slider
-      marginBottom: "6px",   // smaller spacing
+      height: "6px",         
+      marginBottom: "6px",   
     }}
   />
   <div style={{ fontSize: "11px", color: "#64748b" }}>
@@ -1188,21 +1206,32 @@ borderRadius: "8px",
           )}
 
           {id === "help" && (
-            <div style={{ fontSize: "13px", color: "#334155", display: "flex", flexDirection: "column", gap: "6px" }}>
-              <p><b>{t("classification")}:</b> {t("Assign classification to a slice")}</p>
-              <p><b>{t("slices")}:</b> {t("Navigate and jump between slices")}</p>
-              <p><b>{t("annotations")}:</b> {t("Manage annotations: save, clear, delete")}</p>
-              <p><b>{t("zoom")}:</b> {t("Zoom into selected region or reset zoom")}</p>
-            </div>
+<div
+  style={{
+    fontSize: "13px",
+    color: "#334155",
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px", 
+    lineHeight: "1.4", 
+  }}
+>
+  <div><b>{t("classification")}:</b> {t("Assign classification to a slice")}</div>
+  <div><b>{t("Slices Settings")}:</b> {t("Navigate and jump between slices")}</div>
+  <div><b>{t("Zoom")}:</b> {t("Zoom into selected region, use mouse wheel to zoom in/out, or reset zoom")}</div>
+  <div><b>{t("Window Settings")}:</b> {t("Adjust window center and width for better contrast visualization")}</div>
+  <div><b>{t("Labels")}:</b> {t("Select or assign labels for structures or findings")}</div>
+  <div><b>{t("Annotation Tools")}:</b> {t("Draw shapes (circle, rectangle, etc.) to highlight regions of interest")}</div>
+  <div><b>{t("Opacity Settings")}:</b> {t("Adjust annotation transparency for better image clarity")}</div>
+  <div><b>{t("Brush Settings")}:</b> {t("Use brush tool to annotate regions, adjust size and color")}</div>
+</div>
+
           )}
         </div>
       )}
     </div>
   ))}
 </div>
-
-
-
     </div>
   </div>
 );

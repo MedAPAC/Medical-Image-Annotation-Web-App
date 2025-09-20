@@ -524,16 +524,34 @@ fabricCanvas.on("selection:created", (e) => {
       fabricCanvas.add(handle);
     });
 
-    polygon.on("moving", () => {
-     if (polygon._handles) {
-       polygon._handles.forEach((handle, i) => {
-          handle.left = polygon.left + polygon.points[i].x * polygon.scaleX;
-          handle.top = polygon.top + polygon.points[i].y * polygon.scaleY;
-          handle.setCoords();
-        });
-        fabricCanvas.requestRenderAll();
-      }
-    });
+const updateHandles = () => {
+  if (!polygon._handles) return;
+
+  const angle = fabric.util.degreesToRadians(polygon.angle);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  polygon._handles.forEach((handle, i) => {
+    const point = polygon.points[i];
+
+    // Include scale and rotation properly
+    const x = point.x * polygon.scaleX;
+    const y = point.y * polygon.scaleY;
+
+    handle.left = polygon.left + x * cos - y * sin;
+    handle.top = polygon.top + x * sin + y * cos;
+    handle.setCoords();
+    handle.visible = true;
+  });
+
+  fabricCanvas.requestRenderAll();
+};
+
+// Attach to polygon events
+polygon.on("moving", updateHandles);
+polygon.on("scaling", updateHandles);
+polygon.on("rotating", updateHandles);
+
   }
 });
 
