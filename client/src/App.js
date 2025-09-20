@@ -15,10 +15,13 @@ import {
   Circle,
   Sun,
   RectangleHorizontal,
-  Contrast,
+  Tag,
   PenTool,
+  HelpCircle,
+  ZoomIn,
   Box,
   Shapes,
+  Layers,
   Brush,
 } from "lucide-react";
 
@@ -27,7 +30,6 @@ const shapes = [
   { name: "rectangle", icon: RectangleHorizontal },
   { name: "polygon", icon: Shapes },
   { name: "polyline", icon: PenTool },
-  { name: "cuboid", icon: Box },
   { name: "brush", icon: Brush },
 ];
 
@@ -65,6 +67,15 @@ const [zoomRegion, setZoomRegion] = useState(null);
   const [classificationByFileAndSlice, setClassificationByFileAndSlice] =
     useState({});
   const [currentSlice, setCurrentSlice] = useState(0);
+const slicesRef = useRef(null);
+
+useEffect(() => {
+  if (showSlices && slicesRef.current) {
+    const selected = slicesRef.current.querySelector(`#slice-${currentSlice}`);
+    selected?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}, [showSlices, currentSlice]);
+
 
   const changeLang = (lng) => {
     i18n.changeLanguage(lng);
@@ -517,27 +528,27 @@ return (
   }}
 >
 
-      {/* Left Sidebar (Tools) */}
+  {/* Left Sidebar (Tools) */}
 <div
   style={{
     flexBasis: "250px",
     flexShrink: 0,
     display: "flex",
     flexDirection: "column",
-    backgroundColor: "rgba(255,255,255,0.7)",
+    backgroundColor: "#f8fafc",
     border: "1px solid #bae6fd",
     borderRadius: "12px",
     overflow: "hidden",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
   }}
 >
   {[
-    { id: "window", title: t("windowSettings"), icon: Sun },
-    { id: "labels", title: t("labels"), icon: Shapes },
-    { id: "shapes", title: t("shapes"), icon: Circle },
-    { id: "opacity", title: t("opacity"), icon: Brush },
-    { id: "brush", title: t("brushSettings"), icon: PenTool },
-  ].map(({ id, title, icon: Icon }) => (
+    { id: "window", title: t("window settings"), icon: Sun, color: "#3b82f6" },
+    { id: "labels", title: t("Labels"), icon: Shapes, color: "#6366f1" },
+    { id: "shapes", title: t("shapes"), icon: Circle, color: "#059669" },
+    { id: "opacity", title: t("opacity"), icon: Brush, color: "#f59e0b" },
+    { id: "brush", title: t("brushSettings"), icon: PenTool, color: "#f97316" },
+  ].map(({ id, title, icon: Icon, color }) => (
     <div key={id} style={{ borderBottom: "1px solid #e2e8f0" }}>
       <button
         onClick={() => setOpenSection(openSection === id ? null : id)}
@@ -546,71 +557,115 @@ return (
           alignItems: "center",
           justifyContent: "space-between",
           width: "100%",
-          padding: "10px 12px",
-          background: openSection === id ? "#eff6ff" : "transparent",
+          padding: "12px 16px",
+          background: openSection === id ? "#e0f2fe" : "#f8fafc",
           border: "none",
           cursor: "pointer",
-          fontWeight: 500,
-          color: "#334155",
+          fontWeight: 600,
+          color: "#1e293b",
+          transition: "all 0.2s ease",
         }}
+        onMouseOver={(e) => (e.currentTarget.style.background = "#dbeafe")}
+        onMouseOut={(e) =>
+          (e.currentTarget.style.background =
+            openSection === id ? "#e0f2fe" : "#f8fafc")
+        }
       >
-        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <Icon size={18} /> {title}
+        <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Icon size={20} color={color} /> {title}
         </span>
-        <span>{openSection === id ? "▲" : "▼"}</span>
+        <span style={{ fontSize: "14px", color: "#64748b" }}>
+          {openSection === id ? "▲" : "▼"}
+        </span>
       </button>
 
-      {/* Accordion Content */}
       {openSection === id && (
-        <div style={{ padding: "10px 12px", background: "#fff" }}>
+        <div
+          style={{
+            padding: "14px 16px",
+            background: "#ffffff",
+            borderRadius: "0 0 12px 12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            boxShadow: "inset 0 1px 0 #e5e7eb",
+          }}
+        >
           {id === "window" && (
-            <>
-              <label>
-                {t("windowCenter")}:
-                <input
-                  type="number"
-                  value={windowCenter ?? ""}
-                  onChange={(e) =>
-                    setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
-                  }
-                />
-              </label>
-              <label>
-                {t("windowWidth")}:
-                <input
-                  type="number"
-                  value={windowWidth ?? ""}
-                  onChange={(e) =>
-                    setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
-                  }
-                />
-              </label>
-              <button onClick={() => { setWindowCenter(null); setWindowWidth(null); }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {["windowCenter", "windowWidth"].map((key) => (
+                <div key={key} style={{ display: "flex", flexDirection: "column" }}>
+                  <label style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px", marginBottom: "4px" }}>
+                    {t(key)}
+                  </label>
+                  <input
+                    type="number"
+                    value={key === "windowCenter" ? windowCenter ?? "" : windowWidth ?? ""}
+                    onChange={(e) =>
+                      key === "windowCenter"
+                        ? setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
+                        : setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  setWindowCenter(null);
+                  setWindowWidth(null);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  backgroundColor: "#3b82f6",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  transition: "all 0.2s",
+                  alignSelf: "flex-start",
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
+              >
                 {t("reset")}
               </button>
-            </>
+            </div>
           )}
 
           {id === "labels" && (
-            <>
-              <input
-                type="text"
-                placeholder={t("enterLabel")}
-                value={selectedLabel}
-                onChange={(e) => setSelectedLabel(e.target.value)}
-              />
-              <select
-                value={selectedLabel}
-                onChange={(e) => setSelectedLabel(e.target.value)}
-              >
-                <option value="">{t("selectLabel")}</option>
-                {labelOptions.map((label) => (
-                  <option key={label} value={label}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </>
+            <select
+              value={selectedLabel}
+              onChange={(e) => setSelectedLabel(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "14px",
+                outline: "none",
+                transition: "all 0.2s",
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+            >
+              <option value="">{t("selectLabel")}</option>
+              {labelOptions.map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
           )}
 
           {id === "shapes" && (
@@ -624,20 +679,16 @@ return (
                   }}
                   style={{
                     padding: "6px",
-                    borderRadius: "50%",
-                    border:
-                      selectedShape === name
-                        ? "2px solid #2563eb"
-                        : "1px solid #cbd5e1",
-                    background:
-                      selectedShape === name ? "#eff6ff" : "#fff",
+borderRadius: "8px",
+                    border: selectedShape === name ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                    background: selectedShape === name ? "#eff6ff" : "#fff",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
                   }}
-                  title={name}
+                  onMouseOver={(e) => { if (selectedShape !== name) e.currentTarget.style.background = "#f0f9ff"; }}
+                  onMouseOut={(e) => { if (selectedShape !== name) e.currentTarget.style.background = "#fff"; }}
                 >
-                  <ShapeIcon
-                    size={20}
-                    color={selectedShape === name ? "#1d4ed8" : "#334155"}
-                  />
+                  <ShapeIcon size={20} color={selectedShape === name ? "#1d4ed8" : "#334155"} />
                 </button>
               ))}
             </div>
@@ -652,22 +703,19 @@ return (
                 step="0.1"
                 value={annotationOpacity}
                 onChange={(e) => setAnnotationOpacity(Number(e.target.value))}
+                style={{ cursor: "pointer" }}
               />
               <span>{Math.round(annotationOpacity * 100)}%</span>
             </div>
           )}
 
           {id === "brush" && selectedShape === "brush" && (
-            <>
-              <label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 {t("brushColor")}:
-                <input
-                  type="color"
-                  value={brushColor}
-                  onChange={(e) => setBrushColor(e.target.value)}
-                />
+                <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} />
               </label>
-              <label>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 {t("brushSize")}:
                 <input
                   type="range"
@@ -676,15 +724,16 @@ return (
                   value={brushSize}
                   onChange={(e) => setBrushSize(Number(e.target.value))}
                 />
-                {brushSize}
+                <span>{brushSize}</span>
               </label>
-            </>
+            </div>
           )}
         </div>
       )}
     </div>
   ))}
 </div>
+
 
       <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
         {selectedFileName &&
@@ -755,24 +804,22 @@ return (
       const dx = Math.abs(dragEnd.x - dragStart.x);
       const dy = Math.abs(dragEnd.y - dragStart.y);
 
-      // Simple zoom factor based on ROI size
       const zoom = Math.min(600 / dx, 600 / dy);
-      setZoomLevel(Math.min(Math.max(zoom, 1), 5)); // clamp 1–5
+      setZoomLevel(Math.min(Math.max(zoom, 1), 5)); 
       setZoomRegion({ x: dragStart.x, y: dragStart.y, width: dx, height: dy });
 
-      // Exit zoom mode automatically
       setIsZoomMode(false);
     }
     setDragStart(null);
     setDragEnd(null);
   }}
 >
-  {/* Your DicomViewer / NiftiViewer */}
   {isDicom ? (
     <DicomViewer
       imageIds={imageIds}
       windowCenter={windowCenter}
       windowWidth={windowWidth}
+      currentSlice={currentSlice}      
       onSliceChange={setCurrentSlice}
       setTotalSlices={setTotalSlices}
     />
@@ -781,12 +828,12 @@ return (
       url={`http://localhost:5000/uploads/${file.filename}`}
       windowCenter={windowCenter}
       windowWidth={windowWidth}
+      currentSlice={currentSlice}       
       onSliceChange={setCurrentSlice}
       setTotalSlices={setTotalSlices}
     />
   )}
 
-  {/* Annotation Overlay */}
   <div
     style={{
       position: "absolute",
@@ -810,7 +857,6 @@ return (
     />
   </div>
 
-  {/* ROI Selection Rectangle (draw feedback) */}
   {dragStart && dragEnd && (
     <div
       style={{
@@ -832,28 +878,85 @@ return (
           })()}
       </div>
 
-{/* Right Sidebar (Accordion Style like Left Sidebar) */}
+{/* Right Sidebar */}
 <div
   style={{
     flexBasis: "250px",
     flexShrink: 0,
     display: "flex",
     flexDirection: "column",
-    backgroundColor: "rgba(255,255,255,0.7)",
+    backgroundColor: "#f8fafc",
     border: "1px solid #bae6fd",
-    borderRadius: "12px",
+    borderRadius: "0px",
     overflow: "hidden",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
   }}
 >
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-around",
+      padding: "8px",
+      borderBottom: "1px solid #e2e8f0",
+      background: "#fff",
+    }}
+  >
+    {[{
+      action: "save",
+      color: "#059669",
+      onClick: handleSaveAllAnnotations,
+    },
+    {
+      action: "clearAll",
+      color: "#dc2626",
+      onClick: () => {
+        const ref = annotationRefs.current[selectedFileName];
+        ref?.current?.clearAnnotations();
+      },
+    },
+    {
+      action: "deleteSelected",
+      color: "#f59e0b",
+      onClick: () => {
+        const ref = annotationRefs.current[selectedFileName];
+        ref?.current?.deleteSelected();
+      },
+    }].map(({ action, color, onClick }) => (
+      <button
+        key={action}
+        onClick={onClick}
+        style={{
+          padding: "6px 10px",
+          backgroundColor: color,
+          color: "#fff",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+          fontWeight: 500,
+          fontSize: "12px",
+          transition: "transform 0.1s, box-shadow 0.2s",
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = "scale(1.05)";
+          e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+          e.currentTarget.style.boxShadow = "none";
+        }}
+      >
+        {t(action)}
+      </button>
+    ))}
+  </div>
+
   {[
-    { id: "classification", title: t("classification"), icon: Circle },
-    { id: "slices", title: t("slices"), icon: RectangleHorizontal },
-    { id: "annotations", title: t("annotations"), icon: Brush },
-    { id: "zoom", title: t("zoom"), icon: Shapes },
-  ].map(({ id, title, icon: Icon }) => (
+    { id: "classification", title: t("Classification"), icon: Tag, color: "#f97316" },
+    { id: "slices", title: t("Slices Settings"), icon: Layers, color: "#3b82f6" },
+    { id: "zoom", title: t("Zoom"), icon: ZoomIn, color: "#6366f1" },
+    { id: "help", title: t("Help"), icon: HelpCircle, color: "#64748b" },
+  ].map(({ id, title, icon: Icon, color }) => (
     <div key={id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-      {/* Accordion Header */}
       <button
         onClick={() => setOpenSection(openSection === id ? null : id)}
         style={{
@@ -861,211 +964,203 @@ return (
           alignItems: "center",
           justifyContent: "space-between",
           width: "100%",
-          padding: "10px 12px",
-          background: openSection === id ? "#eff6ff" : "transparent",
+          padding: "12px 16px",
+          background: openSection === id ? "#e0f2fe" : "#f8fafc",
           border: "none",
           cursor: "pointer",
-          fontWeight: 500,
-          color: "#334155",
+          fontWeight: 600,
+          color: "#1e293b",
+          transition: "background 0.2s ease",
         }}
+        onMouseOver={(e) => (e.currentTarget.style.background = "#dbeafe")}
+        onMouseOut={(e) =>
+          (e.currentTarget.style.background =
+            openSection === id ? "#e0f2fe" : "#f8fafc")
+        }
       >
-        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <Icon size={18} /> {title}
+        <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Icon size={20} color={color} /> {title}
         </span>
-        <span>{openSection === id ? "▲" : "▼"}</span>
+        <span style={{ fontSize: "14px", color: "#64748b" }}>
+          {openSection === id ? "▲" : "▼"}
+        </span>
       </button>
 
-      {/* Accordion Content */}
       {openSection === id && (
-        <div style={{ padding: "10px 12px", background: "#fff" }}>
+        <div
+          style={{
+            padding: "14px 16px",
+            background: "#ffffff",
+            borderRadius: "0 0 12px 12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            boxShadow: "inset 0 1px 0 #e5e7eb",
+          }}
+        >
           {id === "classification" && selectedFileName && (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <span style={{ fontWeight: 500, color: "#334155" }}>
+              <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px" }}>
                 {t("classification")} (Slice {currentSlice + 1}):
               </span>
-              <button
-                onClick={() =>
-                  setClassificationByFileAndSlice((prev) => ({
-                    ...prev,
-                    [selectedFileName]: {
-                      ...(prev[selectedFileName] || {}),
-                      [currentSlice]: "positive",
-                    },
-                  }))
-                }
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#059669",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("positive")} (P)
-              </button>
-              <button
-                onClick={() =>
-                  setClassificationByFileAndSlice((prev) => ({
-                    ...prev,
-                    [selectedFileName]: {
-                      ...(prev[selectedFileName] || {}),
-                      [currentSlice]: "negative",
-                    },
-                  }))
-                }
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#dc2626",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("negative")} (N)
-              </button>
-              <button
-                onClick={() => {
-                  setClassificationByFileAndSlice((prev) => {
-                    const updated = { ...(prev[selectedFileName] || {}) };
-                    delete updated[currentSlice];
-                    return { ...prev, [selectedFileName]: updated };
-                  });
-                }}
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#f59e0b",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("clear")}
-              </button>
-            </div>
-          )}
-
-          {id === "slices" && (
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setShowSlices((prev) => !prev)}
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#3b82f6",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  width: "100%",
-                }}
-              >
-                {t("slices")}
-              </button>
-              {showSlices && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "110%",
-                    left: 0,
-                    right: 0,
-                    background: "#fff",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "6px",
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                    zIndex: 20,
-                  }}
-                >
-                  {Array.from({ length: totalSlices }, (_, i) => (
-                    <div
-                      key={i}
-                      onClick={() => {
-                        setCurrentSlice(i);
-                        setShowSlices(false);
-                      }}
-                      style={{
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                        background: i === currentSlice ? "#e0f2fe" : "#fff",
-                        borderBottom: "1px solid #f1f5f9",
-                      }}
-                      onMouseOver={(e) => (e.currentTarget.style.background = "#f0f9ff")}
-                      onMouseOut={(e) =>
-                        (e.currentTarget.style.background =
-                          i === currentSlice ? "#e0f2fe" : "#fff")
+              {"positive,negative,clear".split(",").map((cls) => {
+                let bgColor =
+                  cls === "positive" ? "#059669" :
+                  cls === "negative" ? "#dc2626" :
+                  "#f59e0b";
+                return (
+                  <button
+                    key={cls}
+                    onClick={() => {
+                      if (cls === "clear") {
+                        setClassificationByFileAndSlice((prev) => {
+                          const updated = { ...(prev[selectedFileName] || {}) };
+                          delete updated[currentSlice];
+                          return { ...prev, [selectedFileName]: updated };
+                        });
+                      } else {
+                        setClassificationByFileAndSlice((prev) => ({
+                          ...prev,
+                          [selectedFileName]: {
+                            ...(prev[selectedFileName] || {}),
+                            [currentSlice]: cls,
+                          },
+                        }));
                       }
-                    >
-                      Slice {i + 1}
-                    </div>
-                  ))}
-                </div>
-              )}
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      backgroundColor: bgColor,
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontWeight: 500,
+                      fontSize: "12px",
+                      transition: "transform 0.1s, box-shadow 0.2s",
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = "scale(1.05)";
+                      e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    {t(cls)}
+                  </button>
+                );
+              })}
             </div>
           )}
+{id === "slices" && (
+  <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "relative" }}>
+    <button
+      onClick={() => setShowSlices((prev) => !prev)}
+      style={{
+        padding: "6px 10px",
+        backgroundColor: "#3b82f6",
+        color: "#fff",
+        border: "none",
+        borderRadius: "6px",
+        cursor: "pointer",
+        fontWeight: 500,
+        fontSize: "13px",
+        transition: "background 0.2s",
+        width: "100%",
+      }}
+      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
+    >
+      {t("choose a slice")}
+    </button>
 
-          {id === "annotations" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <button
-                onClick={handleSaveAllAnnotations}
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#059669",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("save")}
-              </button>
-              <button
-                onClick={() => {
-                  const ref = annotationRefs.current[selectedFileName];
-                  if (ref?.current?.clearAnnotations) ref.current.clearAnnotations();
-                }}
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#dc2626",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("clearAll")}
-              </button>
-              <button
-                onClick={() => {
-                  const ref = annotationRefs.current[selectedFileName];
-                  if (ref?.current?.deleteSelected) ref.current.deleteSelected();
-                }}
-                style={{
-                  padding: "8px",
-                  backgroundColor: "#f59e0b",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {t("deleteSelected")}
-              </button>
-            </div>
-          )}
+    {/* Dropdown list */}
+    {showSlices && (
+      <div
+        ref={slicesRef}
+        style={{
+          position: "absolute",
+          top: "110%",
+          left: 0,
+          right: 0,
+          background: "#fff",
+          border: "1px solid #cbd5e1",
+          borderRadius: "8px",
+          maxHeight: "250px",
+          overflowY: "auto",
+          zIndex: 20,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {Array.from({ length: totalSlices }, (_, i) => (
+          <div
+            key={i}
+            id={`slice-${i}`}
+            onClick={() => {
+              const clamped = Math.min(i, totalSlices - 1);
+              setCurrentSlice(clamped);
+              setShowSlices(false);
+            }}
+            style={{
+              padding: "8px 12px",
+              cursor: "pointer",
+              background: i === currentSlice ? "#e0f2fe" : "#fff",
+              borderBottom: "1px solid #f1f5f9",
+              fontSize: "12px",
+              fontWeight: 500,
+              transition: "background 0.2s",
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.background = "#f0f9ff")}
+            onMouseOut={(e) =>
+              (e.currentTarget.style.background = i === currentSlice ? "#e0f2fe" : "#fff")
+            }
+          >
+            Slice {i + 1}
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* Draggable slider */}
+<div style={{ width: "80%", margin: "12px auto", textAlign: "center" }}>
+  <input
+    type="range"
+    min={0}
+    max={Math.max(totalSlices - 1, 0)}
+    value={currentSlice}
+    onChange={(e) => setCurrentSlice(Number(e.target.value))}
+    style={{
+      width: "100%",
+      cursor: "pointer",
+      height: "6px",         // thinner slider
+      marginBottom: "6px",   // smaller spacing
+    }}
+  />
+  <div style={{ fontSize: "11px", color: "#64748b" }}>
+    {t("slice")} {currentSlice + 1} / {totalSlices}
+  </div>
+</div>
+
+  </div>
+)}
+
 
           {id === "zoom" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <button
                 onClick={() => setIsZoomMode((prev) => !prev)}
                 style={{
-                  padding: "8px",
-                  backgroundColor: isZoomMode ? "#f59e0b" : "#3b82f6",
+                  padding: "6px 10px",
+                  backgroundColor: isZoomMode ? "#f59e0b" : "#6366f1",
                   color: "#fff",
                   border: "none",
                   borderRadius: "6px",
                   cursor: "pointer",
+                  fontWeight: 500,
+                  fontSize: "12px",
                 }}
               >
                 {isZoomMode ? t("cancelZoom") : t("selectZoomArea")}
@@ -1077,16 +1172,27 @@ return (
                   setIsZoomMode(false);
                 }}
                 style={{
-                  padding: "8px",
+                  padding: "6px 10px",
                   backgroundColor: "#64748b",
                   color: "#fff",
                   border: "none",
                   borderRadius: "6px",
                   cursor: "pointer",
+                  fontWeight: 500,
+                  fontSize: "12px",
                 }}
               >
                 {t("resetZoom")}
               </button>
+            </div>
+          )}
+
+          {id === "help" && (
+            <div style={{ fontSize: "13px", color: "#334155", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <p><b>{t("classification")}:</b> {t("Assign classification to a slice")}</p>
+              <p><b>{t("slices")}:</b> {t("Navigate and jump between slices")}</p>
+              <p><b>{t("annotations")}:</b> {t("Manage annotations: save, clear, delete")}</p>
+              <p><b>{t("zoom")}:</b> {t("Zoom into selected region or reset zoom")}</p>
             </div>
           )}
         </div>
@@ -1094,6 +1200,8 @@ return (
     </div>
   ))}
 </div>
+
+
 
     </div>
   </div>

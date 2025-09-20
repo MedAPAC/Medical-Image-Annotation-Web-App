@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import cornerstone from "cornerstone-core";
 import cornerstoneWADOImageLoader from "cornerstone-wado-image-loader";
 import dicomParser from "dicom-parser";
@@ -15,10 +15,18 @@ function DicomViewer({
   onSliceChange,
   width = 600,
   height = 600,
+  currentSlice, 
+  setTotalSlices, 
 }) {
   const element = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (currentSlice !== undefined && currentSlice !== currentIndex) {
+      setCurrentIndex(currentSlice);
+    }
+  }, [currentSlice, currentIndex]);
 
   useEffect(() => {
     if (onSliceChange) {
@@ -27,12 +35,19 @@ function DicomViewer({
   }, [currentIndex, onSliceChange]);
 
   useEffect(() => {
-    if (element.current) {
-      cornerstone.enable(element.current);
+    if (imageIds?.length && setTotalSlices) {
+      setTotalSlices(imageIds.length);
+    }
+  }, [imageIds, setTotalSlices]);
+
+  useEffect(() => {
+    const el = element.current;
+    if (el) {
+      cornerstone.enable(el);
     }
     return () => {
-      if (element.current) {
-        cornerstone.disable(element.current);
+      if (el) {
+        cornerstone.disable(el);
       }
     };
   }, []);
@@ -43,10 +58,7 @@ function DicomViewer({
     const loadImage = async () => {
       try {
         const image = await cornerstone.loadImage(imageIds[currentIndex]);
-        const viewport = cornerstone.getDefaultViewportForImage(
-          element.current,
-          image
-        );
+        const viewport = cornerstone.getDefaultViewportForImage(element.current, image);
 
         if (windowCenter != null && windowWidth != null) {
           viewport.voi.windowCenter = windowCenter;
@@ -62,13 +74,13 @@ function DicomViewer({
     loadImage();
   }, [imageIds, currentIndex, windowCenter, windowWidth]);
 
-  const goNext = () => {
-    setCurrentIndex((prev) => Math.min(prev + 1, imageIds.length - 1));
-  };
+  const goNext = useCallback(() => {
+    setCurrentIndex(prev => Math.min(prev + 1, imageIds.length - 1));
+  }, [imageIds.length]);
 
-  const goPrev = () => {
-    setCurrentIndex((prev) => Math.max(prev - 1, 0));
-  };
+  const goPrev = useCallback(() => {
+    setCurrentIndex(prev => Math.max(prev - 1, 0));
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -80,13 +92,13 @@ function DicomViewer({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [imageIds]);
+  }, [goNext, goPrev]);
 
   useEffect(() => {
     if (currentIndex >= imageIds.length && imageIds.length > 0) {
       setCurrentIndex(imageIds.length - 1);
     }
-  }, [imageIds, currentIndex]);
+  }, [imageIds.length, currentIndex]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
