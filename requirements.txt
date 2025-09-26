@@ -1,0 +1,68 @@
+# Medical Image Annotation Web App - Requirements
+# ===============================================
+
+# System Requirements
+# -------------------
+# Node.js >= 14.0.0
+# npm >= 6.0.0
+# MongoDB >= 4.0.0
+# Git (for cloning the repository)
+
+# Installation Commands
+# ---------------------
+# 1. Install Node.js and npm:
+#    - Ubuntu/Debian: sudo apt update && sudo apt install nodejs npm
+#    - macOS: brew install node
+#    - Windows: Download from https://nodejs.org/
+
+# 2. Install MongoDB:
+#    - Ubuntu/Debian: sudo apt install mongodb
+#    - macOS: brew install mongodb-community
+#    - Windows: Download from https://www.mongodb.com/try/download/community
+
+# 3. Start MongoDB service:
+#    - Ubuntu/Debian: sudo systemctl start mongodb
+#    - macOS: brew services start mongodb-community
+#    - Windows: Run MongoDB as a service
+
+# Project Setup
+# -------------
+# 1. Clone the repository
+# 2. Run: chmod +x setup.sh && ./setup.sh
+# 3. Or manually install dependencies:
+#    - cd server && npm install
+#    - cd ../client && npm install --legacy-peer-deps
+
+# Manual Server Dependencies (if setup.sh fails)
+# ----------------------------------------------
+# cd server
+# npm install mongodb bcrypt jsonwebtoken cors express multer i18next i18next-express-middleware i18next-fs-backend
+
+# Manual Client Dependencies (if setup.sh fails)
+# ----------------------------------------------
+# cd client
+# npm install --legacy-peer-deps
+
+# Ports Used
+# ----------
+# Frontend: http://localhost:3000
+# Backend: http://localhost:5000
+# MongoDB: mongodb://localhost:27017
+
+# Troubleshooting
+# ---------------
+# If server dependencies fail to install:
+# 1. Check Node.js version: node --version
+# 2. Clear npm cache: npm cache clean --force
+# 3. Delete node_modules and package-lock.json
+# 4. Run: npm install
+# 5. If still failing, install dependencies one by one:
+#    npm install express
+#    npm install cors
+#    npm install multer
+#    npm install mongodb
+#    npm install bcrypt
+#    npm install jsonwebtoken
+#    npm install i18next
+#    npm install i18next-express-middleware
+#    npm install i18next-fs-backend

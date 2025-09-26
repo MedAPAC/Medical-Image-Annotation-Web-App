@@ -1,26 +1,30 @@
-import { useState } from 'react'
-import axios from 'axios'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const onSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    try {
-      const { data } = await axios.post('/login', { email, password })
-      localStorage.setItem('token', data.token)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
-      localStorage.setItem('user', JSON.stringify(data.user))
-      navigate('/')
-    } catch (err) {
-      setError(err?.response?.data?.error || 'Login failed')
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const result = await login(email, password);
+    
+    if (result.success) {
+      navigate('/');
+    } else {
+      setError(result.error);
     }
-  }
+    
+    setLoading(false);
+  };
 
   return (
     <div style={{
@@ -59,6 +63,7 @@ export default function LoginPage() {
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
+            disabled={loading}
             style={{
               marginTop: '4px',
               width: '100%',
@@ -68,6 +73,7 @@ export default function LoginPage() {
               fontSize: '14px',
               outline: 'none',
               transition: 'border-color 0.2s',
+              opacity: loading ? 0.6 : 1
             }}
             onFocus={(e) => e.target.style.borderColor = '#2563eb'}
             onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
@@ -81,6 +87,7 @@ export default function LoginPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
+            disabled={loading}
             style={{
               marginTop: '4px',
               width: '100%',
@@ -90,6 +97,7 @@ export default function LoginPage() {
               fontSize: '14px',
               outline: 'none',
               transition: 'border-color 0.2s',
+              opacity: loading ? 0.6 : 1
             }}
             onFocus={(e) => e.target.style.borderColor = '#2563eb'}
             onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
@@ -98,21 +106,22 @@ export default function LoginPage() {
 
         <button
           type="submit"
+          disabled={loading}
           style={{
             padding: '10px 16px',
-            background: 'linear-gradient(90deg, #2563eb, #3b82f6)',
+            background: loading ? '#9ca3af' : 'linear-gradient(90deg, #2563eb, #3b82f6)',
             color: 'white',
             fontSize: '15px',
             fontWeight: '600',
             borderRadius: '6px',
             border: 'none',
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
             transition: 'opacity 0.2s'
           }}
-          onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
-          onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+          onMouseOver={(e) => !loading && (e.currentTarget.style.opacity = '0.9')}
+          onMouseOut={(e) => !loading && (e.currentTarget.style.opacity = '1')}
         >
-          Login
+          {loading ? 'Logging in...' : 'Login'}
         </button>
 
         {error && (
@@ -136,5 +145,5 @@ export default function LoginPage() {
         </p>
       </form>
     </div>
-  )
+  );
 }
