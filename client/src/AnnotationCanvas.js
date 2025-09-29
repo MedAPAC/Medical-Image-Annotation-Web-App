@@ -72,7 +72,7 @@ const AnnotationCanvas = forwardRef(
       const fabricCanvas = new fabric.Canvas(canvasRef.current, {
         selection: true,
       });
-      const ANNOTATION_FILL = "rgba(173, 216, 230, 0.12)";
+const ANNOTATION_FILL = "rgba(173, 216, 230, 0.25)";
 const ANNOTATION_STROKE = "rgba(0, 102, 204, 0.95)"; 
 const ANNOTATION_STROKE_WIDTH = 2;
 const HANDLE_FILL = "white";
@@ -254,12 +254,14 @@ case "polygon":
     const dy = newPoint.y - lastPoint.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const threshold = 30;
-    if (dist > threshold) {
-      const midPoint = {
-        x: lastPoint.x + dx / 2,
-        y: lastPoint.y + dy / 2,
-      };
-      polygonPoints.current.push(midPoint);
+const segments = Math.floor(dist / threshold); 
+  for (let i = 1; i < segments; i++) {
+    const midPoint = {
+      x: lastPoint.x + (dx * i) / segments,
+      y: lastPoint.y + (dy * i) / segments,
+    };
+    polygonPoints.current.push(midPoint);
+
 
       const midHandle = new fabric.Circle({
         left: midPoint.x - 5,
