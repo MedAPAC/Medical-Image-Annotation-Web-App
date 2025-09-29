@@ -72,6 +72,12 @@ const AnnotationCanvas = forwardRef(
       const fabricCanvas = new fabric.Canvas(canvasRef.current, {
         selection: true,
       });
+      const ANNOTATION_FILL = "rgba(173, 216, 230, 0.12)";
+const ANNOTATION_STROKE = "rgba(0, 102, 204, 0.95)"; 
+const ANNOTATION_STROKE_WIDTH = 2;
+const HANDLE_FILL = "white";
+const HANDLE_STROKE = "black";
+const HANDLE_RADIUS = 5;
       fabricCanvas.setWidth(width);
       fabricCanvas.setHeight(height);
       fabricRef.current = fabricCanvas;
@@ -124,11 +130,11 @@ const AnnotationCanvas = forwardRef(
             top: pointer.y,
             width: 1,
             height: 1,
-            fill: "rgba(0,255,0,0.15)",
-            stroke: "green",
-            strokeWidth: 2,
-            selectable: false,
-            evented: false,
+     fill: ANNOTATION_FILL,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
+  selectable: false,
+  evented: false,
             customType: "bounding-box-preview",
           });
           fabricCanvas.add(previewBox.current);
@@ -209,9 +215,9 @@ const AnnotationCanvas = forwardRef(
             top: previewBox.current.top,
             width: previewBox.current.getScaledWidth(),
             height: previewBox.current.getScaledHeight(),
-            fill: "rgba(0,255,0,0.15)",
-            stroke: "green",
-            strokeWidth: 2,
+  fill: ANNOTATION_FILL,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
             selectable: true,
             customType: "bounding-box",
           });
@@ -288,9 +294,9 @@ case "polygon":
   fabricCanvas.add(handle);
 
   const polygonPreview = new fabric.Polyline(polygonPoints.current, {
-    fill: "rgba(255, 0, 0, 0.15)",
-    stroke: "red",
-    strokeWidth: 2,
+  fill: ANNOTATION_FILL,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
     selectable: false,
     evented: false,
     customType: "polygon-preview",
@@ -306,9 +312,9 @@ case "polygon":
           case "polyline":
             polylinePoints.current.push({ x: pointer.x, y: pointer.y });
             const polylinePreview = new fabric.Polyline(polylinePoints.current, {
-              fill: null,
-              stroke: "blue",
-              strokeWidth: 2,
+             fill: null,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
               selectable: false,
               evented: false,
               customType: "polyline-preview",
@@ -326,9 +332,9 @@ case "polygon":
               top: pointer.y - 30,
               rx: 50,
               ry: 30,
-              fill: "rgba(0,0,255,0.15)",
-              stroke: "blue",
-              strokeWidth: 2,
+ fill: ANNOTATION_FILL,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
               selectable: true,
             });
             fabricCanvas.add(ellipse);
@@ -342,9 +348,9 @@ case "polygon":
               top: pointer.y,
               width: 120,
               height: 80,
-              fill: "rgba(255,165,0,0.15)",
-              stroke: "orange",
-              strokeWidth: 2,
+             fill: ANNOTATION_FILL,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
               selectable: true,
             });
             fabricCanvas.add(cuboid);
@@ -384,9 +390,9 @@ case "polygon":
 
 if (drawingModeRef.current === "polygon" && polygonPoints.current.length > 2) {
   const polygon = new fabric.Polygon(polygonPoints.current, {
-    fill: "rgba(255, 0, 0, 0.15)",
-    stroke: "red",
-    strokeWidth: 2,
+     fill: ANNOTATION_FILL,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
     selectable: true,
     customType: "polygon",
   });
@@ -396,7 +402,13 @@ if (drawingModeRef.current === "polygon" && polygonPoints.current.length > 2) {
 
   polygonHandles.current.forEach((h) => canvas.remove(h));
   polygonHandles.current = [];
+  canvas.getObjects().forEach((obj) => {
+    if (obj.customType?.includes("preview")) canvas.remove(obj);
+  });
+  polygonPoints.current = [];
 
+  canvas.setActiveObject(polygon);
+  canvas.requestRenderAll();
   polygon.points.forEach((point, index) => {
     const handle = new fabric.Circle({
       left: point.x,
@@ -434,9 +446,9 @@ canvas.requestRenderAll();
             polylinePoints.current.length > 1
           ) {
             const polyline = new fabric.Polyline(polylinePoints.current, {
-              fill: null,
-              stroke: "blue",
-              strokeWidth: 2,
+ fill: null,
+  stroke: ANNOTATION_STROKE,
+  strokeWidth: ANNOTATION_STROKE_WIDTH,
               selectable: true,
               customType: "polyline",
             });
@@ -482,78 +494,80 @@ canvas.requestRenderAll();
         }
       });
 fabricCanvas.on("selection:created", (e) => {
-  if (e.target && e.target.customType === "polygon") {
-    const polygon = e.target;
-    if (polygon._handles) {
-      polygon._handles.forEach((h) => fabricCanvas.remove(h));
-    }
-    polygon._handles = [];
+  if (!e.target || e.target.customType !== "polygon") return;
+  const polygon = e.target;
 
-    polygon.points.forEach((point, index) => {
-      const absX = polygon.left + point.x * polygon.scaleX;
-      const absY = polygon.top + point.y * polygon.scaleY;
+  if (polygon._handles) {
+    polygon._handles.forEach((h) => fabricCanvas.remove(h));
+  }
+  polygon._handles = [];
 
-      const handle = new fabric.Circle({
-        left: absX,
-        top: absY,
-        radius: 5,
-        fill: "white",
-        stroke: "black",
-        strokeWidth: 2,
-        hasControls: false,
-        hasBorders: false,
-        originX: "center",
-        originY: "center",
-        customType: "polygon-handle",
-        handleIndex: index,
-      });
+  const updateHandles = () => {
+    if (!polygon._handles) return;
+    const angle = fabric.util.degreesToRadians(polygon.angle);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
 
-      handle.on("moving", function () {
-        const localX = (handle.left - polygon.left) / polygon.scaleX;
-        const localY = (handle.top - polygon.top) / polygon.scaleY;
+    polygon._handles.forEach((handle, i) => {
+      const point = polygon.points[i];
+      const x = point.x * polygon.scaleX;
+      const y = point.y * polygon.scaleY;
+      handle.left = polygon.left + x * cos - y * sin;
+      handle.top = polygon.top + x * sin + y * cos;
+      handle.setCoords();
+      handle.visible = true;
+    });
+    fabricCanvas.requestRenderAll();
+  };
 
-        polygon.points[handle.handleIndex].x = localX;
-        polygon.points[handle.handleIndex].y = localY;
-
-        polygon.dirty = true;
-        polygon.setCoords();
-        fabricCanvas.requestRenderAll();
-      });
-
-      polygon._handles.push(handle);
-      fabricCanvas.add(handle);
+  polygon.points.forEach((point, index) => {
+    const handle = new fabric.Circle({
+      left: 0, 
+      top: 0,
+      radius: HANDLE_RADIUS,
+      fill: HANDLE_FILL,
+      stroke: HANDLE_STROKE,
+      strokeWidth: 2,
+      hasControls: false,
+      hasBorders: false,
+      originX: "center",
+      originY: "center",
+      customType: "polygon-handle",
+      handleIndex: index,
+      selectable: true,
+      evented: true,
     });
 
-const updateHandles = () => {
-  if (!polygon._handles) return;
+    handle.on("moving", function () {
+      const dx = handle.left - polygon.left;
+      const dy = handle.top - polygon.top;
 
-  const angle = fabric.util.degreesToRadians(polygon.angle);
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
+      const angle = fabric.util.degreesToRadians(polygon.angle);
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
 
-  polygon._handles.forEach((handle, i) => {
-    const point = polygon.points[i];
+      const x = dx * cos + dy * sin;
+      const y = -dx * sin + dy * cos;
 
-    // Include scale and rotation properly
-    const x = point.x * polygon.scaleX;
-    const y = point.y * polygon.scaleY;
+      polygon.points[handle.handleIndex].x = x / polygon.scaleX;
+      polygon.points[handle.handleIndex].y = y / polygon.scaleY;
 
-    handle.left = polygon.left + x * cos - y * sin;
-    handle.top = polygon.top + x * sin + y * cos;
-    handle.setCoords();
-    handle.visible = true;
+      polygon.dirty = true;
+      polygon.setCoords();
+      updateHandles();
+    });
+
+    polygon._handles.push(handle);
+    fabricCanvas.add(handle);
   });
 
-  fabricCanvas.requestRenderAll();
-};
+  updateHandles();
 
-// Attach to polygon events
-polygon.on("moving", updateHandles);
-polygon.on("scaling", updateHandles);
-polygon.on("rotating", updateHandles);
-
-  }
+  polygon.on("moving", updateHandles);
+  polygon.on("scaling", updateHandles);
+  polygon.on("rotating", updateHandles);
 });
+
 
 
 
