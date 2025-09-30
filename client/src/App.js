@@ -62,7 +62,7 @@ const [openSection, setOpenSection] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isZoomMode, setIsZoomMode] = useState(false);
 const [zoomRegion, setZoomRegion] = useState(null);
-
+const [inputsByFileAndSlice, setInputsByFileAndSlice] = useState({});
   const currentClassification = classificationByFile[selectedFileName] || null;
   const [classificationByFileAndSlice, setClassificationByFileAndSlice] =
     useState({});
@@ -82,7 +82,9 @@ useEffect(() => {
     axios.defaults.headers.common["Accept-Language"] = lng;
     document.documentElement.lang = lng; 
   };
-
+const getInputsForCurrent = () => inputsByFileAndSlice[selectedFileName]?.[currentSlice] || 
+{ checkbox: false, number: "", text: "", radio: "", select: "", };
+ const updateInputsForCurrent = (updates) => { setInputsByFileAndSlice((prev) => ({ ...prev, [selectedFileName]: { ...(prev[selectedFileName] || {}), [currentSlice]: { ...(prev[selectedFileName]?.[currentSlice] || {}), ...updates, }, }, })); };
   const addFiles = (newFiles) => {
     const validFiles = newFiles.filter((file) => {
       const lowerName = file.name.toLowerCase();
@@ -898,6 +900,7 @@ return (
           })()}
       </div>
 
+
 {/* Right Sidebar */}
 <div
   style={{
@@ -969,13 +972,12 @@ return (
       </button>
     ))}
   </div>
-
   {[
-    { id: "classification", title: t("Classification"), icon: Tag, color: "#f97316" },
-    { id: "slices", title: t("Slices Settings"), icon: Layers, color: "#3b82f6" },
-    { id: "zoom", title: t("Zoom"), icon: ZoomIn, color: "#6366f1" },
-    { id: "help", title: t("Help"), icon: HelpCircle, color: "#64748b" },
-  ].map(({ id, title, icon: Icon, color }) => (
+    { id: "classification", title: t("Classification"), icon: Tag },
+    { id: "slices", title: t("Slices Settings"), icon: Layers },
+    { id: "zoom", title: t("Zoom"), icon: ZoomIn },
+    { id: "help", title: t("Help"), icon: HelpCircle },
+  ].map(({ id, title, icon: Icon }) => (
     <div key={id} style={{ borderBottom: "1px solid #e2e8f0" }}>
       <button
         onClick={() => setOpenSection(openSection === id ? null : id)}
@@ -999,7 +1001,7 @@ return (
         }
       >
         <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Icon size={20} color={color} /> {title}
+          <Icon size={20} color="#0f172a" /> {title}
         </span>
         <span style={{ fontSize: "14px", color: "#64748b" }}>
           {openSection === id ? "▲" : "▼"}
@@ -1072,8 +1074,99 @@ return (
                   </button>
                 );
               })}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
+                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <input
+                    type="checkbox"
+                    checked={getInputsForCurrent().checkbox}
+                    onChange={(e) => updateInputsForCurrent({ checkbox: e.target.checked })}
+                    style={{ width: "14px", height: "14px", cursor: "pointer" }}
+                  />
+                  {t("Checkbox Example")}
+                </label>
+                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {t("Number Input Example")}:
+                  <input
+                    type="number"
+                    value={getInputsForCurrent().number}
+                    onChange={(e) => updateInputsForCurrent({ number: e.target.value })}
+                    style={{
+                      padding: "6px 8px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      outline: "none",
+                      transition: "border 0.2s",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
+                    onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
+                  />
+                </label>
+
+                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {t("Text Input Example")}:
+                  <input
+                    type="text"
+                    value={getInputsForCurrent().text}
+                    onChange={(e) => updateInputsForCurrent({ text: e.target.value })}
+                    style={{
+                      padding: "6px 8px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      outline: "none",
+                      transition: "border 0.2s",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
+                    onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
+                  />
+                </label>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#1e293b" }}>{t("Radio Example")}:</span>
+                  {["Option A", "Option B", "Option C"].map((opt, idx) => (
+                    <label key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#1e293b" }}>
+                      <input
+                        type="radio"
+                        name={`radioExample-${selectedFileName}-${currentSlice}`}
+                        checked={getInputsForCurrent().radio === opt}
+                        onChange={() => updateInputsForCurrent({ radio: opt })}
+                        style={{ width: "14px", height: "14px", cursor: "pointer" }}
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+
+                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {t("Select Example")}:
+                  <select
+                    value={getInputsForCurrent().select}
+                    onChange={(e) => updateInputsForCurrent({ select: e.target.value })}
+                    style={{
+                      padding: "6px 8px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      outline: "none",
+                      transition: "border 0.2s",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
+                    onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
+                  >
+                    <option value="">{t("Choose...")}</option>
+                    <option value="1">Option 1</option>
+                    <option value="2">Option 2</option>
+                    <option value="3">Option 3</option>
+                  </select>
+                </label>
+              </div>
             </div>
           )}
+
+
 {id === "slices" && (
   <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "relative" }}>
     <button
@@ -1241,3 +1334,4 @@ return (
 }
 
 export default App;
+
