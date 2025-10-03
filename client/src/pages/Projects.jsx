@@ -424,6 +424,12 @@ const Projects = () => {
     }
   };
 
+  // Handler for reset button
+  const handleReset = () => {
+    setRawJsonContent('[]');
+    setIsManualEdit(false);
+  };
+
   const handleSelectProject = (projectId) => {
     setSelectedProjects(prev => 
       prev.includes(projectId) 
@@ -513,11 +519,11 @@ const Projects = () => {
             <div style={{marginBottom:'20px',width:'100%'}} className='raw_editor'>
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                 <h4>Raw JSON Editor</h4>
-                {isManualEdit && (
+                <div style={{display: 'flex', gap: '10px'}}>
                   <button 
-                    onClick={parseJsonToLabels}
+                    onClick={handleReset}
                     style={{
-                      backgroundColor: '#28a745',
+                      backgroundColor: '#dc3545',
                       color: 'white',
                       border: 'none',
                       padding: '8px 16px',
@@ -525,9 +531,24 @@ const Projects = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    Apply Changes
+                    Reset
                   </button>
-                )}
+                  {isManualEdit && (
+                    <button 
+                      onClick={parseJsonToLabels}
+                      style={{
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Apply Changes
+                    </button>
+                  )}
+                </div>
               </div>
               <textarea 
                 name="" 
