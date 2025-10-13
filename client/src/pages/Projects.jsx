@@ -584,33 +584,34 @@ const Projects = () => {
     }
   }, [projectName, labels]);
 
+  // Load projects function
+  const loadProjects = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/projects');
+      
+      if (response.data.projects) {
+        // Transform the loaded projects to match the expected format
+        const loadedProjects = response.data.projects.map(project => ({
+          id: project._id,
+          name: project.name,
+          description: project.description || '',
+          labels: project.labels || [],
+          createdAt: new Date(project.createdAt).toISOString().split('T')[0],
+          status: project.status || 'active',
+          tasks: project.tasks || 0,
+          progress: project.progress || 0,
+          lastModified: new Date(project.updatedAt).toLocaleString()
+        }));
+        
+        setProjects(loadedProjects);
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    }
+  };
+
   // Load existing projects on component mount
   React.useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/projects');
-        
-        if (response.data.projects) {
-          // Transform the loaded projects to match the expected format
-          const loadedProjects = response.data.projects.map(project => ({
-            id: project._id,
-            name: project.name,
-            description: project.description || '',
-            labels: project.labels || [],
-            createdAt: new Date(project.createdAt).toISOString().split('T')[0],
-            status: project.status || 'active',
-            tasks: project.tasks || 0,
-            progress: project.progress || 0,
-            lastModified: new Date(project.updatedAt).toLocaleString()
-          }));
-          
-          setProjects(loadedProjects);
-        }
-      } catch (error) {
-        console.error('Error loading projects:', error);
-      }
-    };
-
     loadProjects();
   }, []);
 
@@ -764,6 +765,9 @@ const Projects = () => {
       setRawJsonContent('[]');
       setIsManualEdit(false);
       
+      // Reload projects
+      loadProjects();
+      
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSubmitSuccess('');
@@ -802,6 +806,9 @@ const Projects = () => {
 
       setSubmitSuccess('Project created successfully! Redirecting...');
       
+      // Reload projects
+      await loadProjects();
+      
       // Navigate to home/tasks page after a short delay
       setTimeout(() => {
         navigate('/home');
@@ -826,6 +833,30 @@ const Projects = () => {
       setSelectedProjects([]);
     } else {
       setSelectedProjects(filteredProjects.map(p => p.id));
+    }
+  };
+
+  // Handler for deleting a project
+  const handleDeleteProject = async (projectId, projectName) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${projectName}"?\n\nThis action cannot be undone.`
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await axios.delete(`http://localhost:5000/api/projects/${projectId}`);
+      
+      // Remove the project from the local state
+      setProjects(prevProjects => prevProjects.filter(p => p.id !== projectId));
+      
+      // Show success message (optional)
+      alert('Project deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert(error.response?.data?.error || 'Failed to delete project. Please try again.');
     }
   };
 
@@ -857,6 +888,383 @@ const Projects = () => {
     return null; // Will redirect
   }
 
+  // Render create project modal
+  const renderCreateProjectModal = () => (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+      padding: '20px',
+      overflow: 'auto'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '30px',
+        borderRadius: '10px',
+        maxWidth: '800px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflow: 'auto'
+      }}>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+          <h2>Create a new project</h2>
+          <button 
+            onClick={() => setShowCreateModal(false)}
+            style={{
+              backgroundColor: 'transparent',
+              border: 'none',
+              fontSize: '24px',
+              cursor: 'pointer',
+              color: '#666'
+            }}
+          >
+            <X />
+          </button>
+        </div>
+
+        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+          <div style={{width: '100%'}}>
+            <p>Name</p>
+            <input 
+              type="text" 
+              placeholder="Enter project name" 
+              style={{width: '100%', height:'30px', padding: '5px'}}
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+            />
+          </div>
+          <div>
+            <p>Labels:</p>
+            <div style={{display: 'flex', flexDirection: 'row', gap: '10px', marginBottom:'30px', borderBottom: '1px solid gray'}}>
+              <button 
+                onClick={() => handleEditorModeChange('raw')}
+                style={{
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  width:'100px',
+                  backgroundColor: editorMode === 'raw' ? '#007bff' : '#f8f9fa',
+                  color: editorMode === 'raw' ? 'white' : 'black',
+                  border: '1px solid #dee2e6'
+                }}
+              >
+                Raw
+              </button>
+              <button 
+                onClick={() => handleEditorModeChange('constructor')}
+                style={{
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  width:'100px',
+                  backgroundColor: editorMode === 'constructor' ? '#007bff' : '#f8f9fa',
+                  color: editorMode === 'constructor' ? 'white' : 'black',
+                  border: '1px solid #dee2e6'
+                }}
+              >
+                Constructor
+              </button>
+            </div>
+            {editorMode === 'raw' && (
+              <div style={{marginBottom:'20px',width:'100%'}} className='raw_editor'>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                  <h4>Raw JSON Editor</h4>
+                  <div style={{display: 'flex', gap: '10px'}}>
+                    <button 
+                      onClick={handleReset}
+                      style={{
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Reset
+                    </button>
+                    {isManualEdit && (
+                      <button 
+                        onClick={parseJsonToLabels}
+                        style={{
+                          backgroundColor: '#28a745',
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Apply Changes
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <textarea 
+                  name="" 
+                  id="" 
+                  cols="80" 
+                  rows="10"
+                  value={rawJsonContent}
+                  onChange={handleRawEditorChange}
+                  style={{
+                    width: '100%', 
+                    maxWidth: '100%',
+                    minWidth: '100%',
+                    fontFamily: 'monospace',
+                    border: isManualEdit ? '2px solid #ffc107' : '1px solid #ccc',
+                    resize: 'vertical',
+                    overflow: 'auto',
+                    boxSizing: 'border-box'
+                  }}
+                ></textarea>
+                {isManualEdit && (
+                  <p style={{color: '#ffc107', fontSize: '12px', marginTop: '5px'}}>
+                    ⚠️ Manual edits detected. Click "Apply Changes" to update the labels.
+                  </p>
+                )}
+              </div>
+            )}
+            {editorMode === 'constructor' && (
+              <>
+                <div style={{display:'flex', alignContent:'center', gap:'20px', width:'100%', margin:'0 auto 40px auto'}} className='constructor_editor'>
+                  <input 
+                    type="text" 
+                    placeholder="Enter label name" 
+                    value={currentLabel.name}
+                    onChange={(e) => handleUpdateCurrentLabel('name', e.target.value)}
+                  />
+                  <select 
+                    name="labelType" 
+                    id="labelType"
+                    value={currentLabel.type}
+                    onChange={(e) => handleUpdateCurrentLabel('type', e.target.value)}
+                  >
+                    <option value="rectangle">Rectangle</option>
+                    <option value="polygon">Polygon</option>
+                    <option value="polyline">Polyline</option>
+                    <option value="points">Points</option>
+                    <option value="ellipse">Ellipse</option>
+                    <option value="cuboid">Cuboid</option>
+                    <option value="mask">Mask</option>
+                    <option value="tag">Tag</option>
+                  </select>
+                  <input 
+                    type="color" 
+                    style={{height:'40px'}}
+                    value={currentLabel.color}
+                    onChange={(e) => handleUpdateCurrentLabel('color', e.target.value)}
+                  />
+                  <button onClick={handleAddLabel}>Add Label</button>
+                  <button onClick={handleAddAttributeContainer}>Add an attribute</button>
+                </div>
+                
+                {/* Display added labels */}
+                {labels.length > 0 && (
+                  <div style={{marginBottom: '20px'}}>
+                    <h4>Added Labels:</h4>
+                    {labels.map((label) => (
+                      <div key={label.id} style={{
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '10px', 
+                        padding: '10px', 
+                        backgroundColor: '#f0f0f0', 
+                        marginBottom: '5px',
+                        borderRadius: '5px'
+                      }}>
+                        <span style={{fontWeight: 'bold'}}>{label.name}</span>
+                        <span style={{color: '#666'}}>({label.type})</span>
+                        <div style={{
+                          width: '20px', 
+                          height: '20px', 
+                          backgroundColor: label.color, 
+                          border: '1px solid #ccc'
+                        }}></div>
+                        <button 
+                          onClick={() => handleRemoveLabel(label.id)}
+                          style={{
+                            backgroundColor: 'red', 
+                            color: 'white', 
+                            border: 'none', 
+                            padding: '5px 10px', 
+                            borderRadius: '3px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {currentLabel.attributes.map((container) => (
+              <div key={container.id} className='add_attribute_container' style={{display:'flex', alignContent:'center', gap:'10px', width:'100%', marginBottom:'20px'}}>
+                <input 
+                  type="text" 
+                  placeholder='Name' 
+                  value={container.name}
+                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'name', e.target.value)}
+                />
+                <select 
+                  name="Type" 
+                  id="Type"
+                  value={container.type}
+                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'type', e.target.value)}
+                >
+                  <option value="select">select</option>
+                  <option value="radio">Radio</option>
+                  <option value="checkbox">CheckBox</option>
+                  <option value="Text">Text</option>
+                  <option value="Number">Number</option>
+                </select>
+                {container.type === 'radio' && (
+                  <input 
+                    type="text" 
+                    placeholder='Values (comma separated: value1, value2, value3)'
+                    value={container.values}
+                    onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
+                    style={{minWidth: '200px'}}
+                  />
+                )}
+                {container.type === 'checkbox' && (
+                  <select 
+                    value={container.values}
+                    onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
+                  >
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                )}
+                {container.type === 'Text' && (
+                  <input 
+                    type="text" 
+                    placeholder='Default text value'
+                    value={container.values}
+                    onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
+                  />
+                )}
+                {container.type === 'Number' && (
+                  <input 
+                    type="text" 
+                    placeholder='Format: min,max,step (e.g., 0,100,1)'
+                    value={container.values}
+                    onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
+                    style={{minWidth: '200px'}}
+                  />
+                )}
+                {container.type === 'select' && (
+                  <input 
+                    type="text" 
+                    placeholder='Options (comma separated: option1, option2)'
+                    value={container.values}
+                    onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
+                    style={{minWidth: '200px'}}
+                  />
+                )}
+                <div>
+                  <input 
+                    type="checkbox" 
+                    id={`checkbox-${container.id}`}
+                    checked={container.mutable}
+                    onChange={(e) => handleUpdateAttributeContainer(container.id, 'mutable', e.target.checked)}
+                  />
+                  <label htmlFor={`checkbox-${container.id}`}>Mutable</label>
+                </div>
+                <button 
+                  style={{backgroundColor:'red', width:'100px', padding:'10px', color:'white'}}
+                  onClick={() => handleDeleteAttributeContainer(container.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+              </>
+            )}
+          </div>
+          <div style={{display:'flex', alignContent:'center', gap:'20px', marginBottom:'20px'}}>
+            <button 
+              onClick={handleContinue}
+              style={{backgroundColor:'blue', width:'100px', padding:'10px', color:'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+            >
+              Continue
+            </button>
+            <button 
+              onClick={() => setShowCreateModal(false)}
+              style={{backgroundColor:'red', width:'100px', padding:'10px', color:'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+            >
+              Cancel
+            </button>
+          </div>
+          {/* Error and Success Messages */}
+          {submitError && (
+            <div style={{
+              backgroundColor: '#fee2e2',
+              border: '1px solid #ef4444',
+              color: '#991b1b',
+              padding: '12px',
+              borderRadius: '6px',
+              marginBottom: '10px'
+            }}>
+              {submitError}
+            </div>
+          )}
+          
+          {submitSuccess && (
+            <div style={{
+              backgroundColor: '#d1fae5',
+              border: '1px solid #10b981',
+              color: '#065f46',
+              padding: '12px',
+              borderRadius: '6px',
+              marginBottom: '10px'
+            }}>
+              {submitSuccess}
+            </div>
+          )}
+
+          <div style={{display:'flex', alignContent:'center', justifyContent:'end', gap:'20px', width:'100%'}}>
+            <button 
+              onClick={handleSubmitAndOpen}
+              disabled={isSubmitting}
+              style={{
+                backgroundColor: isSubmitting ? '#9ca3af' : '#10b981',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit & Open'}
+            </button>
+            <button 
+              onClick={handleSubmitAndContinue}
+              disabled={isSubmitting}
+              style={{
+                backgroundColor: isSubmitting ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit & Continue'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -865,346 +1273,415 @@ const Projects = () => {
       flexDirection: 'column'
     }}>
       <Header page="projects" setPage={() => {}} />
+      
+      {/* Main Content */}
       <div style={{ 
-        padding: '20px', 
+        padding: '40px 20px', 
         flex: 1,
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '10px', 
-        justifyContent: 'center', 
-        alignItems: 'center' 
+        maxWidth: '1400px',
+        margin: '0 auto',
+        width: '100%'
       }}>
-        <div>
-          <h1>Create a new project</h1>
-        </div>
-      <div style={{backgroundColor: 'gray', padding: '30px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' , width: '50%'}}>
-        <div style= {{width: '100%'}}>
-          <p>Name</p>
-          <input 
-            type="text" 
-            placeholder="Enter project name" 
-            style={{width: '100%' , height:'30px'}}
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-          />
-        </div>
-        <div>
-          <p>Labels:</p>
-          <div style={{display: 'flex', flexDirection: 'row', gap: '10px' , marginBottom:'30px' , borderBottom: '1px solid gray'}}>
-            <button 
-              onClick={() => handleEditorModeChange('raw')}
-              style={{
-                padding: '10px', 
-                borderRadius: '10px', 
-                width:'100px',
-                backgroundColor: editorMode === 'raw' ? '#007bff' : '#f8f9fa',
-                color: editorMode === 'raw' ? 'white' : 'black',
-                border: '1px solid #dee2e6'
-              }}
-            >
-              Raw
-            </button>
-            <button 
-              onClick={() => handleEditorModeChange('constructor')}
-              style={{
-                padding: '10px', 
-                borderRadius: '10px', 
-                width:'100px',
-                backgroundColor: editorMode === 'constructor' ? '#007bff' : '#f8f9fa',
-                color: editorMode === 'constructor' ? 'white' : 'black',
-                border: '1px solid #dee2e6'
-              }}
-            >
-              Constructor
-            </button>
+        {/* Header Section */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '30px'
+        }}>
+          <div>
+            <h1 style={{
+              fontSize: '32px',
+              fontWeight: 'bold',
+              color: '#1e293b',
+              margin: '0 0 8px 0'
+            }}>My Projects</h1>
+            <p style={{
+              fontSize: '16px',
+              color: '#64748b',
+              margin: 0
+            }}>
+              {projects.length} {projects.length === 1 ? 'project' : 'projects'}
+            </p>
           </div>
-          {editorMode === 'raw' && (
-            <div style={{marginBottom:'20px',width:'100%'}} className='raw_editor'>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-                <h4>Raw JSON Editor</h4>
-                <div style={{display: 'flex', gap: '10px'}}>
-                  <button 
-                    onClick={handleReset}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background-color 0.3s'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+          >
+            <Plus size={20} />
+            Create New Project
+          </button>
+        </div>
+
+        {/* Search and Filter Bar */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '30px',
+          padding: '20px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{flex: 1, position: 'relative'}}>
+            <Search 
+              size={20} 
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#94a3b8'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 12px 12px 44px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none'
+              }}
+            />
+          </div>
+          <button
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 20px',
+              backgroundColor: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#475569'
+            }}
+          >
+            <Filter size={18} />
+            Filter
+          </button>
+          <button
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 20px',
+              backgroundColor: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#475569'
+            }}
+          >
+            <SortAsc size={18} />
+            Sort
+          </button>
+        </div>
+
+        {/* Projects Grid */}
+        {filteredProjects.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <FolderOpen size={64} style={{color: '#cbd5e1', marginBottom: '16px'}} />
+            <h3 style={{color: '#475569', marginBottom: '8px'}}>
+              {searchTerm ? 'No projects found' : 'No projects yet'}
+            </h3>
+            <p style={{color: '#94a3b8', marginBottom: '24px'}}>
+              {searchTerm ? 'Try a different search term' : 'Create your first project to get started'}
+            </p>
+            {!searchTerm && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Create Project
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+            gap: '24px'
+          }}>
+            {filteredProjects.map((project) => (
+              <div
+                key={project.id}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  cursor: 'pointer',
+                  border: '1px solid #e2e8f0'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                }}
+              >
+                {/* Project Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{flex: 1}}>
+                    <h3 style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: '#1e293b',
+                      margin: '0 0 8px 0'
+                    }}>{project.name}</h3>
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      backgroundColor: project.status === 'active' ? '#dcfce7' : '#dbeafe',
+                      color: project.status === 'active' ? '#166534' : '#1e40af'
+                    }}>
+                      {getStatusText(project.status)}
+                    </div>
+                  </div>
+                  <button
                     style={{
-                      backgroundColor: '#dc3545',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <MoreHorizontal size={20} color="#64748b" />
+                  </button>
+                </div>
+
+                {/* Project Description */}
+                <p style={{
+                  fontSize: '14px',
+                  color: '#64748b',
+                  marginBottom: '16px',
+                  lineHeight: '1.5',
+                  minHeight: '42px'
+                }}>
+                  {project.description || 'No description provided'}
+                </p>
+
+                {/* Labels */}
+                {project.labels && project.labels.length > 0 && (
+                  <div style={{marginBottom: '16px'}}>
+                    <p style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#475569',
+                      marginBottom: '8px'
+                    }}>Labels ({project.labels.length})</p>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px'
+                    }}>
+                      {project.labels.slice(0, 3).map((label, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            backgroundColor: '#f1f5f9',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            color: '#475569'
+                          }}
+                        >
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: label.color || '#94a3b8'
+                          }} />
+                          {label.name}
+                        </span>
+                      ))}
+                      {project.labels.length > 3 && (
+                        <span style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#f1f5f9',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          color: '#475569'
+                        }}>
+                          +{project.labels.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Project Stats */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '12px',
+                  paddingTop: '16px',
+                  borderTop: '1px solid #f1f5f9'
+                }}>
+                  <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <Calendar size={16} color="#64748b" />
+                    <div>
+                      <p style={{
+                        fontSize: '10px',
+                        color: '#94a3b8',
+                        margin: 0
+                      }}>Created</p>
+                      <p style={{
+                        fontSize: '12px',
+                        color: '#475569',
+                        margin: 0,
+                        fontWeight: '500'
+                      }}>{project.createdAt}</p>
+                    </div>
+                  </div>
+                  <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <Clock size={16} color="#64748b" />
+                    <div>
+                      <p style={{
+                        fontSize: '10px',
+                        color: '#94a3b8',
+                        margin: 0
+                      }}>Updated</p>
+                      <p style={{
+                        fontSize: '12px',
+                        color: '#475569',
+                        margin: 0,
+                        fontWeight: '500'
+                      }}>{project.lastModified}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  marginTop: '16px'
+                }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/home');
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 16px',
+                      backgroundColor: '#3b82f6',
                       color: 'white',
                       border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '4px',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Eye size={16} />
+                    Open
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Add edit functionality
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#f1f5f9',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
                       cursor: 'pointer'
                     }}
                   >
-                    Reset
+                    <Edit3 size={16} color="#64748b" />
                   </button>
-                  {isManualEdit && (
-                    <button 
-                      onClick={parseJsonToLabels}
-                      style={{
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Apply Changes
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteProject(project.id, project.name);
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.target.style.backgroundColor = '#fee2e2'}
+                    onMouseOut={(e) => e.target.style.backgroundColor = '#fef2f2'}
+                    title="Delete project"
+                  >
+                    <Trash2 size={16} color="#dc2626" />
+                  </button>
                 </div>
               </div>
-              <textarea 
-                name="" 
-                id="" 
-                cols="80" 
-                rows="10"
-                value={rawJsonContent}
-                onChange={handleRawEditorChange}
-                style={{
-                  width: '100%', 
-                  maxWidth: '100%',
-                  minWidth: '100%',
-                  fontFamily: 'monospace',
-                  border: isManualEdit ? '2px solid #ffc107' : '1px solid #ccc',
-                  resize: 'vertical',
-                  overflow: 'auto',
-                  boxSizing: 'border-box'
-                }}
-              ></textarea>
-              {isManualEdit && (
-                <p style={{color: '#ffc107', fontSize: '12px', marginTop: '5px'}}>
-                  ⚠️ Manual edits detected. Click "Apply Changes" to update the labels.
-                </p>
-              )}
-            </div>
-          )}
-          {editorMode === 'constructor' && (
-            <>
-              <div style={{display:'flex', alignContent:'center' , gap:'20px' , width:'100%' , margin:'0 auto 40px auto'}} className='constructor_editor'>
-                <input 
-                  type="text" 
-                  placeholder="Enter label name" 
-                  value={currentLabel.name}
-                  onChange={(e) => handleUpdateCurrentLabel('name', e.target.value)}
-                />
-                <select 
-                  name="labelType" 
-                  id="labelType"
-                  value={currentLabel.type}
-                  onChange={(e) => handleUpdateCurrentLabel('type', e.target.value)}
-                >
-                  <option value="rectangle">Rectangle</option>
-                  <option value="polygon">Polygon</option>
-                  <option value="polyline">Polyline</option>
-                  <option value="points">Points</option>
-                  <option value="ellipse">Ellipse</option>
-                  <option value="cuboid">Cuboid</option>
-                  <option value="mask">Mask</option>
-                  <option value="tag">Tag</option>
-                </select>
-                <input 
-                  type="color" 
-                  style={{height:'40px'}}
-                  value={currentLabel.color}
-                  onChange={(e) => handleUpdateCurrentLabel('color', e.target.value)}
-                />
-                <button onClick={handleAddLabel}>Add Label</button>
-                <button onClick={handleAddAttributeContainer}>Add an attribute</button>
-              </div>
-              
-              {/* Display added labels */}
-              {labels.length > 0 && (
-                <div style={{marginBottom: '20px'}}>
-                  <h4>Added Labels:</h4>
-                  {labels.map((label) => (
-                    <div key={label.id} style={{
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '10px', 
-                      padding: '10px', 
-                      backgroundColor: '#f0f0f0', 
-                      marginBottom: '5px',
-                      borderRadius: '5px'
-                    }}>
-                      <span style={{fontWeight: 'bold'}}>{label.name}</span>
-                      <span style={{color: '#666'}}>({label.type})</span>
-                      <div style={{
-                        width: '20px', 
-                        height: '20px', 
-                        backgroundColor: label.color, 
-                        border: '1px solid #ccc'
-                      }}></div>
-                      <button 
-                        onClick={() => handleRemoveLabel(label.id)}
-                        style={{
-                          backgroundColor: 'red', 
-                          color: 'white', 
-                          border: 'none', 
-                          padding: '5px 10px', 
-                          borderRadius: '3px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {currentLabel.attributes.map((container) => (
-            <div key={container.id} className='add_attribute_container' style={{display:'flex', alignContent:'center',  gap:'10px' , width:'100%' , marginBottom:'20px'}}>
-              <input 
-                type="text" 
-                placeholder='Name' 
-                value={container.name}
-                onChange={(e) => handleUpdateAttributeContainer(container.id, 'name', e.target.value)}
-              />
-              <select 
-                name="Type" 
-                id="Type"
-                value={container.type}
-                onChange={(e) => handleUpdateAttributeContainer(container.id, 'type', e.target.value)}
-              >
-                <option value="select">select</option>
-                <option value="radio">Radio</option>
-                <option value="checkbox">CheckBox</option>
-                <option value="Text">Text</option>
-                <option value="Number">Number</option>
-              </select>
-              {container.type === 'radio' && (
-                <input 
-                  type="text" 
-                  placeholder='Values (comma separated: value1, value2, value3)'
-                  value={container.values}
-                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
-                  style={{minWidth: '200px'}}
-                />
-              )}
-              {container.type === 'checkbox' && (
-                <select 
-                  value={container.values}
-                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
-                >
-                  <option value="true">true</option>
-                  <option value="false">false</option>
-                </select>
-              )}
-              {container.type === 'Text' && (
-                <input 
-                  type="text" 
-                  placeholder='Default text value'
-                  value={container.values}
-                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
-                />
-              )}
-              {container.type === 'Number' && (
-                <input 
-                  type="text" 
-                  placeholder='Format: min,max,step (e.g., 0,100,1)'
-                  value={container.values}
-                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
-                  style={{minWidth: '200px'}}
-                />
-              )}
-              {container.type === 'select' && (
-                <input 
-                  type="text" 
-                  placeholder='Options (comma separated: option1, option2)'
-                  value={container.values}
-                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'values', e.target.value)}
-                  style={{minWidth: '200px'}}
-                />
-              )}
-              <div>
-                <input 
-                  type="checkbox" 
-                  id={`checkbox-${container.id}`}
-                  checked={container.mutable}
-                  onChange={(e) => handleUpdateAttributeContainer(container.id, 'mutable', e.target.checked)}
-                />
-                <label htmlFor={`checkbox-${container.id}`}>Mutable</label>
-              </div>
-              <button 
-                style={{backgroundColor:'red' , width:'100px' , padding:'10px', color:'white'}}
-                onClick={() => handleDeleteAttributeContainer(container.id)}
-              >
-                Delete
-              </button>
-            </div>
-          ))}
-            </>
-          )}
-        </div>
-        <div style={{display:'flex' , alignContent:'center' , gap:'20px' , marginBottom:'20px'}}>
-          <button 
-            onClick={handleContinue}
-            style={{backgroundColor:'blue' , width:'100px' , padding:'10px', color:'white'}}
-          >
-            Continue
-          </button>
-          <button style={{backgroundColor:'red' , width:'100px' , padding:'10px', color:'white'}}>Cancel</button>
-        </div>
-        {/* Error and Success Messages */}
-        {submitError && (
-          <div style={{
-            backgroundColor: '#fee2e2',
-            border: '1px solid #ef4444',
-            color: '#991b1b',
-            padding: '12px',
-            borderRadius: '6px',
-            marginBottom: '10px'
-          }}>
-            {submitError}
+            ))}
           </div>
         )}
-        
-        {submitSuccess && (
-          <div style={{
-            backgroundColor: '#d1fae5',
-            border: '1px solid #10b981',
-            color: '#065f46',
-            padding: '12px',
-            borderRadius: '6px',
-            marginBottom: '10px'
-          }}>
-            {submitSuccess}
-          </div>
-        )}
+      </div>
 
-        <div style={{display:'flex' , alignContent:'center' , justifyContent:'end', gap:'20px' , width:'100%'}}>
-          <button 
-            onClick={handleSubmitAndOpen}
-            disabled={isSubmitting}
-            style={{
-              backgroundColor: isSubmitting ? '#9ca3af' : '#10b981',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '6px',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              fontWeight: '500'
-            }}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit & Open'}
-          </button>
-          <button 
-            onClick={handleSubmitAndContinue}
-            disabled={isSubmitting}
-            style={{
-              backgroundColor: isSubmitting ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '6px',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              fontWeight: '500'
-            }}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit & Continue'}
-          </button>
-        </div>
-      </div>
-      </div>
+      {/* Create Project Modal */}
+      {showCreateModal && renderCreateProjectModal()}
     </div>
   );
 };
