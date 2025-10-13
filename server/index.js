@@ -31,13 +31,14 @@ app.use("/uploads", express.static(uploadDir));
 
 const mongoUrl = "mongodb://localhost:27017";
 const dbName = "annotationApp";
-let db, annotationsCollection, usersCollection;
+let db, annotationsCollection, usersCollection, projectsCollection;
 
 MongoClient.connect(mongoUrl, { useUnifiedTopology: true })
   .then((client) => {
     db = client.db(dbName);
     annotationsCollection = db.collection("annotations");
     usersCollection = db.collection("users");
+    projectsCollection = db.collection("projects");
     console.log("Connected to MongoDB!");
   })
   .catch((err) => {
@@ -263,6 +264,150 @@ app.get("/annotations/:filename", authenticateToken, async (req, res) => {
 // Logout endpoint (client-side token removal)
 app.post("/api/auth/logout", (req, res) => {
   res.json({ message: "Logged out successfully" });
+});
+
+// Project Management Endpoints
+
+// Create a new project
+app.post("/api/projects", authenticateToken, async (req, res) => {
+  if (!projectsCollection) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  const { name, description, labels } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: "Project name is required" });
+  }
+
+  try {
+    const newProject = {
+      name: name.trim(),
+      description: description || "",
+      labels: labels || [],
+      userId: req.user.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "active",
+      tasks: 0,
+      progress: 0
+    };
+
+    const result = await projectsCollection.insertOne(newProject);
+    
+    res.json({
+      message: "Project created successfully",
+      project: {
+        id: result.insertedId,
+        ...newProject
+      }
+    });
+  } catch (err) {
+    console.error("Failed to create project:", err);
+    res.status(500).json({ error: "Failed to create project. Please try again." });
+  }
+});
+
+// Get all projects for the authenticated user
+app.get("/api/projects", authenticateToken, async (req, res) => {
+  if (!projectsCollection) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  try {
+    const projects = await projectsCollection
+      .find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    res.json({ projects });
+  } catch (err) {
+    console.error("Failed to fetch projects:", err);
+    res.status(500).json({ error: "Failed to fetch projects. Please try again." });
+  }
+});
+
+// Get a single project by ID
+app.get("/api/projects/:id", authenticateToken, async (req, res) => {
+  if (!projectsCollection) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  try {
+    const project = await projectsCollection.findOne({
+      _id: new ObjectId(req.params.id),
+      userId: req.user.id
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    res.json({ project });
+  } catch (err) {
+    console.error("Failed to fetch project:", err);
+    res.status(500).json({ error: "Failed to fetch project. Please try again." });
+  }
+});
+
+// Update a project
+app.put("/api/projects/:id", authenticateToken, async (req, res) => {
+  if (!projectsCollection) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  const { name, description, labels, status } = req.body;
+
+  try {
+    const updateData = {
+      updatedAt: new Date()
+    };
+
+    if (name) updateData.name = name.trim();
+    if (description !== undefined) updateData.description = description;
+    if (labels) updateData.labels = labels;
+    if (status) updateData.status = status;
+
+    const result = await projectsCollection.updateOne(
+      {
+        _id: new ObjectId(req.params.id),
+        userId: req.user.id
+      },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    res.json({ message: "Project updated successfully" });
+  } catch (err) {
+    console.error("Failed to update project:", err);
+    res.status(500).json({ error: "Failed to update project. Please try again." });
+  }
+});
+
+// Delete a project
+app.delete("/api/projects/:id", authenticateToken, async (req, res) => {
+  if (!projectsCollection) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  try {
+    const result = await projectsCollection.deleteOne({
+      _id: new ObjectId(req.params.id),
+      userId: req.user.id
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    res.json({ message: "Project deleted successfully" });
+  } catch (err) {
+    console.error("Failed to delete project:", err);
+    res.status(500).json({ error: "Failed to delete project. Please try again." });
+  }
 });
 
 app.listen(port, () => {

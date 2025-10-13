@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
+import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { 
   Plus, 
   Search, 
@@ -25,10 +29,236 @@ import {
   Clock,
   FolderOpen,
   Tag,
-  Palette
+  Palette,
+  LogOut,
+  User
 } from 'lucide-react';
 
+// Header component with authentication
+function Header({ page, setPage }) {
+  const { user, isAuthenticated, logout } = useAuth();
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+
+  const changeLang = (lng) => {
+    i18n.changeLanguage(lng);
+    axios.defaults.headers.common["Accept-Language"] = lng;
+    document.documentElement.lang = lng; 
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: "#d0e7ff",
+        padding: "10px 20px",
+        fontFamily: "Arial, sans-serif",
+        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+      }}
+    >
+      <div>
+        <select
+          onChange={(e) => changeLang(e.target.value)}
+          defaultValue="en"
+          style={{
+            fontSize: "16px",
+            padding: "6px",
+            border: "1px solid #a0cfff",
+            borderRadius: "4px",
+            backgroundColor: "#f5faff",
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+          }}
+          onMouseOver={(e) => (e.target.style.backgroundColor = "#e1f0ff")}
+          onMouseOut={(e) => (e.target.style.backgroundColor = "#f5faff")}
+        >
+          <option value="" disabled></option>
+          <option value="en">🇬🇧 EN</option>
+          <option value="fa">🇮🇷 فارسی</option>
+          <option value="nl">🇳🇱 NL</option> 
+        </select>
+      </div>
+
+      <div style={{ display: "flex", gap: "20px" }}>
+        <button 
+          onClick={() => navigate('/projects')}
+          style={{ 
+            textDecoration: "none",
+            cursor: "pointer",
+            fontSize: "16px",
+            color: page === "projects" ? "#0066cc" : "#004c99",
+            transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
+          }}
+          onMouseOver={(e) => {
+            e.target.style.color = "#0066cc";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.color = page === "projects" ? "#0066cc" : "#004c99";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          Projects
+        </button>
+        <button
+          onClick={() => navigate('/upload')}
+          style={{ 
+            textDecoration: "none",
+            cursor: "pointer",
+            fontSize: "16px",
+            color: page === "upload" ? "#0066cc" : "#004c99",
+            transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
+          }}
+          onMouseOver={(e) => {
+            e.target.style.color = "#0066cc";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.color = page === "upload" ? "#0066cc" : "#004c99";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          Upload
+        </button>
+        <button
+          onClick={() => navigate('/home')}
+          style={{
+            cursor: "pointer",
+            fontSize: "16px",
+            color: page === "home" ? "#0066cc" : "#004c99",
+            transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
+          }}
+          onMouseOver={(e) => {
+            e.target.style.color = "#0066cc";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.color = page === "home" ? "#0066cc" : "#004c99";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          Home
+        </button>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            cursor: "pointer",
+            fontSize: "16px",
+            color: page === "tasks" ? "#0066cc" : "#004c99",
+            transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
+          }}
+          onMouseOver={(e) => {
+            e.target.style.color = "#0066cc";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.color = page === "tasks" ? "#0066cc" : "#004c99";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          Tasks
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        {isAuthenticated ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <User size={16} />
+              <span style={{ fontSize: "14px", color: "#004c99" }}>
+                {user?.name || user?.email}
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: "#dc2626",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "background-color 0.3s",
+              }}
+              onMouseOver={(e) => (e.target.style.backgroundColor = "#b91c1c")}
+              onMouseOut={(e) => (e.target.style.backgroundColor = "#dc2626")}
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => navigate('/login')}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: "#a0d4ff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                transition: "background-color 0.3s",
+              }}
+              onMouseOver={(e) => (e.target.style.backgroundColor = "#87c8ff")}
+              onMouseOut={(e) => (e.target.style.backgroundColor = "#a0d4ff")}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => navigate('/signup')}
+              style={{
+                padding: "6px 12px",
+                backgroundColor: "#007acc",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                transition: "background-color 0.3s",
+              }}
+              onMouseOver={(e) => (e.target.style.backgroundColor = "#005fa3")}
+              onMouseOut={(e) => (e.target.style.backgroundColor = "#007acc")}
+            >
+              Sign Up
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const Projects = () => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  
+  // Redirect if not authenticated
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+  
   const [projects, setProjects] = useState([
     {
       id: 1,
@@ -109,6 +339,9 @@ const Projects = () => {
   const [labels, setLabels] = useState([]);
   const [rawJsonContent, setRawJsonContent] = useState('[]');
   const [isManualEdit, setIsManualEdit] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
 
   const annotationTypes = [
     { value: "rectangle", label: "Rectangle", icon: RectangleHorizontal, color: "#3B82F6" },
@@ -351,6 +584,36 @@ const Projects = () => {
     }
   }, [projectName, labels]);
 
+  // Load existing projects on component mount
+  React.useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/projects');
+        
+        if (response.data.projects) {
+          // Transform the loaded projects to match the expected format
+          const loadedProjects = response.data.projects.map(project => ({
+            id: project._id,
+            name: project.name,
+            description: project.description || '',
+            labels: project.labels || [],
+            createdAt: new Date(project.createdAt).toISOString().split('T')[0],
+            status: project.status || 'active',
+            tasks: project.tasks || 0,
+            progress: project.progress || 0,
+            lastModified: new Date(project.updatedAt).toLocaleString()
+          }));
+          
+          setProjects(loadedProjects);
+        }
+      } catch (error) {
+        console.error('Error loading projects:', error);
+      }
+    };
+
+    loadProjects();
+  }, []);
+
   // Handler for Continue button
   const handleContinue = () => {
     if (!projectName.trim()) {
@@ -430,6 +693,126 @@ const Projects = () => {
     setIsManualEdit(false);
   };
 
+
+  // Prepare project data for submission
+  const prepareProjectData = () => {
+    // Parse the JSON content to get the labels
+    let labelsToSave = [];
+    
+    try {
+      labelsToSave = JSON.parse(rawJsonContent);
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
+      // Fallback to labels state
+      labelsToSave = labels.map(label => ({
+        name: label.name,
+        type: label.type,
+        attributes: label.attributes
+          .filter(attr => attr.name.trim())
+          .map(attr => ({
+            name: attr.name,
+            input_type: attr.type,
+            mutable: attr.mutable,
+            values: formatAttributeValues(attr),
+            default_value: getDefaultValue(attr)
+          }))
+      }));
+    }
+
+    return {
+      name: projectName,
+      description: '', // You can add a description field if needed
+      labels: labelsToSave
+    };
+  };
+
+  // Handler for Submit & Continue
+  const handleSubmitAndContinue = async () => {
+    if (!projectName.trim()) {
+      setSubmitError('Please enter a project name');
+      return;
+    }
+
+    if (labels.length === 0 && rawJsonContent === '[]') {
+      setSubmitError('Please add at least one label');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    try {
+      const projectData = prepareProjectData();
+
+      const response = await axios.post(
+        'http://localhost:5000/api/projects',
+        projectData
+      );
+
+      setSubmitSuccess('Project created successfully! You can create another one.');
+      
+      // Reset the form
+      setProjectName('');
+      setLabels([]);
+      setCurrentLabel({
+        name: '',
+        type: 'rectangle',
+        color: '#FF6B6B',
+        attributes: []
+      });
+      setRawJsonContent('[]');
+      setIsManualEdit(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSubmitSuccess('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      setSubmitError(error.response?.data?.error || 'Failed to create project. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handler for Submit & Open
+  const handleSubmitAndOpen = async () => {
+    if (!projectName.trim()) {
+      setSubmitError('Please enter a project name');
+      return;
+    }
+
+    if (labels.length === 0 && rawJsonContent === '[]') {
+      setSubmitError('Please add at least one label');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    try {
+      const projectData = prepareProjectData();
+
+      const response = await axios.post(
+        'http://localhost:5000/api/projects',
+        projectData
+      );
+
+      setSubmitSuccess('Project created successfully! Redirecting...');
+      
+      // Navigate to home/tasks page after a short delay
+      setTimeout(() => {
+        navigate('/home');
+      }, 1000);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      setSubmitError(error.response?.data?.error || 'Failed to create project. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSelectProject = (projectId) => {
     setSelectedProjects(prev => 
       prev.includes(projectId) 
@@ -469,11 +852,31 @@ const Projects = () => {
     }
   };
 
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return null; // Will redirect
+  }
+
   return (
-    <div style={{display: 'flex', flexDirection: 'column', gap: '10px' , justifyContent: 'center', alignItems: 'center'}}>
-      <div>
-        <h1>Create a new project</h1>
-      </div>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <Header page="projects" setPage={() => {}} />
+      <div style={{ 
+        padding: '20px', 
+        flex: 1,
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '10px', 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+      }}>
+        <div>
+          <h1>Create a new project</h1>
+        </div>
       <div style={{backgroundColor: 'gray', padding: '30px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' , width: '50%'}}>
         <div style= {{width: '100%'}}>
           <p>Name</p>
@@ -741,10 +1144,66 @@ const Projects = () => {
           </button>
           <button style={{backgroundColor:'red' , width:'100px' , padding:'10px', color:'white'}}>Cancel</button>
         </div>
+        {/* Error and Success Messages */}
+        {submitError && (
+          <div style={{
+            backgroundColor: '#fee2e2',
+            border: '1px solid #ef4444',
+            color: '#991b1b',
+            padding: '12px',
+            borderRadius: '6px',
+            marginBottom: '10px'
+          }}>
+            {submitError}
+          </div>
+        )}
+        
+        {submitSuccess && (
+          <div style={{
+            backgroundColor: '#d1fae5',
+            border: '1px solid #10b981',
+            color: '#065f46',
+            padding: '12px',
+            borderRadius: '6px',
+            marginBottom: '10px'
+          }}>
+            {submitSuccess}
+          </div>
+        )}
+
         <div style={{display:'flex' , alignContent:'center' , justifyContent:'end', gap:'20px' , width:'100%'}}>
-          <button>Submit & Open</button>
-          <button>Submit & Continue</button>
+          <button 
+            onClick={handleSubmitAndOpen}
+            disabled={isSubmitting}
+            style={{
+              backgroundColor: isSubmitting ? '#9ca3af' : '#10b981',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '6px',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit & Open'}
+          </button>
+          <button 
+            onClick={handleSubmitAndContinue}
+            disabled={isSubmitting}
+            style={{
+              backgroundColor: isSubmitting ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '6px',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit & Continue'}
+          </button>
         </div>
+      </div>
       </div>
     </div>
   );

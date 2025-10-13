@@ -10,6 +10,8 @@ import { Link, useNavigate } from "react-router-dom";
 import SignupPage from "./pages/signup";
 import ProjectsPage from "./pages/Projects";
 import LoginPage from "./pages/login";
+import UploadPage from "./pages/Upload";
+import HomePage from "./pages/Home";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import {
@@ -87,14 +89,16 @@ function Header({ page, setPage }) {
       </div>
 
       <div style={{ display: "flex", gap: "20px" }}>
-        <Link 
-          to="/projects" 
+        <button 
+          onClick={() => navigate('/projects')}
           style={{ 
             textDecoration: "none",
             cursor: "pointer",
             fontSize: "16px",
             color: page === "projects" ? "#0066cc" : "#004c99",
             transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
           }}
           onMouseOver={(e) => {
             e.target.style.color = "#0066cc";
@@ -104,16 +108,61 @@ function Header({ page, setPage }) {
             e.target.style.color = page === "projects" ? "#0066cc" : "#004c99";
             e.target.style.transform = "scale(1)";
           }}
-          onClick={() => setPage("projects")}
         >
           Projects
-        </Link>
-        <span
+        </button>
+        <button
+          onClick={() => navigate('/upload')}
+          style={{ 
+            textDecoration: "none",
+            cursor: "pointer",
+            fontSize: "16px",
+            color: page === "upload" ? "#0066cc" : "#004c99",
+            transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
+          }}
+          onMouseOver={(e) => {
+            e.target.style.color = "#0066cc";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.color = page === "upload" ? "#0066cc" : "#004c99";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          Upload
+        </button>
+        <button
+          onClick={() => navigate('/home')}
+          style={{
+            cursor: "pointer",
+            fontSize: "16px",
+            color: page === "home" ? "#0066cc" : "#004c99",
+            transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
+          }}
+          onMouseOver={(e) => {
+            e.target.style.color = "#0066cc";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.color = page === "home" ? "#0066cc" : "#004c99";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          Home
+        </button>
+        <button
+          onClick={() => navigate('/')}
           style={{
             cursor: "pointer",
             fontSize: "16px",
             color: page === "tasks" ? "#0066cc" : "#004c99",
             transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
           }}
           onMouseOver={(e) => {
             e.target.style.color = "#0066cc";
@@ -123,10 +172,9 @@ function Header({ page, setPage }) {
             e.target.style.color = page === "tasks" ? "#0066cc" : "#004c99";
             e.target.style.transform = "scale(1)";
           }}
-          onClick={() => setPage("tasks")}
         >
           Tasks
-        </span>
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
@@ -206,6 +254,18 @@ function Header({ page, setPage }) {
 
 // Main App component
 function AppContent() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  
+  // Redirect to home page if authenticated, otherwise show home page
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/home');
+    } else {
+      navigate('/home');
+    }
+  }, [isAuthenticated, navigate]);
+  
   const [page, setPage] = useState("upload");
   const [files, setFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
@@ -1078,7 +1138,9 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/upload" element={<UploadPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </Router>
