@@ -19,24 +19,14 @@ import windowIcon from "./icons/window.png";
 import labelsIcon from "./icons/label.png";
 import opacityIcon from "./icons/opacity.png";
 import brushSettingIcon from "./icons/brushsetting.png";
+import sliceIcon from "./icons/slice.jpg";
+import zoomIcon from "./icons/zoom.svg";
+import helpIcon from "./icons/help.png";
+import saveIcon from "./icons/save.jpg";
+import trashIcon from "./icons/trash.png";
+import deleteIcon from "./icons/delete.png";
 
-import {
-  Circle,
-  Settings,
-  Droplet,
-  RectangleHorizontal,
-  Tag,
-  PenTool,
-  HelpCircle,
-  ZoomIn,
-  Edit3,
-  Shapes,
-  Layers,
-  Brush,
-  Save,
-  Trash2,
-  XCircle
-} from "lucide-react";
+
 
 const shapes = [
   { name: "ellipse", icon: elipseIcon },
@@ -120,6 +110,15 @@ const getInputsForCurrent = () => inputsByFileAndSlice[selectedFileName]?.[curre
     const filtered = validFiles.filter((f) => !existingNames.has(f.name));
     setFiles((prev) => [...prev, ...filtered]);
   };
+
+const buttons = [
+  { id: "classification", icon: labelsIcon, isImage: true },
+  { id: "slices", icon: sliceIcon, isImage: true },
+  { id: "zoom", icon: zoomIcon, isImage: true },
+  { id: "help", icon: helpIcon, isImage: true },
+];
+
+
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -220,7 +219,19 @@ const handleSaveAllAnnotations = async () => {
     alert("Failed to Save Changes. Please Try Again!");
   }
 };
-
+ const buttons_right = [
+  { id: "save", color: "#10b981", icon: saveIcon, onClick: handleSaveAllAnnotations },
+  { id: "clearAll", color: "#ef4444", icon: trashIcon, onClick: () => {
+      const ref = annotationRefs.current[selectedFileName];
+      ref?.current?.clearAnnotations();
+    },
+  },
+  { id: "deleteSelected", color: "#f59e0b", icon: deleteIcon, onClick: () => {
+      const ref = annotationRefs.current[selectedFileName];
+      ref?.current?.deleteSelected();
+    },
+  },
+];
 
     useEffect(() => {
   if (page === "annotate") {
@@ -770,22 +781,63 @@ return (
       ))}
     </select>
   )}
-
-  {/* Opacity */}
-  {openSection === "opacity" && (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+{/* Opacity */}
+{openSection === "opacity" && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      marginTop: "8px",
+      width: "100%",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "8px 12px",
+        backgroundColor: "#f8fafc",
+        borderRadius: "12px",
+        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.1)",
+        width: "100%",
+        maxWidth: "200px",
+      }}
+    >
       <input
         type="range"
         min="0"
         max="1"
-        step="0.1"
+        step="0.01"
         value={annotationOpacity}
         onChange={(e) => setAnnotationOpacity(Number(e.target.value))}
-        style={{ cursor: "pointer" }}
+        style={{
+          flex: 1,
+          cursor: "pointer",
+          accentColor: "#3b82f6",
+          height: "6px",
+          borderRadius: "4px",
+          background: "linear-gradient(to right, #3b82f6, #93c5fd)",
+          outline: "none",
+        }}
       />
-      <span>{Math.round(annotationOpacity * 100)}%</span>
+      <span
+        style={{
+          marginLeft: "-5px", 
+          fontSize: "12px",
+          fontWeight: 500,
+          color: "#1e293b",
+          minWidth: "32px",
+          textAlign: "right",
+        }}
+      >
+        {Math.round(annotationOpacity * 100)}%
+      </span>
     </div>
-  )}
+  </div>
+)}
+
+
+
 
   {/* Brush Settings */}
   {openSection === "brush" && selectedShape === "brush" && (
@@ -1014,27 +1066,8 @@ return (
     zIndex: 50,
   }}
 >
-  {[
-    { id: "save", color: "#10b981", icon: Save, onClick: handleSaveAllAnnotations },
-    {
-      id: "clearAll",
-      color: "#ef4444",
-      icon: Trash2,
-      onClick: () => {
-        const ref = annotationRefs.current[selectedFileName];
-        ref?.current?.clearAnnotations();
-      },
-    },
-    {
-      id: "deleteSelected",
-      color: "#f59e0b",
-      icon: XCircle,
-      onClick: () => {
-        const ref = annotationRefs.current[selectedFileName];
-        ref?.current?.deleteSelected();
-      },
-    },
-  ].map(({ id, color, icon: Icon, onClick }) => (
+
+  {buttons_right.map(({ id, color, icon, onClick }) => (
     <button
       key={id}
       onClick={onClick}
@@ -1044,7 +1077,6 @@ return (
         borderRadius: "8px",
         border: "none",
         backgroundColor: color,
-        color: "#fff",
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
@@ -1060,19 +1092,14 @@ return (
         e.currentTarget.style.boxShadow = "none";
       }}
     >
-      <Icon size={18} />
+      <img src={icon} alt={id} style={{ width: "18px", height: "18px" }} />
     </button>
   ))}
 
+
   <div style={{ flexGrow: 1 }} /> {/* Spacer */}
 
-  {/* Tool Icons */}
-  {[
-    { id: "classification", icon: Tag },
-    { id: "slices", icon: Layers },
-    { id: "zoom", icon: ZoomIn },
-    { id: "help", icon: HelpCircle },
-  ].map(({ id, icon: Icon }) => (
+  {buttons.map(({ id, icon, isImage }) => (
     <button
       key={id}
       onClick={() => setRightPanelOpen(rightPanelOpen === id ? null : id)}
@@ -1096,10 +1123,15 @@ return (
         if (rightPanelOpen !== id) e.currentTarget.style.backgroundColor = "transparent";
       }}
     >
-      <Icon size={20} />
+      {isImage ? (
+        <img src={icon} alt={id} style={{ width: 20, height: 20 }} />
+      ) : (
+        <icon size={20} /> // React component
+      )}
     </button>
   ))}
 </div>
+
 
 <div
   style={{

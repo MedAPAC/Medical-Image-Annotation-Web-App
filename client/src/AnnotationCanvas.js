@@ -8,7 +8,7 @@ import { fabric } from "fabric";
 
 const AnnotationCanvas = forwardRef(
   (
-    { mode, width, height, selectedLabel, brushColor, brushSize, toolChangeId },
+    { mode, width, height, selectedLabel, brushColor, brushSize, toolChangeId,  annotationOpacity = 1 },
     ref
   ) => {
     const canvasRef = useRef(null);
@@ -25,6 +25,28 @@ const AnnotationCanvas = forwardRef(
     const previewBox = useRef(null);
 
     const crosshairLines = useRef({ horizontal: null, vertical: null });
+const hexToRgba = (color, opacity) => {
+  if (!color) return `rgba(64,0,64,${opacity})`; // fallback
+
+  // Already rgba
+  if (color.startsWith("rgba")) return color.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, `rgba($1,$2,$3,${opacity})`);
+
+  // rgb() -> rgba()
+  if (color.startsWith("rgb")) return color.replace(/rgb\(([^)]+)\)/, `rgba($1,${opacity})`);
+
+  // hex -> rgba()
+  if (color.startsWith("#")) {
+    let c = color.substring(1).match(/.{1,2}/g);
+    if (!c) return `rgba(64,0,64,${opacity})`;
+    const r = parseInt(c[0], 16);
+    const g = parseInt(c[1], 16);
+    const b = parseInt(c[2], 16);
+    return `rgba(${r},${g},${b},${opacity})`;
+  }
+
+  return color;
+};
+
 
     useImperativeHandle(ref, () => ({
       exportAnnotations: () => {
@@ -63,6 +85,18 @@ const AnnotationCanvas = forwardRef(
         }
       },
     }));
+useEffect(() => {
+  const canvas = fabricRef.current;
+  if (!canvas) return;
+
+  // Update brush if in brush mode
+  if (drawingModeRef.current === "brush" && canvas.freeDrawingBrush) {
+    canvas.freeDrawingBrush.color = hexToRgba(brushColor || "#400040", annotationOpacity);
+    canvas.freeDrawingBrush.width = brushSize || 10;
+  }
+}, [annotationOpacity, brushColor, brushSize]);
+
+
 
     useEffect(() => {
       labelRef.current = selectedLabel;
@@ -72,8 +106,8 @@ const AnnotationCanvas = forwardRef(
       const fabricCanvas = new fabric.Canvas(canvasRef.current, {
         selection: true,
       });
-const ANNOTATION_FILL = "rgba(173, 216, 230, 0.25)";
-const ANNOTATION_STROKE = "rgba(0, 102, 204, 0.95)"; 
+const ANNOTATION_FILL = `rgba(173, 216, 230, ${annotationOpacity})`; // apply opacity
+const ANNOTATION_STROKE = `rgba(0, 102, 204, ${annotationOpacity})`; 
 const ANNOTATION_STROKE_WIDTH = 2;
 const HANDLE_FILL = "white";
 const HANDLE_STROKE = "black";
@@ -82,11 +116,20 @@ const HANDLE_RADIUS = 5;
       fabricCanvas.setHeight(height);
       fabricRef.current = fabricCanvas;
 
+    fabricCanvas.setWidth(width);
+      fabricCanvas.setHeight(height);
+      fabricRef.current = fabricCanvas;
+
       fabricCanvas.isDrawingMode = false;
-      fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
-      fabricCanvas.freeDrawingBrush.color =
-        brushColor || "rgba(64, 0, 64, 0.4)";
-      fabricCanvas.freeDrawingBrush.width = brushSize || 10;
+fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+
+// Apply opacity to brush
+const colorWithOpacity = brushColor.includes("rgba")
+  ? brushColor.replace(/rgba\(([^)]+),[^)]+\)/, `rgba($1,${annotationOpacity})`)
+  : brushColor; // if brushColor is hex, you could convert it to rgba
+
+fabricCanvas.freeDrawingBrush.color = colorWithOpacity;
+fabricCanvas.freeDrawingBrush.width = brushSize || 10;
 
       const addLabelToShape = (shape, label) => {
         if (!label) return;
@@ -588,6 +631,34 @@ fabricCanvas.on("selection:cleared", () => {
         fabricCanvas.dispose();
       };
     }, []);
+useEffect(() => {
+  if (!fabricRef.current) return;
+
+  const canvas = fabricRef.current;
+  canvas.getObjects().forEach((obj) => {
+    if (obj.customType?.includes("bounding-box") || 
+        obj.customType?.includes("polygon") ||
+        obj.customType?.includes("ellipse") ||
+        obj.customType?.includes("polyline")) {
+      if (obj.fill) {
+        const rgb = obj.fill.replace(/rgba?\(([^)]+)\)/, "$1").split(",");
+        obj.set({ fill: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${annotationOpacity})` });
+      }
+      if (obj.stroke) {
+        const rgb = obj.stroke.replace(/rgba?\(([^)]+)\)/, "$1").split(",");
+        obj.set({ stroke: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${annotationOpacity})` });
+      }
+    }
+  });
+
+  // update brush
+  if (canvas.freeDrawingBrush) {
+    const brushRgb = brushColor || "64,0,64"; // fallback
+    canvas.freeDrawingBrush.color = `rgba(${brushRgb},${annotationOpacity})`;
+  }
+
+  canvas.requestRenderAll();
+}, [annotationOpacity, brushColor]);
 
     useEffect(() => {
       if (!fabricRef.current) return;
