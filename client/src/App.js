@@ -56,7 +56,7 @@ function App() {
   const [windowCenter, setWindowCenter] = useState(null);
   const [windowWidth, setWindowWidth] = useState(null);
   const [uploadMode, setUploadMode] = useState("nifti");
-  const [brushColor, setBrushColor] = useState("#00FF00");
+  const [brushColor, setBrushColor] = useState("rgba(173, 216, 230)");
   const [brushSize, setBrushSize] = useState(10);
   const [toolChangeId, setToolChangeId] = useState(0);
   const [annotationOpacity, setAnnotationOpacity] = useState(0.4);
@@ -166,6 +166,8 @@ const buttons = [
           originalName: file.name,
           filename: res.data.filename,
           type,
+
+
         });
       } catch (err) {
         console.error("Upload error:", err);
@@ -232,6 +234,24 @@ const handleSaveAllAnnotations = async () => {
     },
   },
 ];
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    if (!selectedFileName) return;
+
+    if (e.key === "ArrowRight") {
+      setCurrentSlice((prev) =>
+        Math.min(prev + 1, totalSlices - 1)
+      );
+    } else if (e.key === "ArrowLeft") {
+      setCurrentSlice((prev) =>
+        Math.max(prev - 1, 0)
+      );
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [selectedFileName, totalSlices]);
 
     useEffect(() => {
   if (page === "annotate") {

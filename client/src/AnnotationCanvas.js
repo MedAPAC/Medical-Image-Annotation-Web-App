@@ -123,10 +123,12 @@ const HANDLE_RADIUS = 5;
       fabricCanvas.isDrawingMode = false;
 fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
 
-// Apply opacity to brush
-const colorWithOpacity = brushColor.includes("rgba")
-  ? brushColor.replace(/rgba\(([^)]+),[^)]+\)/, `rgba($1,${annotationOpacity})`)
-  : brushColor; // if brushColor is hex, you could convert it to rgba
+const defaultBrushColor = `rgba(0, 102, 204, ${annotationOpacity})`;
+const colorWithOpacity = brushColor
+  ? brushColor.includes("rgba")
+    ? brushColor.replace(/rgba\(([^)]+),[^)]+\)/, `rgba($1,${annotationOpacity})`)
+    : brushColor
+  : defaultBrushColor;
 
 fabricCanvas.freeDrawingBrush.color = colorWithOpacity;
 fabricCanvas.freeDrawingBrush.width = brushSize || 10;
@@ -521,13 +523,26 @@ canvas.requestRenderAll();
         }
       });
 
-      fabricCanvas.on("path:created", (e) => {
-        const path = e.path;
-        if (labelRef.current) {
-          path.label = labelRef.current;
-          addLabelToShape(path, labelRef.current);
-        }
-      });
+fabricCanvas.on("path:created", (e) => {
+  const path = e.path;
+
+  // Use RGBA color and set stroke opacity
+  const rgbaColor = hexToRgba(brushColor || "#400040", annotationOpacity);
+
+  path.set({
+    stroke: rgbaColor,
+    fill: null,
+    opacity: annotationOpacity, // 👈 this line ensures the stroke opacity is applied
+    selectable: true,
+  });
+
+  if (labelRef.current) {
+    path.label = labelRef.current;
+    addLabelToShape(path, labelRef.current);
+  }
+
+  fabricCanvas.requestRenderAll();
+});
 
       window.addEventListener("keydown", handleKey);
       fabricCanvas.on("mouse:down", handleMouseDown);
@@ -684,8 +699,9 @@ useEffect(() => {
       if (fabricCanvas) {
         if (mode === "brush") {
           fabricCanvas.isDrawingMode = true;
-          fabricCanvas.freeDrawingBrush.color = brushColor || "#ffffff";
-          fabricCanvas.freeDrawingBrush.width = brushSize || 10;
+  const defaultBrushColor = `rgba(0, 102, 204, ${annotationOpacity})`;
+  fabricCanvas.freeDrawingBrush.color = brushColor || defaultBrushColor;
+  fabricCanvas.freeDrawingBrush.width = brushSize || 10;
         } else {
           fabricCanvas.isDrawingMode = false;
         }
