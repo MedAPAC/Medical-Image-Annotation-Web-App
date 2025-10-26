@@ -9,6 +9,7 @@ import "./i18n";
 import { Link, useNavigate } from "react-router-dom";
 import SignupPage from "./pages/signup";
 import ProjectsPage from "./pages/Projects";
+import ProjectDetailPage from "./pages/ProjectDetail";
 import LoginPage from "./pages/login";
 import UploadPage from "./pages/Upload";
 import HomePage from "./pages/Home";
@@ -1140,6 +1141,7 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>

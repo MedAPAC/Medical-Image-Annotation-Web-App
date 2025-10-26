@@ -1445,6 +1445,7 @@ const Projects = () => {
             {filteredProjects.map((project) => (
               <div
                 key={project.id}
+                onClick={() => navigate(`/projects/${project.id}`)}
                 style={{
                   backgroundColor: 'white',
                   borderRadius: '12px',
@@ -1618,7 +1619,7 @@ const Projects = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate('/home');
+                      navigate(`/projects/${project.id}`);
                     }}
                     style={{
                       flex: 1,
