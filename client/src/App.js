@@ -6,13 +6,14 @@ import AnnotationCanvas from "./AnnotationCanvas";
 import { useTranslation } from "react-i18next";
 import "./App.css";
 import "./i18n";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import SignupPage from "./pages/signup";
 import ProjectsPage from "./pages/Projects";
 import ProjectDetailPage from "./pages/ProjectDetail";
 import LoginPage from "./pages/login";
 import UploadPage from "./pages/Upload";
 import HomePage from "./pages/Home";
+import TasksPage from "./pages/Tasks";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import {
@@ -156,7 +157,7 @@ function Header({ page, setPage }) {
           Home
         </button>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/tasks')}
           style={{
             cursor: "pointer",
             fontSize: "16px",
@@ -257,6 +258,7 @@ function Header({ page, setPage }) {
 function AppContent() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Redirect to home page if authenticated, otherwise show home page
   React.useEffect(() => {
@@ -267,7 +269,23 @@ function AppContent() {
     }
   }, [isAuthenticated, navigate]);
   
-  const [page, setPage] = useState("upload");
+  // Update page state based on current route
+  const getCurrentPage = () => {
+    const path = location.pathname;
+    if (path.startsWith('/projects/')) return 'projects';
+    if (path === '/projects') return 'projects';
+    if (path === '/upload') return 'upload';
+    if (path === '/tasks') return 'tasks';
+    if (path === '/home') return 'home';
+    return 'home';
+  };
+  
+  const [page, setPage] = useState(getCurrentPage());
+  
+  // Update page when route changes
+  React.useEffect(() => {
+    setPage(getCurrentPage());
+  }, [location.pathname]);
   const [files, setFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -1143,6 +1161,7 @@ function App() {
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/upload" element={<UploadPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </Router>

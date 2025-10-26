@@ -145,7 +145,7 @@ function Header({ page, setPage }) {
           Home
         </button>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/tasks')}
           style={{
             cursor: "pointer",
             fontSize: "16px",
@@ -268,6 +268,13 @@ const ProjectDetail = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  // Load tasks when project changes or component mounts
+  useEffect(() => {
+    if (project) {
+      loadTasks();
+    }
+  }, [project]);
+
   // Load project data
   useEffect(() => {
     const loadProject = async () => {
@@ -315,13 +322,37 @@ const ProjectDetail = () => {
     }
   }, [projectId, navigate, user]);
 
+  // Listen for storage changes to update tasks when new ones are created
+  useEffect(() => {
+    const handleStorageChange = () => {
+      if (project) {
+        loadTasks();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom events (for same-tab updates)
+    window.addEventListener('taskCreated', handleStorageChange);
+    window.addEventListener('taskDeleted', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('taskCreated', handleStorageChange);
+      window.removeEventListener('taskDeleted', handleStorageChange);
+    };
+  }, [project]);
+
   const loadTasks = async () => {
     try {
       // TODO: Implement tasks API endpoint
-      // For now, we'll show an empty state
-      setTasks([]);
+      // For now, we'll load tasks from localStorage or show empty state
+      const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+      const projectTasks = savedTasks.filter(task => task.projectId === project.id);
+      setTasks(projectTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
+      setTasks([]);
     }
   };
 
@@ -876,18 +907,27 @@ const ProjectDetail = () => {
               </button>
             </div>
 
-            <button style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}>
+            <button 
+              onClick={() => navigate('/tasks', { 
+                state: { 
+                  projectId: project.id, 
+                  projectName: project.name 
+                } 
+              })}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              title="Add Task"
+            >
               <Plus size={20} />
             </button>
           </div>
@@ -907,16 +947,24 @@ const ProjectDetail = () => {
                 {searchTerm ? 'Try a different search term' : 'Create your first task to get started'}
               </p>
               {!searchTerm && (
-                <button style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}>
+                <button 
+                  onClick={() => navigate('/tasks', { 
+                    state: { 
+                      projectId: project.id, 
+                      projectName: project.name 
+                    } 
+                  })}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
                   Create Task
                 </button>
               )}

@@ -140,7 +140,7 @@ function Header() {
           Home
         </button>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/tasks')}
           style={{
             cursor: "pointer",
             fontSize: "16px",

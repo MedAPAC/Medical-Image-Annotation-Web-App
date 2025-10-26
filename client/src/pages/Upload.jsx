@@ -638,7 +638,7 @@ const UploadPage = () => {
             </button>
             
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/tasks')}
               disabled={!allUploaded}
               style={{
                 padding: '10px 20px',
