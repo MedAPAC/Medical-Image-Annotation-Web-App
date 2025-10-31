@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { useTranslation } from 'react-i18next';
 import axios from 'axios';
+import Header from '../components/Header';
 import { 
   ArrowLeft,
   Edit3,
   MoreHorizontal,
   Search,
-  Filter,
-  SortAsc,
   Plus,
   Check,
   X,
@@ -18,227 +16,9 @@ import {
   Clock,
   FolderOpen,
   MessageSquare,
-  ChevronDown,
-  Settings,
   Trash2,
-  Eye,
-  LogOut,
-  User
+  Eye
 } from 'lucide-react';
-
-// Header component with authentication
-function Header({ page, setPage }) {
-  const { user, isAuthenticated, logout } = useAuth();
-  const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-
-  const changeLang = (lng) => {
-    i18n.changeLanguage(lng);
-    axios.defaults.headers.common["Accept-Language"] = lng;
-    document.documentElement.lang = lng; 
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: "#d0e7ff",
-        padding: "10px 20px",
-        fontFamily: "Arial, sans-serif",
-        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-      }}
-    >
-      <div>
-        <select
-          onChange={(e) => changeLang(e.target.value)}
-          defaultValue="en"
-          style={{
-            fontSize: "16px",
-            padding: "6px",
-            border: "1px solid #a0cfff",
-            borderRadius: "4px",
-            backgroundColor: "#f5faff",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-          }}
-          onMouseOver={(e) => (e.target.style.backgroundColor = "#e1f0ff")}
-          onMouseOut={(e) => (e.target.style.backgroundColor = "#f5faff")}
-        >
-          <option value="" disabled></option>
-          <option value="en">🇬🇧 EN</option>
-          <option value="fa">🇮🇷 فارسی</option>
-          <option value="nl">🇳🇱 NL</option> 
-        </select>
-      </div>
-
-      <div style={{ display: "flex", gap: "20px" }}>
-        <button 
-          onClick={() => navigate('/projects')}
-          style={{ 
-            textDecoration: "none",
-            cursor: "pointer",
-            fontSize: "16px",
-            color: page === "projects" ? "#0066cc" : "#004c99",
-            transition: "color 0.3s, transform 0.3s",
-            background: "none",
-            border: "none"
-          }}
-          onMouseOver={(e) => {
-            e.target.style.color = "#0066cc";
-            e.target.style.transform = "scale(1.05)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.color = page === "projects" ? "#0066cc" : "#004c99";
-            e.target.style.transform = "scale(1)";
-          }}
-        >
-          Projects
-        </button>
-        <button
-          onClick={() => navigate('/upload')}
-          style={{ 
-            textDecoration: "none",
-            cursor: "pointer",
-            fontSize: "16px",
-            color: page === "upload" ? "#0066cc" : "#004c99",
-            transition: "color 0.3s, transform 0.3s",
-            background: "none",
-            border: "none"
-          }}
-          onMouseOver={(e) => {
-            e.target.style.color = "#0066cc";
-            e.target.style.transform = "scale(1.05)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.color = page === "upload" ? "#0066cc" : "#004c99";
-            e.target.style.transform = "scale(1)";
-          }}
-        >
-          Upload
-        </button>
-        <button
-          onClick={() => navigate('/home')}
-          style={{
-            cursor: "pointer",
-            fontSize: "16px",
-            color: page === "home" ? "#0066cc" : "#004c99",
-            transition: "color 0.3s, transform 0.3s",
-            background: "none",
-            border: "none"
-          }}
-          onMouseOver={(e) => {
-            e.target.style.color = "#0066cc";
-            e.target.style.transform = "scale(1.05)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.color = page === "home" ? "#0066cc" : "#004c99";
-            e.target.style.transform = "scale(1)";
-          }}
-        >
-          Home
-        </button>
-        <button
-          onClick={() => navigate('/tasks')}
-          style={{
-            cursor: "pointer",
-            fontSize: "16px",
-            color: page === "tasks" ? "#0066cc" : "#004c99",
-            transition: "color 0.3s, transform 0.3s",
-            background: "none",
-            border: "none"
-          }}
-          onMouseOver={(e) => {
-            e.target.style.color = "#0066cc";
-            e.target.style.transform = "scale(1.05)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.color = page === "tasks" ? "#0066cc" : "#004c99";
-            e.target.style.transform = "scale(1)";
-          }}
-        >
-          Tasks
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        {isAuthenticated ? (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <User size={16} />
-              <span style={{ fontSize: "14px", color: "#004c99" }}>
-                {user?.name || user?.email}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: "6px 12px",
-                backgroundColor: "#dc2626",
-                color: "#fff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                transition: "background-color 0.3s",
-              }}
-              onMouseOver={(e) => (e.target.style.backgroundColor = "#b91c1c")}
-              onMouseOut={(e) => (e.target.style.backgroundColor = "#dc2626")}
-            >
-              <LogOut size={14} />
-              Logout
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => navigate('/login')}
-              style={{
-                padding: "6px 12px",
-                backgroundColor: "#a0d4ff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                transition: "background-color 0.3s",
-              }}
-              onMouseOver={(e) => (e.target.style.backgroundColor = "#87c8ff")}
-              onMouseOut={(e) => (e.target.style.backgroundColor = "#a0d4ff")}
-            >
-              Login
-            </button>
-            <button
-              onClick={() => navigate('/signup')}
-              style={{
-                padding: "6px 12px",
-                backgroundColor: "#007acc",
-                color: "#fff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                transition: "background-color 0.3s",
-              }}
-              onMouseOver={(e) => (e.target.style.backgroundColor = "#005fa3")}
-              onMouseOut={(e) => (e.target.style.backgroundColor = "#007acc")}
-            >
-              Sign Up
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -249,8 +29,6 @@ const ProjectDetail = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTasks, setSelectedTasks] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('name');
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -356,22 +134,6 @@ const ProjectDetail = () => {
     }
   };
 
-  const handleSelectTask = (taskId) => {
-    setSelectedTasks(prev => 
-      prev.includes(taskId) 
-        ? prev.filter(id => id !== taskId)
-        : [...prev, taskId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedTasks.length === filteredTasks.length) {
-      setSelectedTasks([]);
-    } else {
-      setSelectedTasks(filteredTasks.map(t => t.id));
-    }
-  };
-
   const handleUpdateDescription = async () => {
     try {
       await axios.put(`http://localhost:5000/api/projects/${projectId}`, {
@@ -456,7 +218,7 @@ const ProjectDetail = () => {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      <Header page="projects" setPage={() => {}} />
+      <Header page="projects" />
       
       {/* Main Content */}
       <div style={{ 
@@ -800,7 +562,7 @@ const ProjectDetail = () => {
           padding: '24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
-          {/* Search and Filter Bar */}
+          {/* Search Bar */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -809,7 +571,7 @@ const ProjectDetail = () => {
             paddingBottom: '16px',
             borderBottom: '1px solid #e5e7eb'
           }}>
-            <div style={{ flex: 1, position: 'relative' }}>
+            <div style={{ flex: 1, position: 'relative', minWidth: '200px' }}>
               <Search
                 size={20}
                 style={{
@@ -826,7 +588,7 @@ const ProjectDetail = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  width: '100%',
+                  width: "95%",
                   padding: '12px 12px 12px 44px',
                   border: '1px solid #d1d5db',
                   borderRadius: '6px',
@@ -834,77 +596,6 @@ const ProjectDetail = () => {
                   outline: 'none'
                 }}
               />
-            </div>
-            
-            <button
-              onClick={handleSelectAll}
-              style={{
-                padding: '12px 16px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              Select all
-            </button>
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                backgroundColor: '#f3f4f6',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}>
-                <SortAsc size={16} />
-                Sort by
-              </button>
-              <button style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                backgroundColor: '#f3f4f6',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}>
-                <Filter size={16} />
-                Quick filters
-              </button>
-              <button style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                backgroundColor: '#f3f4f6',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}>
-                <Filter size={16} />
-                Filter
-              </button>
-              <button style={{
-                padding: '12px 16px',
-                backgroundColor: '#f3f4f6',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}>
-                Clear filters
-              </button>
             </div>
 
             <button 
@@ -918,17 +609,23 @@ const ProjectDetail = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '40px',
-                height: '40px',
+                gap: '8px',
+                padding: '12px 20px',
                 backgroundColor: '#3b82f6',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'background-color 0.3s',
+                whiteSpace: 'nowrap'
               }}
-              title="Add Task"
+              onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
             >
-              <Plus size={20} />
+              <Plus size={18} />
+              Add task
             </button>
           </div>
 
@@ -980,19 +677,10 @@ const ProjectDetail = () => {
                     padding: '16px',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    backgroundColor: selectedTasks.includes(task.id) ? '#eff6ff' : 'white',
-                    cursor: 'pointer',
+                    backgroundColor: 'white',
                     transition: 'all 0.2s'
                   }}
-                  onClick={() => handleSelectTask(task.id)}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedTasks.includes(task.id)}
-                    onChange={() => handleSelectTask(task.id)}
-                    style={{ marginRight: '12px' }}
-                  />
-                  
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                       <h3 style={{
@@ -1050,7 +738,7 @@ const ProjectDetail = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Navigate to task detail or annotation page
+                        navigate(`/tasks/${task.id}`);
                       }}
                       style={{
                         padding: '8px 16px',
