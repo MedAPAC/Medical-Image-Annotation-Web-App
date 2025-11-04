@@ -61,6 +61,27 @@ function Header({ page }) {
       </div>
 
       <div style={{ display: "flex", gap: "20px" }}>
+        <button
+          onClick={() => navigate('/home')}
+          style={{
+            cursor: "pointer",
+            fontSize: "16px",
+            color: currentPage === "home" ? "#0066cc" : "#004c99",
+            transition: "color 0.3s, transform 0.3s",
+            background: "none",
+            border: "none"
+          }}
+          onMouseOver={(e) => {
+            e.target.style.color = "#0066cc";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.color = currentPage === "home" ? "#0066cc" : "#004c99";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          Home
+        </button>
         <button 
           onClick={() => navigate('/projects')}
           style={{ 
@@ -82,49 +103,6 @@ function Header({ page }) {
           }}
         >
           Projects
-        </button>
-        <button
-          onClick={() => navigate('/upload')}
-          style={{ 
-            textDecoration: "none",
-            cursor: "pointer",
-            fontSize: "16px",
-            color: currentPage === "upload" ? "#0066cc" : "#004c99",
-            transition: "color 0.3s, transform 0.3s",
-            background: "none",
-            border: "none"
-          }}
-          onMouseOver={(e) => {
-            e.target.style.color = "#0066cc";
-            e.target.style.transform = "scale(1.05)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.color = currentPage === "upload" ? "#0066cc" : "#004c99";
-            e.target.style.transform = "scale(1)";
-          }}
-        >
-          Upload
-        </button>
-        <button
-          onClick={() => navigate('/home')}
-          style={{
-            cursor: "pointer",
-            fontSize: "16px",
-            color: currentPage === "home" ? "#0066cc" : "#004c99",
-            transition: "color 0.3s, transform 0.3s",
-            background: "none",
-            border: "none"
-          }}
-          onMouseOver={(e) => {
-            e.target.style.color = "#0066cc";
-            e.target.style.transform = "scale(1.05)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.color = currentPage === "home" ? "#0066cc" : "#004c99";
-            e.target.style.transform = "scale(1)";
-          }}
-        >
-          Home
         </button>
         <button
           onClick={() => navigate('/tasks')}

@@ -500,39 +500,6 @@ const Tasks = () => {
             }}>
               My computer
             </button>
-            <button style={{
-              padding: '8px 16px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}>
-              Connected file share
-            </button>
-            <button style={{
-              padding: '8px 16px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}>
-              Remote sources
-            </button>
-            <button style={{
-              padding: '8px 16px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}>
-              Cloud Storage
-            </button>
           </div>
 
           <div style={{
