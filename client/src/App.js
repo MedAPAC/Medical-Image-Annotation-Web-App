@@ -79,6 +79,8 @@ const [inputsByFileAndSlice, setInputsByFileAndSlice] = useState({});
 const slicesRef = useRef(null);
 const [leftDrawerOpen, setLeftDrawerOpen] = useState(null); 
 const [rightPanelOpen, setRightPanelOpen] = useState(null);
+const [viewType, setViewType] = useState("axial");
+
 
 useEffect(() => {
   if (showSlices && slicesRef.current) {
@@ -283,7 +285,7 @@ useEffect(() => {
     return (
       <Router>
         <>
-          <div
+          {/* <div
             style={{
               display: "flex",
               alignItems: "center",
@@ -382,7 +384,7 @@ useEffect(() => {
           <Routes>
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/login" element={<LoginPage />} />
-          </Routes>
+          </Routes> */}
           <div className="upload-container">
             <h1 className="upload-title">{t("uploadTitle")}</h1>
             <div className="upload-mode-selector">
@@ -526,64 +528,6 @@ return (
           <option value="fa">🇮🇷 فارسی</option>
           <option value="nl">🇳🇱 NL</option> 
         </select>
-      </div>
-
-      <div style={{ display: "flex", gap: "20px" }}>
-        {["Projects", "Tasks", "Jobs"].map((item) => (
-          <span
-            key={item}
-            style={{
-              cursor: "pointer",
-              fontSize: "16px",
-              color: "#004c99",
-              transition: "color 0.3s, transform 0.3s",
-            }}
-            onMouseOver={(e) => {
-              e.target.style.color = "#0066cc";
-              e.target.style.transform = "scale(1.05)";
-            }}
-            onMouseOut={(e) => {
-              e.target.style.color = "#004c99";
-              e.target.style.transform = "scale(1)";
-            }}
-          >
-            {item}
-          </span>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: "10px" }}>
-        <button
-          style={{
-            padding: "6px 12px",
-            backgroundColor: "#a0d4ff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "14px",
-            transition: "background-color 0.3s",
-          }}
-          onMouseOver={(e) => (e.target.style.backgroundColor = "#87c8ff")}
-          onMouseOut={(e) => (e.target.style.backgroundColor = "#a0d4ff")}
-        >
-          Login
-        </button>
-        <button
-          style={{
-            padding: "6px 12px",
-            backgroundColor: "#007acc",
-            color: "#fff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "14px",
-            transition: "background-color 0.3s",
-          }}
-          onMouseOver={(e) => (e.target.style.backgroundColor = "#005fa3")}
-          onMouseOut={(e) => (e.target.style.backgroundColor = "#007acc")}
-        >
-          Sign Up
-        </button>
       </div>
     </div>
 
@@ -959,37 +903,39 @@ return (
               alignItems: "center",
             }}
           >
-            {isDicom ? (
-              <DicomViewer
-                imageIds={imageIds}
-                windowCenter={windowCenter}
-                windowWidth={windowWidth}
-                currentSlice={currentSlice}
-                onSliceChange={setCurrentSlice}
-                setTotalSlices={setTotalSlices}
-                style={{
-                  display: "block",
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  objectFit: "contain",
-                }}
-              />
-            ) : (
-              <NiftiViewer
-                url={`http://localhost:5000/uploads/${file.filename}`}
-                windowCenter={windowCenter}
-                windowWidth={windowWidth}
-                currentSlice={currentSlice}
-                onSliceChange={setCurrentSlice}
-                setTotalSlices={setTotalSlices}
-                style={{
-                  display: "block",
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  objectFit: "contain",
-                }}
-              />
-            )}
+           {isDicom ? (
+  <DicomViewer
+    imageIds={imageIds}
+    windowCenter={windowCenter}
+    windowWidth={windowWidth}
+    currentSlice={currentSlice}
+    onSliceChange={setCurrentSlice}
+    setTotalSlices={setTotalSlices}
+    viewType={viewType} // ✅ Added
+    style={{
+      display: "block",
+      maxWidth: "100%",
+      maxHeight: "100%",
+      objectFit: "contain",
+    }}
+  />
+) : (
+  <NiftiViewer
+    url={`http://localhost:5000/uploads/${file.filename}`}
+    windowCenter={windowCenter}
+    windowWidth={windowWidth}
+    currentSlice={currentSlice}
+    onSliceChange={setCurrentSlice}
+    setTotalSlices={setTotalSlices}
+    viewType={viewType} // ✅ Added
+    style={{
+      display: "block",
+      maxWidth: "100%",
+      maxHeight: "100%",
+      objectFit: "contain",
+    }}
+  />
+)}
 
             {/* Annotation Layer */}
             <div
@@ -1169,60 +1115,103 @@ return (
     padding: "20px 16px",
   }}
 >
-  {rightPanelOpen === "classification" && (
-               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px" }}>
-                {t("classification")} (Slice {currentSlice + 1}):
-              </span>
-              {"positive,negative,clear".split(",").map((cls) => {
-                let bgColor =
-                  cls === "positive" ? "#059669" :
-                  cls === "negative" ? "#dc2626" :
-                  "#f59e0b";
-                return (
-                  <button
-                    key={cls}
-                    onClick={() => {
-                      if (cls === "clear") {
-                        setClassificationByFileAndSlice((prev) => {
-                          const updated = { ...(prev[selectedFileName] || {}) };
-                          delete updated[currentSlice];
-                          return { ...prev, [selectedFileName]: updated };
-                        });
-                      } else {
-                        setClassificationByFileAndSlice((prev) => ({
-                          ...prev,
-                          [selectedFileName]: {
-                            ...(prev[selectedFileName] || {}),
-                            [currentSlice]: cls,
-                          },
-                        }));
-                      }
-                    }}
-                    style={{
-                      padding: "6px 10px",
-                      backgroundColor: bgColor,
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      fontWeight: 500,
-                      fontSize: "12px",
-                      transition: "transform 0.1s, box-shadow 0.2s",
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.transform = "scale(1.05)";
-                      e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.transform = "scale(1)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                  >
-                    {t(cls)}
-                  </button>
-                );
-              })}
+{rightPanelOpen === "classification" && (
+  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    {/* 🔹 New View Type Selector Added Here */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+      <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px" }}>
+        {t("View Type")}:
+      </span>
+      {["axial", "coronal", "sagittal"].map((view) => {
+        let bgColor = viewType === view ? "#3b82f6" : "#e2e8f0";
+        let textColor = viewType === view ? "#fff" : "#1e293b";
+        return (
+          <button
+            key={view}
+            onClick={() => setViewType(view)}
+            style={{
+              padding: "6px 10px",
+              backgroundColor: bgColor,
+              color: textColor,
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: 500,
+              fontSize: "12px",
+              transition: "transform 0.1s, box-shadow 0.2s",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+              e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            {t(view.charAt(0).toUpperCase() + view.slice(1))}
+          </button>
+        );
+      })}
+    </div>
+    {/* 🔹 End of New Section */}
+
+    {/* Existing Classification Section */}
+    <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px" }}>
+      {t("classification")} (Slice {currentSlice + 1}):
+    </span>
+    {"positive,negative,clear".split(",").map((cls) => {
+      let bgColor =
+        cls === "positive"
+          ? "#059669"
+          : cls === "negative"
+          ? "#dc2626"
+          : "#f59e0b";
+      return (
+        <button
+          key={cls}
+          onClick={() => {
+            if (cls === "clear") {
+              setClassificationByFileAndSlice((prev) => {
+                const updated = { ...(prev[selectedFileName] || {}) };
+                delete updated[currentSlice];
+                return { ...prev, [selectedFileName]: updated };
+              });
+            } else {
+              setClassificationByFileAndSlice((prev) => ({
+                ...prev,
+                [selectedFileName]: {
+                  ...(prev[selectedFileName] || {}),
+                  [currentSlice]: cls,
+                },
+              }));
+            }
+          }}
+          style={{
+            padding: "6px 10px",
+            backgroundColor: bgColor,
+            color: "#fff",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: 500,
+            fontSize: "12px",
+            transition: "transform 0.1s, box-shadow 0.2s",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+            e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          {t(cls)}
+        </button>
+      );
+    })}
+
 
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
                 <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}>

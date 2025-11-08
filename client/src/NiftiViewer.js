@@ -10,6 +10,7 @@ function NiftiViewer({
   height = 600,
   currentSlice: externalSlice,
   setTotalSlices,
+  viewType = "axial", // ✅ NEW
 }) {
   const [niftiHeader, setNiftiHeader] = useState(null);
   const [niftiImage, setNiftiImage] = useState(null);
@@ -18,14 +19,14 @@ function NiftiViewer({
   const [defaultWW, setDefaultWW] = useState(null);
   const canvasRef = useRef(null);
 
-  // Sync external slice index from parent
+  // Sync slice index from parent
   useEffect(() => {
     if (externalSlice !== undefined && externalSlice !== currentSlice) {
       setCurrentSlice(externalSlice);
     }
   }, [externalSlice, currentSlice]);
 
-  // Notify parent when slice changes
+  // Notify parent
   useEffect(() => {
     if (onSliceChange) onSliceChange(currentSlice);
   }, [currentSlice, onSliceChange]);
@@ -46,8 +47,6 @@ function NiftiViewer({
           setNiftiHeader(header);
           setNiftiImage(image);
           setCurrentSlice(0);
-
-          if (setTotalSlices) setTotalSlices(header.dims?.[3] || 1);
         } else {
           console.error("Invalid NIfTI file format.");
         }
@@ -55,25 +54,31 @@ function NiftiViewer({
         console.error("Failed to load NIfTI:", err);
       }
     }
-
     loadNifti();
-  }, [url, setTotalSlices]);
+  }, [url]);
 
-  // Render a slice to canvas
+  // ✅ Update total slices when header or viewType changes
+  useEffect(() => {
+    if (!niftiHeader) return;
+    const dims = niftiHeader.dims;
+    let total = 1;
+    if (viewType === "axial") total = dims[3] || 1;
+    if (viewType === "coronal") total = dims[2] || 1;
+    if (viewType === "sagittal") total = dims[1] || 1;
+    if (setTotalSlices) setTotalSlices(total);
+  }, [niftiHeader, viewType, setTotalSlices]);
+
+  // ✅ Draw selected slice
   useEffect(() => {
     if (!niftiHeader || !niftiImage) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const dims = niftiHeader.dims; // [dim, x, y, z]
+    const nx = dims[1];
+    const ny = dims[2];
+    const nz = dims[3];
+    const totalVoxels = nx * ny * nz;
 
-    const w = niftiHeader.dims[1];
-    const h = niftiHeader.dims[2];
-    const d = niftiHeader.dims[3];
-    if (currentSlice >= d) return;
-
-    const sliceSize = w * h;
     let volume;
-
     switch (niftiHeader.datatypeCode) {
       case nifti.NIFTI1.TYPE_UINT8:
         volume = new Uint8Array(niftiImage);
@@ -89,9 +94,36 @@ function NiftiViewer({
         return;
     }
 
-    const slice = volume.slice(currentSlice * sliceSize, (currentSlice + 1) * sliceSize);
-    const min = Math.min(...slice);
-    const max = Math.max(...slice);
+    // ✅ Extract slice depending on viewType
+    let sliceData, sliceW, sliceH;
+    if (viewType === "axial") {
+      sliceW = nx;
+      sliceH = ny;
+      const start = currentSlice * sliceW * sliceH;
+      sliceData = volume.slice(start, start + sliceW * sliceH);
+    } else if (viewType === "coronal") {
+      sliceW = nx;
+      sliceH = nz;
+      sliceData = new Array(sliceW * sliceH);
+      for (let z = 0; z < nz; z++) {
+        for (let x = 0; x < nx; x++) {
+          sliceData[z * nx + x] = volume[z * nx * ny + currentSlice * nx + x];
+        }
+      }
+    } else if (viewType === "sagittal") {
+      sliceW = ny;
+      sliceH = nz;
+      sliceData = new Array(sliceW * sliceH);
+      for (let z = 0; z < nz; z++) {
+        for (let y = 0; y < ny; y++) {
+          sliceData[z * ny + y] =
+            volume[z * nx * ny + y * nx + currentSlice];
+        }
+      }
+    }
+
+    const min = Math.min(...sliceData);
+    const max = Math.max(...sliceData);
 
     if (defaultWC === null || defaultWW === null) {
       setDefaultWC((min + max) / 2);
@@ -100,18 +132,20 @@ function NiftiViewer({
 
     const wc = windowCenter ?? (min + max) / 2;
     const ww = windowWidth ?? max - min;
-
     const lower = wc - ww / 2;
     const upper = wc + ww / 2;
 
-    const normalized = new Uint8ClampedArray(slice.length);
-    for (let i = 0; i < slice.length; i++) {
-      const val = slice[i];
+    const normalized = new Uint8ClampedArray(sliceData.length);
+    for (let i = 0; i < sliceData.length; i++) {
+      const val = sliceData[i];
       const scaled = ((val - lower) / (upper - lower)) * 255;
       normalized[i] = Math.max(0, Math.min(255, scaled));
     }
 
-    const imageData = ctx.createImageData(w, h);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.createImageData(sliceW, sliceH);
+
     for (let i = 0; i < normalized.length; i++) {
       const v = normalized[i];
       imageData.data[i * 4] = v;
@@ -121,26 +155,24 @@ function NiftiViewer({
     }
 
     const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = w;
-    tempCanvas.height = h;
+    tempCanvas.width = sliceW;
+    tempCanvas.height = sliceH;
     const tempCtx = tempCanvas.getContext("2d");
     tempCtx.putImageData(imageData, 0, 0);
 
-    // Clear and draw with scaling (maintain aspect ratio)
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, width, height);
 
-    const aspect = w / h;
+    // Maintain aspect ratio
+    const aspect = sliceW / sliceH;
     let drawW = width;
     let drawH = height;
-
     if (aspect > 1) drawH = height / aspect;
     else drawW = width * aspect;
 
     const dx = (width - drawW) / 2;
     const dy = (height - drawH) / 2;
-
     ctx.drawImage(tempCanvas, dx, dy, drawW, drawH);
   }, [
     niftiHeader,
@@ -152,6 +184,7 @@ function NiftiViewer({
     defaultWW,
     width,
     height,
+    viewType,
   ]);
 
   if (!niftiHeader) {

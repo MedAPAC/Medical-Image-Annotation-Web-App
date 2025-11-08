@@ -13,11 +13,25 @@ function DicomViewer({
   onSliceChange,
   width = 600,
   height = 600,
-  currentSlice, 
-  setTotalSlices, 
+  currentSlice,
+  setTotalSlices,
+  viewType = "axial", // ✅ new prop
+  imageStacks = {},   // ✅ optional: { axial: [...], coronal: [...], sagittal: [...] }
 }) {
   const element = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeStack, setActiveStack] = useState(imageIds);
+
+  // 🔹 Switch stack when viewType changes
+  useEffect(() => {
+    if (imageStacks[viewType] && imageStacks[viewType].length) {
+      setActiveStack(imageStacks[viewType]);
+      setCurrentIndex(0);
+      if (setTotalSlices) setTotalSlices(imageStacks[viewType].length);
+    } else {
+      setActiveStack(imageIds);
+    }
+  }, [viewType, imageStacks, imageIds, setTotalSlices]);
 
   // Sync external slice
   useEffect(() => {
@@ -31,12 +45,12 @@ function DicomViewer({
     if (onSliceChange) onSliceChange(currentIndex);
   }, [currentIndex, onSliceChange]);
 
-  // Set total slices
+  // Set total slices initially
   useEffect(() => {
-    if (imageIds?.length && setTotalSlices) {
-      setTotalSlices(imageIds.length);
+    if (activeStack?.length && setTotalSlices) {
+      setTotalSlices(activeStack.length);
     }
-  }, [imageIds, setTotalSlices]);
+  }, [activeStack, setTotalSlices]);
 
   // Enable cornerstone
   useEffect(() => {
@@ -49,11 +63,11 @@ function DicomViewer({
 
   // Load and display current DICOM slice
   useEffect(() => {
-    if (!imageIds.length || !element.current) return;
+    if (!activeStack.length || !element.current) return;
 
     const loadImage = async () => {
       try {
-        const image = await cornerstone.loadImage(imageIds[currentIndex]);
+        const image = await cornerstone.loadImage(activeStack[currentIndex]);
         const viewport = cornerstone.getDefaultViewportForImage(element.current, image);
 
         if (windowCenter != null && windowWidth != null) {
@@ -68,14 +82,14 @@ function DicomViewer({
     };
 
     loadImage();
-  }, [imageIds, currentIndex, windowCenter, windowWidth]);
+  }, [activeStack, currentIndex, windowCenter, windowWidth]);
 
   // Ensure currentIndex stays in bounds
   useEffect(() => {
-    if (currentIndex >= imageIds.length && imageIds.length > 0) {
-      setCurrentIndex(imageIds.length - 1);
+    if (currentIndex >= activeStack.length && activeStack.length > 0) {
+      setCurrentIndex(activeStack.length - 1);
     }
-  }, [imageIds.length, currentIndex]);
+  }, [activeStack.length, currentIndex]);
 
   return (
     <div
