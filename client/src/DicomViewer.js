@@ -16,7 +16,8 @@ function DicomViewer({
   currentSlice,
   setTotalSlices,
   viewType = "axial", // ✅ new prop
-  imageStacks = {},   // ✅ optional: { axial: [...], coronal: [...], sagittal: [...] }
+  imageStacks = {},
+  isZoomMode = ""    // ✅ optional: { axial: [...], coronal: [...], sagittal: [...] }
 }) {
   const element = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -60,6 +61,48 @@ function DicomViewer({
       if (el) cornerstone.disable(el);
     };
   }, []);
+
+  useEffect(() => {
+  if (!element.current) return;
+  const el = element.current;
+
+  let mouseDown = false;
+  let start = null;
+
+  if (isZoomMode) {
+    const handleMouseDown = (e) => {
+      mouseDown = true;
+      start = { x: e.offsetX, y: e.offsetY };
+    };
+
+    const handleMouseUp = (e) => {
+      if (!mouseDown || !start) return;
+      const end = { x: e.offsetX, y: e.offsetY };
+      mouseDown = false;
+
+      const zoomRect = {
+        x: Math.min(start.x, end.x),
+        y: Math.min(start.y, end.y),
+        width: Math.abs(end.x - start.x),
+        height: Math.abs(end.y - start.y),
+      };
+
+      const factor = Math.min(el.clientWidth / zoomRect.width, el.clientHeight / zoomRect.height);
+      cornerstone.setViewport(el, {
+        ...cornerstone.getViewport(el),
+        scale: factor,
+      });
+    };
+
+    el.addEventListener("mousedown", handleMouseDown);
+    el.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      el.removeEventListener("mousedown", handleMouseDown);
+      el.removeEventListener("mouseup", handleMouseUp);
+    };
+  }
+}, [isZoomMode]);
 
   // Load and display current DICOM slice
   useEffect(() => {

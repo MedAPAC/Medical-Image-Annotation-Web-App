@@ -26,7 +26,7 @@ const AnnotationCanvas = forwardRef(
 
     const crosshairLines = useRef({ horizontal: null, vertical: null });
 const hexToRgba = (color, opacity) => {
-  if (!color) return `rgba(64,0,64,${opacity})`; // fallback
+  if (!color) return `rgba(100,0,64,${opacity})`; // fallback
 
   // Already rgba
   if (color.startsWith("rgba")) return color.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, `rgba($1,$2,$3,${opacity})`);

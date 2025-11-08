@@ -10,14 +10,86 @@ function NiftiViewer({
   height = 600,
   currentSlice: externalSlice,
   setTotalSlices,
-  viewType = "axial", // ✅ NEW
+  viewType = "axial",
+  isZoomMode = false,
+  zoomRegion = null,
+  setZoomRegion = () => {},
+  zoomLevel = 1,
+  setZoomLevel = () => {},
 }) {
+
   const [niftiHeader, setNiftiHeader] = useState(null);
   const [niftiImage, setNiftiImage] = useState(null);
   const [currentSlice, setCurrentSlice] = useState(0);
   const [defaultWC, setDefaultWC] = useState(null);
   const [defaultWW, setDefaultWW] = useState(null);
   const canvasRef = useRef(null);
+
+useEffect(() => {
+  const timeout = setTimeout(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let isDrawing = false;
+    let start = null;
+
+    const handleMouseDown = (e) => {
+      if (!isZoomMode) return;
+      const rect = canvas.getBoundingClientRect();
+      start = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      isDrawing = true;
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDrawing || !isZoomMode) return;
+      const rect = canvas.getBoundingClientRect();
+      const current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const x = Math.min(start.x, current.x);
+      const y = Math.min(start.y, current.y);
+      const w = Math.abs(start.x - current.x);
+      const h = Math.abs(start.y - current.y);
+
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(x, y, w, h);
+      ctx.strokeStyle = "yellow";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+      ctx.restore();
+    };
+
+    const handleMouseUp = (e) => {
+      if (!isDrawing || !isZoomMode) return;
+      isDrawing = false;
+      const rect = canvas.getBoundingClientRect();
+      const end = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const x = Math.min(start.x, end.x);
+      const y = Math.min(start.y, end.y);
+      const w = Math.abs(start.x - end.x);
+      const h = Math.abs(start.y - end.y);
+
+      setZoomRegion({ x, y, width: w, height: h });
+      const zoomFactor = Math.min(canvas.width / w, canvas.height / h);
+      setZoomLevel(zoomFactor);
+    };
+
+    canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, 0);
+
+  return () => clearTimeout(timeout);
+}, [isZoomMode, setZoomRegion, setZoomLevel]);
+
 
   // Sync slice index from parent
   useEffect(() => {

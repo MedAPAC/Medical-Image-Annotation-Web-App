@@ -660,79 +660,126 @@ return (
     padding: "16px",
   }}
 >
-  {/* Window Settings */}
-  {openSection === "window" && (
-    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-      {["windowCenter", "windowWidth"].map((key) => (
-        <div key={key} style={{ display: "flex", flexDirection: "column" }}>
-          <label
-            style={{
-              fontWeight: 600,
-              color: "#1e293b",
-              fontSize: "14px",
-              marginBottom: "4px",
-            }}
-          >
-            {t(key)}
-          </label>
-          <input
-            type="number"
-            value={key === "windowCenter" ? windowCenter ?? "" : windowWidth ?? ""}
-            onChange={(e) =>
-              key === "windowCenter"
-                ? setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
-                : setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
-            }
-            style={{
-              padding: "8px 12px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "14px",
-              outline: "none",
-              transition: "all 0.2s",
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-          />
-        </div>
-      ))}
-      <button
-        onClick={() => {
-          setWindowCenter(null);
-          setWindowWidth(null);
-        }}
-        style={{
-          padding: "8px 12px",
-          backgroundColor: "#3b82f6",
-          color: "#fff",
-          border: "none",
-          borderRadius: "8px",
-          cursor: "pointer",
-          fontWeight: 500,
-          fontSize: "14px",
-          transition: "all 0.2s",
-          alignSelf: "flex-start",
-        }}
-        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
-        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
-      >
-        {t("reset")}
-      </button>
-    </div>
-  )}
+{/* Window Settings */}
+{openSection === "window" && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      backgroundColor: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      borderRadius: "8px",
+      padding: "12px",
+    }}
+  >
+    <span
+      style={{
+        fontWeight: 600,
+        color: "#1e293b",
+        fontSize: "14px",
+        textAlign: "center",
+        width: "100%",
+      }}
+    >
+      {t("Window Settings")}
+    </span>
 
-  {/* Labels */}
-  {openSection === "labels" && (
+    {["windowCenter", "windowWidth"].map((key) => (
+      <div key={key} style={{ display: "flex", flexDirection: "column" }}>
+        <label
+          style={{
+            fontWeight: 600,
+            color: "#1e293b",
+            fontSize: "14px",
+            marginBottom: "4px",
+          }}
+        >
+          {t(key)}
+        </label>
+        <input
+          type="number"
+          value={key === "windowCenter" ? windowCenter ?? "" : windowWidth ?? ""}
+          onChange={(e) =>
+            key === "windowCenter"
+              ? setWindowCenter(e.target.value === "" ? null : Number(e.target.value))
+              : setWindowWidth(e.target.value === "" ? null : Number(e.target.value))
+          }
+          style={{
+            padding: "8px 12px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            fontSize: "14px",
+            outline: "none",
+            transition: "all 0.2s",
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+        />
+      </div>
+    ))}
+
+    <button
+      onClick={() => {
+        setWindowCenter(null);
+        setWindowWidth(null);
+      }}
+      style={{
+        padding: "8px 12px",
+        backgroundColor: "#3b82f6",
+        color: "#fff",
+        border: "none",
+        borderRadius: "6px",
+        cursor: "pointer",
+        fontWeight: 500,
+        fontSize: "14px",
+        transition: "all 0.2s",
+        alignSelf: "flex-start",
+      }}
+      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
+    >
+      {t("reset")}
+    </button>
+  </div>
+)}
+
+{/* Labels */}
+{openSection === "labels" && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      backgroundColor: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      borderRadius: "8px",
+      padding: "12px",
+    }}
+  >
+    <span
+      style={{
+        fontWeight: 600,
+        color: "#1e293b",
+        fontSize: "14px",
+        textAlign: "center",
+        width: "100%",
+      }}
+    >
+      {t("Labels")}
+    </span>
+
     <select
       value={selectedLabel}
       onChange={(e) => setSelectedLabel(e.target.value)}
       style={{
         padding: "8px 12px",
-        borderRadius: "8px",
+        borderRadius: "6px",
         border: "1px solid #cbd5e1",
         fontSize: "14px",
         outline: "none",
         transition: "all 0.2s",
+        cursor: "pointer",
       }}
       onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
       onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
@@ -744,27 +791,44 @@ return (
         </option>
       ))}
     </select>
-  )}
+  </div>
+)}
+
 {/* Opacity */}
 {openSection === "opacity" && (
   <div
     style={{
       display: "flex",
-      justifyContent: "center",
-      marginTop: "8px",
-      width: "100%",
+      flexDirection: "column",
+      gap: "12px",
+      backgroundColor: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      borderRadius: "8px",
+      padding: "12px",
+      alignItems: "center",
     }}
   >
+    <span
+      style={{
+        fontWeight: 600,
+        color: "#1e293b",
+        fontSize: "14px",
+        textAlign: "center",
+        width: "100%",
+      }}
+    >
+      {t("Opacity")}
+    </span>
+
     <div
       style={{
         display: "flex",
         alignItems: "center",
         padding: "8px 12px",
-        backgroundColor: "#f8fafc",
-        borderRadius: "12px",
+        backgroundColor: "#fff",
+        borderRadius: "8px",
         boxShadow: "inset 0 1px 3px rgba(0,0,0,0.1)",
         width: "100%",
-        maxWidth: "200px",
       }}
     >
       <input
@@ -780,13 +844,13 @@ return (
           accentColor: "#3b82f6",
           height: "6px",
           borderRadius: "4px",
-          background: "linear-gradient(to right, #3b82f6, #93c5fd)",
+          background: "linear-gradient(to right, #3b82f6, #76a4d8ff)",
           outline: "none",
         }}
       />
       <span
         style={{
-          marginLeft: "-5px", 
+          marginLeft: "8px",
           fontSize: "12px",
           fontWeight: 500,
           color: "#1e293b",
@@ -802,29 +866,56 @@ return (
 
 
 
+{/* Brush Settings */}
+{openSection === "brush" && selectedShape === "brush" && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      backgroundColor: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      borderRadius: "8px",
+      padding: "12px",
+    }}
+  >
+    <span
+      style={{
+        fontWeight: 600,
+        color: "#1e293b",
+        fontSize: "14px",
+        textAlign: "center",
+        width: "100%",
+      }}
+    >
+      {t("Brush Settings")}
+    </span>
 
-  {/* Brush Settings */}
-  {openSection === "brush" && selectedShape === "brush" && (
-    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-      <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        {t("brushColor")}:
-        <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} />
-      </label>
-      <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        {t("brushSize")}:
-        <input
-          type="range"
-          min="1"
-          max="50"
-          value={brushSize}
-          onChange={(e) => setBrushSize(Number(e.target.value))}
-        />
-        <span>{brushSize}</span>
-      </label>
-    </div>
-  )}
+    <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      {t("brushColor")}:
+      <input
+        type="color"
+        value={brushColor}
+        onChange={(e) => setBrushColor(e.target.value)}
+        style={{ cursor: "pointer" }}
+      />
+    </label>
+
+    <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      {t("brushSize")}:
+      <input
+        type="range"
+        min="1"
+        max="50"
+        value={brushSize}
+        onChange={(e) => setBrushSize(Number(e.target.value))}
+        style={{ flex: 1, cursor: "pointer" }}
+      />
+      <span style={{ minWidth: "24px", textAlign: "right" }}>{brushSize}</span>
+    </label>
+  </div>
+)}
 </div>
-
 {/* Main Viewer */}
 <div
   style={{
@@ -911,6 +1002,9 @@ return (
     currentSlice={currentSlice}
     onSliceChange={setCurrentSlice}
     setTotalSlices={setTotalSlices}
+     zoomLevel={zoomLevel}
+  zoomRegion={zoomRegion}
+  isZoomMode={isZoomMode}
     viewType={viewType} // ✅ Added
     style={{
       display: "block",
@@ -927,7 +1021,10 @@ return (
     currentSlice={currentSlice}
     onSliceChange={setCurrentSlice}
     setTotalSlices={setTotalSlices}
-    viewType={viewType} // ✅ Added
+      isZoomMode={isZoomMode}
+  zoomRegion={zoomRegion}
+  zoomLevel={zoomLevel}
+    viewType={viewType} 
     style={{
       display: "block",
       maxWidth: "100%",
@@ -1115,196 +1212,322 @@ return (
     padding: "20px 16px",
   }}
 >
+  
 {rightPanelOpen === "classification" && (
-  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-    {/* 🔹 New View Type Selector Added Here */}
-    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    
+    {/* 🔹 Section 1: View Type */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        padding: "10px",
+        backgroundColor: "#f8fafc",
+        borderRadius: "8px",
+        border: "1px solid #e2e8f0",
+      }}
+    >
       <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px" }}>
-        {t("View Type")}:
+        {t("View Type")}
       </span>
-      {["axial", "coronal", "sagittal"].map((view) => {
-        let bgColor = viewType === view ? "#3b82f6" : "#e2e8f0";
-        let textColor = viewType === view ? "#fff" : "#1e293b";
-        return (
-          <button
-            key={view}
-            onClick={() => setViewType(view)}
-            style={{
-              padding: "6px 10px",
-              backgroundColor: bgColor,
-              color: textColor,
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontSize: "12px",
-              transition: "transform 0.1s, box-shadow 0.2s",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = "scale(1.05)";
-              e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          >
-            {t(view.charAt(0).toUpperCase() + view.slice(1))}
-          </button>
-        );
-      })}
+      <div style={{ display: "flex", gap: "6px" }}>
+        {["axial", "coronal", "sagittal"].map((view) => {
+          const isActive = viewType === view;
+          return (
+            <button
+              key={view}
+              onClick={() => setViewType(view)}
+              style={{
+                padding: "6px 10px",
+                backgroundColor: isActive ? "#3b82f6" : "#e2e8f0",
+                color: isActive ? "#fff" : "#1e293b",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "12px",
+                transition: "transform 0.1s, box-shadow 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              {t(view.charAt(0).toUpperCase() + view.slice(1))}
+            </button>
+          );
+        })}
+      </div>
     </div>
-    {/* 🔹 End of New Section */}
 
-    {/* Existing Classification Section */}
-    <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px" }}>
-      {t("classification")} (Slice {currentSlice + 1}):
-    </span>
-    {"positive,negative,clear".split(",").map((cls) => {
-      let bgColor =
-        cls === "positive"
-          ? "#059669"
-          : cls === "negative"
-          ? "#dc2626"
-          : "#f59e0b";
-      return (
-        <button
-          key={cls}
-          onClick={() => {
-            if (cls === "clear") {
-              setClassificationByFileAndSlice((prev) => {
-                const updated = { ...(prev[selectedFileName] || {}) };
-                delete updated[currentSlice];
-                return { ...prev, [selectedFileName]: updated };
-              });
-            } else {
-              setClassificationByFileAndSlice((prev) => ({
-                ...prev,
-                [selectedFileName]: {
-                  ...(prev[selectedFileName] || {}),
-                  [currentSlice]: cls,
-                },
-              }));
-            }
-          }}
+    {/* 🔹 Section 2: Classification */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        padding: "10px",
+        backgroundColor: "#f8fafc",
+        borderRadius: "8px",
+        border: "1px solid #e2e8f0",
+      }}
+    >
+      <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px" }}>
+        {t("Classification")} (Slice {currentSlice + 1}):
+      </span>
+
+      {/* Classification Buttons */}
+      <div style={{ display: "flex", gap: "6px" }}>
+        {["positive", "negative", "clear"].map((cls) => {
+          const bgColor =
+            cls === "positive"
+              ? "#059669"
+              : cls === "negative"
+              ? "#dc2626"
+              : "#f59e0b";
+          return (
+            <button
+              key={cls}
+              onClick={() => {
+                if (cls === "clear") {
+                  setClassificationByFileAndSlice((prev) => {
+                    const updated = { ...(prev[selectedFileName] || {}) };
+                    delete updated[currentSlice];
+                    return { ...prev, [selectedFileName]: updated };
+                  });
+                } else {
+                  setClassificationByFileAndSlice((prev) => ({
+                    ...prev,
+                    [selectedFileName]: {
+                      ...(prev[selectedFileName] || {}),
+                      [currentSlice]: cls,
+                    },
+                  }));
+                }
+              }}
+              style={{
+                padding: "6px 10px",
+                backgroundColor: bgColor,
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "12px",
+                transition: "transform 0.1s, box-shadow 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              {t(cls)}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Additional Inputs Section */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          marginTop: "8px",
+        }}
+      >
+        {/* Checkbox Example */}
+        <label
           style={{
-            padding: "6px 10px",
-            backgroundColor: bgColor,
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontWeight: 500,
             fontSize: "12px",
-            transition: "transform 0.1s, box-shadow 0.2s",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = "scale(1.05)";
-            e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.boxShadow = "none";
+            color: "#1e293b",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
           }}
         >
-          {t(cls)}
-        </button>
-      );
-    })}
+          <input
+            type="checkbox"
+            checked={getInputsForCurrent().checkbox}
+            onChange={(e) =>
+              updateInputsForCurrent({ checkbox: e.target.checked })
+            }
+            style={{ width: "14px", height: "14px", cursor: "pointer" }}
+          />
+          {t("Checkbox Example")}
+        </label>
+
+        {/* Number Input */}
+        <label
+          style={{
+            fontSize: "12px",
+            color: "#1e293b",
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+          }}
+        >
+          {t("Number Input Example")}:
+          <input
+            type="number"
+            value={getInputsForCurrent().number}
+            onChange={(e) =>
+              updateInputsForCurrent({ number: e.target.value })
+            }
+            style={{
+              padding: "6px 8px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "6px",
+              fontSize: "12px",
+              outline: "none",
+              transition: "border 0.2s",
+            }}
+            onFocus={(e) =>
+              (e.currentTarget.style.border = "1px solid #2563eb")
+            }
+            onBlur={(e) =>
+              (e.currentTarget.style.border = "1px solid #cbd5e1")
+            }
+          />
+        </label>
+
+        {/* Text Input */}
+        <label
+          style={{
+            fontSize: "12px",
+            color: "#1e293b",
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+          }}
+        >
+          {t("Text Input Example")}:
+          <input
+            type="text"
+            value={getInputsForCurrent().text}
+            onChange={(e) =>
+              updateInputsForCurrent({ text: e.target.value })
+            }
+            style={{
+              padding: "6px 8px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "6px",
+              fontSize: "12px",
+              outline: "none",
+              transition: "border 0.2s",
+            }}
+            onFocus={(e) =>
+              (e.currentTarget.style.border = "1px solid #2563eb")
+            }
+            onBlur={(e) =>
+              (e.currentTarget.style.border = "1px solid #cbd5e1")
+            }
+          />
+        </label>
+
+        {/* Radio Inputs */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span
+            style={{
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "#1e293b",
+            }}
+          >
+            {t("Radio Example")}:
+          </span>
+          {["Option A", "Option B", "Option C"].map((opt, idx) => (
+            <label
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "12px",
+                color: "#1e293b",
+              }}
+            >
+              <input
+                type="radio"
+                name={`radioExample-${selectedFileName}-${currentSlice}`}
+                checked={getInputsForCurrent().radio === opt}
+                onChange={() => updateInputsForCurrent({ radio: opt })}
+                style={{ width: "14px", height: "14px", cursor: "pointer" }}
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
+
+        {/* Select Example */}
+        <label
+          style={{
+            fontSize: "12px",
+            color: "#1e293b",
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+          }}
+        >
+          {t("Select Example")}:
+          <select
+            value={getInputsForCurrent().select}
+            onChange={(e) =>
+              updateInputsForCurrent({ select: e.target.value })
+            }
+            style={{
+              padding: "6px 8px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "6px",
+              fontSize: "12px",
+              cursor: "pointer",
+              outline: "none",
+              transition: "border 0.2s",
+            }}
+            onFocus={(e) =>
+              (e.currentTarget.style.border = "1px solid #2563eb")
+            }
+            onBlur={(e) =>
+              (e.currentTarget.style.border = "1px solid #cbd5e1")
+            }
+          >
+            <option value="">{t("Choose...")}</option>
+            <option value="1">Option 1</option>
+            <option value="2">Option 2</option>
+            <option value="3">Option 3</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+)}
+
+ {rightPanelOpen === "slices" && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      backgroundColor: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      borderRadius: "8px",
+      padding: "12px",
+      position: "relative",
+    }}
+  >
 
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
-                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <input
-                    type="checkbox"
-                    checked={getInputsForCurrent().checkbox}
-                    onChange={(e) => updateInputsForCurrent({ checkbox: e.target.checked })}
-                    style={{ width: "14px", height: "14px", cursor: "pointer" }}
-                  />
-                  {t("Checkbox Example")}
-                </label>
-                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  {t("Number Input Example")}:
-                  <input
-                    type="number"
-                    value={getInputsForCurrent().number}
-                    onChange={(e) => updateInputsForCurrent({ number: e.target.value })}
-                    style={{
-                      padding: "6px 8px",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      outline: "none",
-                      transition: "border 0.2s",
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
-                    onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
-                  />
-                </label>
 
-                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  {t("Text Input Example")}:
-                  <input
-                    type="text"
-                    value={getInputsForCurrent().text}
-                    onChange={(e) => updateInputsForCurrent({ text: e.target.value })}
-                    style={{
-                      padding: "6px 8px",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      outline: "none",
-                      transition: "border 0.2s",
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
-                    onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
-                  />
-                </label>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#1e293b" }}>{t("Radio Example")}:</span>
-                  {["Option A", "Option B", "Option C"].map((opt, idx) => (
-                    <label key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#1e293b" }}>
-                      <input
-                        type="radio"
-                        name={`radioExample-${selectedFileName}-${currentSlice}`}
-                        checked={getInputsForCurrent().radio === opt}
-                        onChange={() => updateInputsForCurrent({ radio: opt })}
-                        style={{ width: "14px", height: "14px", cursor: "pointer" }}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-
-                <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  {t("Select Example")}:
-                  <select
-                    value={getInputsForCurrent().select}
-                    onChange={(e) => updateInputsForCurrent({ select: e.target.value })}
-                    style={{
-                      padding: "6px 8px",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      cursor: "pointer",
-                      outline: "none",
-                      transition: "border 0.2s",
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
-                    onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
-                  >
-                    <option value="">{t("Choose...")}</option>
-                    <option value="1">Option 1</option>
-                    <option value="2">Option 2</option>
-                    <option value="3">Option 3</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-  )}
-  {rightPanelOpen === "slices" && (
-     <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "relative" }}>
+    {/* 🔹 Choose Slice Button */}
     <button
       onClick={() => setShowSlices((prev) => !prev)}
       style={{
@@ -1322,7 +1545,7 @@ return (
       onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
       onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
     >
-      {t("choose a slice")}
+      {t("Choose a Slice")}
     </button>
 
     {showSlices && (
@@ -1330,7 +1553,7 @@ return (
         ref={slicesRef}
         style={{
           position: "absolute",
-          top: "110%",
+          top: "105%",
           left: 0,
           right: 0,
           background: "#fff",
@@ -1341,6 +1564,7 @@ return (
           zIndex: 20,
           display: "flex",
           flexDirection: "column",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
         }}
       >
         {Array.from({ length: totalSlices }, (_, i) => (
@@ -1363,7 +1587,8 @@ return (
             }}
             onMouseOver={(e) => (e.currentTarget.style.background = "#f0f9ff")}
             onMouseOut={(e) =>
-              (e.currentTarget.style.background = i === currentSlice ? "#e0f2fe" : "#fff")
+              (e.currentTarget.style.background =
+                i === currentSlice ? "#e0f2fe" : "#fff")
             }
           >
             Slice {i + 1}
@@ -1372,65 +1597,117 @@ return (
       </div>
     )}
 
-<div style={{ width: "80%", margin: "12px auto", textAlign: "center" }}>
-  <input
-    type="range"
-    min={0}
-    max={Math.max(totalSlices - 1, 0)}
-    value={currentSlice}
-    onChange={(e) => setCurrentSlice(Number(e.target.value))}
-    style={{
-      width: "100%",
-      cursor: "pointer",
-      height: "6px",         
-      marginBottom: "6px",   
-    }}
-  />
-  <div style={{ fontSize: "11px", color: "#64748b" }}>
-    {t("slice")} {currentSlice + 1} / {totalSlices}
+    <div
+      style={{
+        width: "90%",
+        margin: "0 auto",
+        textAlign: "center",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <input
+        type="range"
+        min={0}
+        max={Math.max(totalSlices - 1, 0)}
+        value={currentSlice}
+        onChange={(e) => setCurrentSlice(Number(e.target.value))}
+        style={{
+          width: "100%",
+          cursor: "pointer",
+          height: "6px",
+          marginBottom: "6px",
+        }}
+      />
+      <div style={{ fontSize: "11px", color: "#64748b" }}>
+        {t("Slice")} {currentSlice + 1} / {totalSlices}
+      </div>
+    </div>
   </div>
-</div>
+)}
 
+ {rightPanelOpen === "zoom" && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "10px",
+      backgroundColor: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      borderRadius: "8px",
+      padding: "12px",
+      position: "relative",
+    }}
+  >
+    <span
+      style={{
+        fontWeight: 600,
+        color: "#1e293b",
+        fontSize: "14px",
+        textAlign: "center",
+        width: "100%",
+      }}
+    >
+      {t("Zoom Controls")}
+    </span>
+
+    <button
+      onClick={() => setIsZoomMode((prev) => !prev)}
+      style={{
+        padding: "6px 10px",
+        backgroundColor: isZoomMode ? "#f59e0b" : "#6366f1",
+        color: "#fff",
+        border: "none",
+        borderRadius: "6px",
+        cursor: "pointer",
+        fontWeight: 500,
+        fontSize: "13px",
+        transition: "transform 0.1s, box-shadow 0.2s",
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.transform = "scale(1.05)";
+        e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "none";
+      }}
+    >
+      {isZoomMode ? t("Cancel Zoom") : t("Select Zoom Area")}
+    </button>
+
+    <button
+      onClick={() => {
+        setZoomLevel(1);
+        setZoomRegion(null);
+        setIsZoomMode(false);
+      }}
+      style={{
+        padding: "6px 10px",
+        backgroundColor: "#64748b",
+        color: "#fff",
+        border: "none",
+        borderRadius: "6px",
+        cursor: "pointer",
+        fontWeight: 500,
+        fontSize: "13px",
+        transition: "transform 0.1s, box-shadow 0.2s",
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.transform = "scale(1.05)";
+        e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "none";
+      }}
+    >
+      {t("Reset Zoom")}
+    </button>
   </div>
-  )}
-  {rightPanelOpen === "zoom" && (
-    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <button
-                onClick={() => setIsZoomMode((prev) => !prev)}
-                style={{
-                  padding: "6px 10px",
-                  backgroundColor: isZoomMode ? "#f59e0b" : "#6366f1",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontWeight: 500,
-                  fontSize: "12px",
-                }}
-              >
-                {isZoomMode ? t("cancelZoom") : t("selectZoomArea")}
-              </button>
-              <button
-                onClick={() => {
-                  setZoomLevel(1);
-                  setZoomRegion(null);
-                  setIsZoomMode(false);
-                }}
-                style={{
-                  padding: "6px 10px",
-                  backgroundColor: "#64748b",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontWeight: 500,
-                  fontSize: "12px",
-                }}
-              >
-                {t("resetZoom")}
-              </button>
-            </div>
-  )}
+)}
+
   {rightPanelOpen === "help" && (
     <> <div><b>{t("classification")}:</b> {t("Assign classification to a slice")}</div>
   <div><b>{t("Slices Settings")}:</b> {t("Navigate and jump between slices")}</div>
