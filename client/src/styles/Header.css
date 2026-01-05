@@ -384,3 +384,135 @@
 .header-container {
   animation: slideIn 0.3s ease-out;
 }
+
+/* Add these to your existing Header.css file */
+
+/* Small mobile devices (below 480px) */
+@media (max-width: 480px) {
+  .header-container {
+    flex-wrap: nowrap !important; /* Prevent wrapping on very small screens */
+    padding: 0 12px !important;
+    height: 56px;
+    gap: 8px;
+  }
+  
+  .brand-name {
+    font-size: 18px;
+    flex: 0 1 auto !important; /* Don't take all available space */
+    order: 1;
+    margin: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px; /* Limit brand name width */
+  }
+  
+  .language-selector {
+    min-width: 90px !important;
+    padding: 6px 8px !important;
+    padding-left: 28px !important;
+    background-size: 14px;
+    background-position: 8px center;
+    font-size: 11px !important;
+    order: 0;
+  }
+  
+  .auth-buttons {
+    order: 2;
+    gap: 6px !important;
+  }
+  
+  /* Hide button text on mobile */
+  .auth-button span:not(.nav-icon) {
+    display: none !important;
+  }
+  
+  .auth-button {
+    padding: 8px !important;
+    min-width: 40px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Keep only icons for buttons */
+  .login-button,
+  .signup-button,
+  .logout-button {
+    width: 36px;
+    padding: 0 !important;
+  }
+  
+  /* Adjust user info for mobile */
+  .user-info {
+    padding: 4px 6px !important;
+    min-width: auto;
+  }
+  
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+  
+  .user-details {
+    display: none !important;
+  }
+  
+  /* Ensure language selector doesn't break */
+  .language-selector option {
+    font-size: 12px;
+    padding: 8px;
+  }
+  
+  /* Prevent overflow */
+  .header-container > * {
+    flex-shrink: 0;
+  }
+}
+
+/* Extra small devices (below 360px) */
+@media (max-width: 360px) {
+  .brand-name {
+    font-size: 16px;
+    max-width: 100px;
+  }
+  
+  .language-selector {
+    min-width: 80px !important;
+    padding-left: 26px !important;
+    font-size: 10px !important;
+  }
+  
+  .auth-button {
+    width: 34px;
+    height: 34px;
+  }
+  
+  .user-avatar {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+/* Fix for landscape mobile */
+@media (max-height: 480px) and (orientation: landscape) {
+  .header-container {
+    height: 52px;
+    padding: 0 16px !important;
+  }
+  
+  .brand-name {
+    font-size: 20px;
+    max-width: 150px;
+  }
+}
+
+/* Ensure language selector text is visible */
+.language-selector option {
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 14px;
+  padding: 12px;
+}

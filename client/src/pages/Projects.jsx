@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 
 const Projects = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
   
   // Redirect if not authenticated
@@ -79,6 +79,8 @@ const Projects = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
+  const [ownerEmails, setOwnerEmails] = useState('');
+  const [description, setDescription] = useState('');
 
   const annotationTypes = [
     { value: "rectangle", label: "Rectangle", icon: RectangleHorizontal, color: "#3B82F6" },
@@ -282,30 +284,50 @@ const Projects = () => {
     try {
       // Try to parse from raw JSON first
       const parsedData = JSON.parse(rawJsonContent);
+      
+      // Process owners emails
+      const ownerEmailsArray = ownerEmails
+        ? ownerEmails.split(',').map(email => email.trim()).filter(email => email)
+        : [];
+      
       return {
         name: projectName,
-        description: '', 
-        labels: parsedData.labels || [],
-        attributes: parsedData.attributes || []
+        description: description || '',
+        labels: parsedData.labels || labels.map(label => ({
+          name: label.name,
+          type: label.type,
+          color: label.color
+        })),
+        attributes: parsedData.attributes || attributes.map(attr => ({
+          name: attr.name,
+          type: attr.type,
+          values: attr.values,
+          mutable: attr.mutable
+        })),
+        ownerEmails: ownerEmailsArray
       };
     } catch (error) {
+      console.error('Error parsing JSON:', error);
       // Fallback to current state
+      const ownerEmailsArray = ownerEmails
+        ? ownerEmails.split(',').map(email => email.trim()).filter(email => email)
+        : [];
+      
       return {
         name: projectName,
-        description: '', 
+        description: description || '',
         labels: labels.map(label => ({
-          id: label.id,
           name: label.name,
           type: label.type,
           color: label.color
         })),
         attributes: attributes.map(attr => ({
-          id: attr.id,
           name: attr.name,
           type: attr.type,
           values: attr.values,
           mutable: attr.mutable
-        }))
+        })),
+        ownerEmails: ownerEmailsArray
       };
     }
   };
@@ -326,13 +348,20 @@ const Projects = () => {
 
       const response = await axios.post(
         'http://localhost:5000/api/projects',
-        projectData
+        projectData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
       );
 
       setSubmitSuccess('Project created successfully! You can create another one.');
       
       // Reset the form
       setProjectName('');
+      setDescription('');
+      setOwnerEmails('');
       setLabels([]);
       setAttributes([]);
       setCurrentLabel({
@@ -380,7 +409,12 @@ const Projects = () => {
 
       const response = await axios.post(
         'http://localhost:5000/api/projects',
-        projectData
+        projectData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
       );
 
       setSubmitSuccess('Project created successfully! Redirecting...');
@@ -388,10 +422,14 @@ const Projects = () => {
       // Reload projects
       await loadProjects();
       
-      // Navigate to home/tasks page after a short delay
-      setTimeout(() => {
+      // Navigate to the new project page
+      if (response.data.project && response.data.project.id) {
+        setTimeout(() => {
+          navigate(`/projects/${response.data.project.id}`);
+        }, 1000);
+      } else {
         navigate('/home');
-      }, 1000);
+      }
     } catch (error) {
       console.error('Error creating project:', error);
       setSubmitError(error.response?.data?.error || 'Failed to create project. Please try again.');
@@ -401,7 +439,11 @@ const Projects = () => {
 
   const loadProjects = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/projects');
+      const response = await axios.get('http://localhost:5000/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       if (response.data.projects) {
         const loadedProjects = response.data.projects.map(project => ({
@@ -414,7 +456,9 @@ const Projects = () => {
           status: project.status || 'active',
           tasks: project.tasks || 0,
           progress: project.progress || 0,
-          lastModified: new Date(project.updatedAt).toLocaleString()
+          lastModified: new Date(project.updatedAt).toLocaleString(),
+          owners: project.owners || [],
+          ownerDetails: project.ownerDetails || []
         }));
         
         setProjects(loadedProjects);
@@ -425,9 +469,11 @@ const Projects = () => {
   };
 
   // Load existing projects on component mount
-  React.useEffect(() => {
-    loadProjects();
-  }, []);
+  useEffect(() => {
+    if (token) {
+      loadProjects();
+    }
+  }, [token]);
 
   const handleSelectProject = (projectId) => {
     setSelectedProjects(prev => 
@@ -455,7 +501,11 @@ const Projects = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/projects/${projectId}`);
+      await axios.delete(`http://localhost:5000/api/projects/${projectId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       setProjects(prevProjects => prevProjects.filter(p => p.id !== projectId));
       
@@ -546,6 +596,29 @@ const Projects = () => {
               onChange={(e) => setProjectName(e.target.value)}
             />
           </div>
+
+          <div style={{width: '100%'}}>
+            <p>Description (Optional)</p>
+            <textarea 
+              placeholder="Enter project description"
+              style={{width: '100%', padding: '5px', minHeight: '60px'}}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div style={{width: '100%'}}>
+            <p>Additional Owners (Optional)</p>
+            <input 
+              type="text" 
+              placeholder="Enter comma-separated emails (user1@example.com, user2@example.com)"
+              style={{width: '100%', height:'30px', padding: '5px'}}
+              value={ownerEmails}
+              onChange={(e) => setOwnerEmails(e.target.value)}
+            />
+            <small style={{color: '#666'}}>Note: You will always be an owner of the project.</small>
+          </div>
+
           <div>
             <p>Labels & Attributes:</p>
             <div style={{display: 'flex', flexDirection: 'row', gap: '10px', marginBottom:'30px', borderBottom: '1px solid gray'}}>
@@ -1239,6 +1312,49 @@ const Projects = () => {
                           color: '#0369a1'
                         }}>
                           +{project.attributes.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Owners */}
+                {project.ownerDetails && project.ownerDetails.length > 0 && (
+                  <div style={{marginBottom: '12px'}}>
+                    <p style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#475569',
+                      marginBottom: '8px'
+                    }}>Owners ({project.ownerDetails.length})</p>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px'
+                    }}>
+                      {project.ownerDetails.slice(0, 3).map((owner, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#fef3c7',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            color: '#92400e'
+                          }}
+                        >
+                          {owner.name || owner.email}
+                        </span>
+                      ))}
+                      {project.ownerDetails.length > 3 && (
+                        <span style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#fef3c7',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          color: '#92400e'
+                        }}>
+                          +{project.ownerDetails.length - 3} more
                         </span>
                       )}
                     </div>
