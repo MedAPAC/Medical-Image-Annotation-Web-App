@@ -12,11 +12,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "i18next": "^25.3.2",
+    "i18next": "^25.5.2",
     "i18next-express-middleware": "^2.0.0",
     "i18next-fs-backend": "^2.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.20.0",
     "multer": "^2.0.2"
   }
 }
