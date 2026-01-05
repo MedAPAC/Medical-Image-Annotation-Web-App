@@ -141,12 +141,12 @@ const SignupPage = () => {
           </div>
 
           {/* Medical Professional Note */}
-          <div className="medical-note">
+          {/* <div className="medical-note">
             <p>
               <Shield size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
               <strong>HIPAA Compliant:</strong> Your medical data is secured with enterprise-grade encryption
             </p>
-          </div>
+          </div> */}
 
           {/* Error Message */}
           {error && (
