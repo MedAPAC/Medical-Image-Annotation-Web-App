@@ -86,12 +86,8 @@ const Projects = () => {
     { value: "rectangle", label: "Rectangle", icon: RectangleHorizontal, color: "#3B82F6" },
     { value: "polygon", label: "Polygon", icon: Shapes, color: "#8B5CF6" },
     { value: "polyline", label: "Polyline", icon: PenTool, color: "#10B981" },
-    { value: "points", label: "Points", icon: Circle, color: "#F59E0B" },
     { value: "ellipse", label: "Ellipse", icon: Circle, color: "#EF4444" },
-    { value: "cuboid", label: "Cuboid", icon: Box, color: "#06B6D4" },
-    { value: "mask", label: "Mask", icon: Brush, color: "#84CC16" },
-    { value: "tag", label: "Tag", icon: Tag, color: "#FF9F43" }
-  ];
+    { value: "brush", label: "Brush", icon: Brush, color: "#84CC16" }  ];
 
   const attributeTypes = [
     { value: "text", label: "Text" },
