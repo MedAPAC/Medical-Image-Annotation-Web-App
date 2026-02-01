@@ -25,7 +25,6 @@ export const SHAPES = [
 
 export const SECTION_ICONS = {
   window: windowIcon,
-  labels: labelsIcon,
   opacity: opacityIcon,
   brush: brushSettingIcon,
 };
