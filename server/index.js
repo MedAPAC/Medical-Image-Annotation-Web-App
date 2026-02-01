@@ -12,6 +12,7 @@ const port = 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -162,77 +163,57 @@ const checkTaskAccess = async (req, res, next) => {
   }
 };
 
-// Configure multer for task-specific file uploads
+
+
+
 const taskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const taskId = req.params.taskId || Date.now().toString();
-    const uploadDir = `uploads/tasks/${taskId}`;
+    // Use the Task ID or a temp folder
+    const taskId = req.params.taskId; 
+    const uploadDir = path.join(__dirname, 'uploads', 'tasks', taskId);
+    
+    // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    const originalName = file.originalname.toLowerCase();
+    let extension = path.extname(originalName);
+
+    // ➤ CRITICAL FIX: Preserve .nii.gz extension
+    if (originalName.endsWith('.nii.gz')) {
+      extension = '.nii.gz';
+    }
+    if (originalName.endsWith('.nii')) {
+      extension = '.nii';
+    }
+
+    // Create unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    cb(null, uniqueSuffix + extension);
   }
 });
 
 const taskUpload = multer({
   storage: taskStorage,
+  limits: { fileSize: 1000 * 1024 * 1024 }, // 500MB
   fileFilter: (req, file, cb) => {
-    console.log('File upload attempt:', {
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size
-    });
+    // Allow all standard images and medical formats
+    const allowed = ['.jpg', '.jpeg', '.png', '.nii', '.nii.gz', '.dcm', '.dicom'];
+    const ext = path.extname(file.originalname).toLowerCase();
     
-    const fileName = file.originalname.toLowerCase();
-    
-    // Check by file extension (more reliable for medical files)
-    const allowedExtensions = [
-      '.jpg', '.jpeg', '.png', '.gif', '.bmp', 
-      '.tiff', '.tif', '.nii', '.nii.gz', '.dcm', '.dicom'
-    ];
-    
-    const fileExtension = path.extname(fileName).toLowerCase();
-    
-    // Check if extension is in allowed list
-    const hasAllowedExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
-    
-    if (hasAllowedExtension) {
-      console.log('File accepted by extension:', fileName);
-      return cb(null, true);
+    // Check .nii.gz explicitly
+    if (file.originalname.toLowerCase().endsWith('.nii.gz') || allowed.includes(ext) || file.originalname.toLowerCase().endsWith('.nii')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
     }
-    
-    // Also check MIME type for additional security
-    const allowedMimeTypes = [
-      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
-      'image/bmp', 'image/tiff', 'image/tif',
-      'application/octet-stream',
-      'application/x-nifti',
-      'application/dicom',
-      'application/x-dicom'
-    ];
-    
-    if (allowedMimeTypes.includes(file.mimetype)) {
-      console.log('File accepted by MIME type:', file.mimetype);
-      return cb(null, true);
-    }
-    
-    // Log for debugging
-    console.log('File rejected:', {
-      name: file.originalname,
-      mimetype: file.mimetype,
-      extension: fileExtension
-    });
-    
-    cb(new Error(`File type not supported: ${file.originalname}. Allowed: images (JPG, PNG, GIF, BMP, TIFF) and medical files (DICOM, NIfTI).`));
-  },
-  limits: {
-    fileSize: 500 * 1024 * 1024 // 500MB limit
   }
 });
+
+
 
 // ==================== HELPER FUNCTIONS ====================
 

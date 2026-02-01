@@ -231,7 +231,7 @@ const AnnotationCanvas = forwardRef(
         canvas.freeDrawingBrush.color = getRgba(brushColor, annotationOpacity);
         canvas.freeDrawingBrush.width = brushSize || 10;
         // INCREASED DECIMATE TO REDUCE POINTS FROM BRUSH
-        canvas.freeDrawingBrush.decimate = 20; 
+        canvas.freeDrawingBrush.decimate = 40; 
       } else {
         // If switching away from polygon/polyline, clear temps
         clearPolygonTemp(canvas);
@@ -507,7 +507,7 @@ const AnnotationCanvas = forwardRef(
 
           // Generate points around the ellipse to make it a Polygon
           // REDUCED POINTS HERE (was 60, now 20)
-          const numPoints = 20; 
+          const numPoints = 10; 
           const points = [];
           for (let i = 0; i < numPoints; i++) {
               const angle = (i / numPoints) * 2 * Math.PI;
