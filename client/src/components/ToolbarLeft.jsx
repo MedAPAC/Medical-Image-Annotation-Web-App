@@ -3,6 +3,7 @@ import React from "react";
 
 const ToolbarLeft = ({
   shapes,
+  allowedShapeIds = [], // New prop: list of allowed tool names/ids
   selectedShape,
   setSelectedShape,
   setToolChangeId,
@@ -29,15 +30,25 @@ const ToolbarLeft = ({
         gap: "16px",
       }}
     >
+      {/* Annotation Tools Section */}
       <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
         {shapes.map(({ name, icon }) => {
+          // Check if this specific tool is allowed
+          // We assume 'name' here matches the IDs in your allowedShapeIds list (e.g., 'brush', 'rectangle')
+          const isAllowed = allowedShapeIds.includes(name);
+          const isSelected = selectedShape === name;
+
           return (
             <button
               key={name}
+              disabled={!isAllowed} // Disable interaction
               onClick={() => {
-                setSelectedShape(name);
-                setToolChangeId((prev) => prev + 1);
+                if (isAllowed) {
+                  setSelectedShape(name);
+                  setToolChangeId((prev) => prev + 1);
+                }
               }}
+              title={isAllowed ? name : "Tool disabled for this project"}
               style={{
                 width: "48px",
                 height: "48px",
@@ -45,9 +56,19 @@ const ToolbarLeft = ({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: "12px",
-                border: selectedShape === name ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                background: selectedShape === name ? "#eff6ff" : "#fff",
+                // Conditional Border
+                border: isSelected 
+                  ? "2px solid #2563eb" 
+                  : "1px solid #cbd5e1",
+                // Conditional Background
+                background: isSelected 
+                  ? "#eff6ff" 
+                  : isAllowed ? "#fff" : "#f1f5f9", // darker grey if disabled
+                // Conditional Opacity & Cursor
+                opacity: isAllowed ? 1 : 0.5,
+                cursor: isAllowed ? "pointer" : "not-allowed",
                 transition: "all 0.2s",
+                pointerEvents: isAllowed ? "auto" : "none",
               }}
             >
               <img
@@ -56,9 +77,10 @@ const ToolbarLeft = ({
                 style={{
                   width: 24,
                   height: 24,
-                  filter: selectedShape === name 
+                  // Logic: Selected = Blue, Disabled = Grayscale, Standard = None
+                  filter: isSelected 
                     ? "invert(34%) sepia(87%) saturate(3390%) hue-rotate(212deg) brightness(95%) contrast(95%)" 
-                    : "none",
+                    : (!isAllowed ? "grayscale(100%)" : "none"),
                 }}
               />
             </button>
@@ -66,6 +88,7 @@ const ToolbarLeft = ({
         })}
       </div>
 
+      {/* Drawer/Panel Toggles Section (Unchanged logic, just keeping style consistent) */}
       {Object.entries(sectionIcons).map(([id, icon]) => (
         <button
           key={id}

@@ -1,5 +1,5 @@
 // pages/Annotation.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from '../AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -28,24 +28,24 @@ function Annotation() {
   const navigate = useNavigate();
   const { taskId } = useParams();
 
-  // Task Data Hook - Now includes uploadedFiles
+  // 1. Task Data Hook
   const {
     isLoading,
     error,
     taskData,
     setTaskData,
-    uploadedFiles: taskUploadedFiles, // Renamed to avoid conflict
+    uploadedFiles: taskUploadedFiles,
     setUploadedFiles: setTaskUploadedFiles,
     fetchTask
   } = useTaskData(taskId, isAuthenticated, token, i18n.language, navigate);
 
-  // Annotation Data Hook
+  // 2. Annotation Data Hook
   const {
     selectedShape,
     setSelectedShape,
     selectedLabel,
     setSelectedLabel,
-    labelOptions,
+    labelOptions: defaultLabelOptions,
     selectedFileName,
     setSelectedFileName,
     windowCenter,
@@ -83,13 +83,13 @@ function Annotation() {
     annotationRefs
   } = useAnnotationData();
 
-  // File Handling Hook - For additional uploads
+  // 3. File Handling Hook
   const {
     files,
     setFiles,
     uploadProgress,
     setUploadProgress,
-    uploadedFiles: newlyUploadedFiles, // Renamed
+    uploadedFiles: newlyUploadedFiles,
     setUploadedFiles: setNewlyUploadedFiles,
     uploadMode,
     setUploadMode,
@@ -98,36 +98,89 @@ function Annotation() {
     handleUpload
   } = useFileHandling(taskId, token, setSelectedFileName);
 
-  // Combine task files and newly uploaded files
-  const allUploadedFiles = [...taskUploadedFiles, ...newlyUploadedFiles];
+  // -----------------------------------------------------------------------
+  // PROJECT CONFIGURATION LOGIC
+  // -----------------------------------------------------------------------
 
-  // Set initial selected file
+  const projectConfig = useMemo(() => {
+    if (!taskData) return null;
+    return taskData.project || taskData;
+  }, [taskData]);
+
+  // A. Determine Allowed Shape IDs (Strings only)
+  // Instead of filtering the objects, we just get a whitelist of IDs.
+  const allowedShapeIds = useMemo(() => {
+    // If no labels defined, assume all are allowed (or empty, depending on preference)
+    if (!projectConfig || !projectConfig.labels || projectConfig.labels.length === 0) {
+      return SHAPES.map(s => s.id); 
+    }
+
+    // Get unique types defined in project labels
+    return Array.from(new Set(projectConfig.labels.map(l => l.type)));
+  }, [projectConfig]);
+
+  // B. Configure Label Options
+  const projectLabelOptions = useMemo(() => {
+    if (!projectConfig || !projectConfig.labels) return defaultLabelOptions;
+
+    return projectConfig.labels.map(l => ({
+      value: l.name,
+      label: l.name,
+      color: l.color,
+      type: l.type
+    }));
+  }, [projectConfig, defaultLabelOptions]);
+
+  // C. Configure Attributes
+  const projectAttributes = useMemo(() => {
+    if (!projectConfig || !projectConfig.attributes) return [];
+    return projectConfig.attributes;
+  }, [projectConfig]);
+
+  // D. Ensure Selected Shape is Valid
+  // If the user's current selection isn't in the allowed list, force switch to the first allowed one.
+  useEffect(() => {
+    if (allowedShapeIds.length > 0 && selectedShape) {
+      if (!allowedShapeIds.includes(selectedShape)) {
+        // Default to the first allowed shape
+        setSelectedShape(allowedShapeIds[0]);
+      }
+    }
+  }, [allowedShapeIds, selectedShape, setSelectedShape]);
+
+  // E. Auto-select Color based on Label
+  useEffect(() => {
+    if (selectedLabel && projectLabelOptions) {
+      const labelDef = projectLabelOptions.find(l => l.value === selectedLabel);
+      if (labelDef && labelDef.color) {
+        setBrushColor(labelDef.color);
+      }
+    }
+  }, [selectedLabel, projectLabelOptions, setBrushColor]);
+
+  // -----------------------------------------------------------------------
+
+  const allUploadedFiles = useMemo(() => {
+    return [...taskUploadedFiles, ...newlyUploadedFiles];
+  }, [taskUploadedFiles, newlyUploadedFiles]);
+
   useEffect(() => {
     if (allUploadedFiles.length > 0 && !selectedFileName) {
       setSelectedFileName(allUploadedFiles[0].originalName);
     }
-  }, [allUploadedFiles, selectedFileName]);
+  }, [allUploadedFiles, selectedFileName, setSelectedFileName]);
 
-  // Authentication Check
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
 
-  // Load task data on mount
   useEffect(() => {
     if (isAuthenticated && token && taskId) {
       fetchTask();
     }
   }, [isAuthenticated, token, taskId, fetchTask]);
-
-  // Handle successful file upload from FileUploadSection
-  const handleUploadComplete = (newFiles) => {
-    setNewlyUploadedFiles(prev => [...prev, ...newFiles]);
-    // Refresh task data to get updated file list
-    fetchTask();
-  };
 
   if (isLoading) {
     return (
@@ -154,17 +207,10 @@ function Annotation() {
         flexDirection: "column",
         gap: "20px"
       }}>
-        <div style={{ fontSize: "18px", color: "#dc2626" }}>{error || "Task not found or you don't have access."}</div>
+        <div style={{ fontSize: "18px", color: "#dc2626" }}>{error || "Task not found."}</div>
         <button 
           onClick={() => navigate('/tasks')}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#3b82f6",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer"
-          }}
+          style={{ padding: "10px 20px", backgroundColor: "#3b82f6", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}
         >
           Back to Tasks
         </button>
@@ -182,7 +228,6 @@ function Annotation() {
       }}
     >
       <Header page="tasks" />
-      
       <TaskInfoBar taskData={taskData} />
       
       {allUploadedFiles.length === 0 && !isLoading && (
@@ -193,7 +238,7 @@ function Annotation() {
           setUploadMode={setUploadMode}
           handleDrop={handleDrop}
           handleFileChange={handleFileChange}
-          handleUpload={() => handleUpload().then(() => fetchTask())} // Refresh after upload
+          handleUpload={() => handleUpload().then(() => fetchTask())} 
         />
       )}
 
@@ -211,8 +256,10 @@ function Annotation() {
           >
             <div style={{ flexBasis: "48px", flexShrink: 0 }}> </div>
             
+            {/* UPDATED: Pass ALL SHAPES + allowedShapeIds */}
             <ToolbarLeft
-              shapes={SHAPES}
+              shapes={SHAPES} 
+              allowedShapeIds={allowedShapeIds}
               selectedShape={selectedShape}
               setSelectedShape={setSelectedShape}
               setToolChangeId={setToolChangeId}
@@ -227,9 +274,6 @@ function Annotation() {
               windowWidth={windowWidth}
               setWindowCenter={setWindowCenter}
               setWindowWidth={setWindowWidth}
-              selectedLabel={selectedLabel}
-              setSelectedLabel={setSelectedLabel}
-              labelOptions={labelOptions}
               annotationOpacity={annotationOpacity}
               setAnnotationOpacity={setAnnotationOpacity}
               selectedShape={selectedShape}
@@ -297,6 +341,7 @@ function Annotation() {
             zoomLevel={zoomLevel}
             setZoomLevel={setZoomLevel}
             zoomRegion={setZoomRegion}
+            projectAttributes={projectAttributes} 
           />
         </>
       )}

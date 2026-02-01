@@ -7,9 +7,6 @@ const LeftDrawer = ({
   windowWidth,
   setWindowCenter,
   setWindowWidth,
-  selectedLabel,
-  setSelectedLabel,
-  labelOptions,
   annotationOpacity,
   setAnnotationOpacity,
   selectedShape,
@@ -105,46 +102,6 @@ const LeftDrawer = ({
         </div>
       )}
 
-      {/* Labels */}
-      {openSection === "labels" && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-            backgroundColor: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            borderRadius: "8px",
-            padding: "12px",
-          }}
-        >
-          <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "14px", textAlign: "center" }}>
-            {t("Labels")}
-          </span>
-
-          <select
-            value={selectedLabel}
-            onChange={(e) => setSelectedLabel(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "6px",
-              border: "1px solid #cbd5e1",
-              fontSize: "14px",
-              outline: "none",
-              transition: "all 0.2s",
-              cursor: "pointer",
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-          >
-            <option value="">{t("selectLabel")}</option>
-            {labelOptions.map((label) => (
-              <option key={label} value={label}>{label}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
       {/* Opacity */}
       {openSection === "opacity" && (
         <div
@@ -189,6 +146,9 @@ const LeftDrawer = ({
       )}
 
       {/* Brush Settings */}
+      {/* Logic: Show brush settings if the tool is 'brush'. 
+          Note: If a Label enforces a color, we might want to disable the color picker here or hide it.
+          For now, we keep it editable but initialized by the label. */}
       {openSection === "brush" && selectedShape === "brush" && (
         <div
           style={{

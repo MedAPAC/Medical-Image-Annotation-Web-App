@@ -10,8 +10,12 @@ const ClassificationPanel = ({
   classificationByFileAndSlice,
   setClassificationByFileAndSlice,
   getInputsForCurrent,
-  updateInputsForCurrent
+  updateInputsForCurrent,
+  projectAttributes = [] // Updated: receive dynamic attributes
 }) => {
+  // Updated: helper to get current inputs safe object
+  const inputs = getInputsForCurrent() || {};
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {/* View Type */}
@@ -59,7 +63,7 @@ const ClassificationPanel = ({
           {t("Classification")} (Slice {currentSlice + 1}):
         </span>
 
-        {/* Classification Buttons */}
+        {/* Classification Buttons (Primary Status) */}
         <div style={{ display: "flex", gap: "6px" }}>
           {["positive", "negative", "clear"].map((cls) => {
             const bgColor = cls === "positive" ? "#059669" : cls === "negative" ? "#dc2626" : "#f59e0b";
@@ -109,59 +113,84 @@ const ClassificationPanel = ({
           })}
         </div>
 
-        {/* Additional Inputs */}
+        {/* Updated: Dynamic Attributes Section (Replaces Hardcoded Inputs) */}
         <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "8px" }}>
-          <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}>
-            <input
-              type="checkbox"
-              checked={getInputsForCurrent().checkbox}
-              onChange={(e) => updateInputsForCurrent({ checkbox: e.target.checked })}
-              style={{ width: "14px", height: "14px", cursor: "pointer" }}
-            />
-            {t("tumor")}
-          </label>
+          {projectAttributes.length === 0 ? (
+            <div style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>
+              {t("No attributes configured")}
+            </div>
+          ) : (
+            projectAttributes.map((attr) => {
+              const val = inputs[attr.name] !== undefined ? inputs[attr.name] : "";
+              
+              // 1. Checkbox Type
+              if (attr.type === 'checkbox') {
+                return (
+                  <label key={attr.id} style={{ fontSize: "12px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={!!val}
+                      onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.checked })}
+                      style={{ width: "14px", height: "14px", cursor: "pointer" }}
+                    />
+                    {attr.name}
+                  </label>
+                );
+              }
 
-          <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
-            {t("description")}:
-            <input
-              type="text"
-              value={getInputsForCurrent().text}
-              onChange={(e) => updateInputsForCurrent({ text: e.target.value })}
-              style={{
-                padding: "6px 8px",
-                border: "1px solid #cbd5e1",
-                borderRadius: "6px",
-                fontSize: "12px",
-                outline: "none",
-                transition: "border 0.2s",
-              }}
-              onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
-              onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
-            />
-          </label>
+              // 2. Select or Radio Type
+              if (attr.type === 'select' || attr.type === 'radio') {
+                const options = attr.values ? attr.values.split(/[\n,]/).map(o => o.trim()).filter(Boolean) : [];
+                return (
+                  <label key={attr.id} style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {attr.name}:
+                    <select
+                      value={val}
+                      onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
+                      style={{
+                        padding: "6px 8px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        outline: "none",
+                        transition: "border 0.2s",
+                      }}
+                      onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
+                      onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
+                    >
+                      <option value="">{t("Choose...")}</option>
+                      {options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </label>
+                );
+              }
 
-          <label style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
-            {t("hemo type")}:
-            <select
-              value={getInputsForCurrent().select}
-              onChange={(e) => updateInputsForCurrent({ select: e.target.value })}
-              style={{
-                padding: "6px 8px",
-                border: "1px solid #cbd5e1",
-                borderRadius: "6px",
-                fontSize: "12px",
-                cursor: "pointer",
-                outline: "none",
-                transition: "border 0.2s",
-              }}
-              onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
-              onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
-            >
-              <option value="">{t("Choose...")}</option>
-              <option value="1">IVH</option>
-              <option value="2">IPH</option>
-            </select>
-          </label>
+              // 3. Text / Number / Date Type
+              return (
+                <label key={attr.id} style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {attr.name}:
+                  <input
+                    type={attr.type === 'number' ? 'number' : attr.type === 'date' ? 'date' : 'text'}
+                    value={val}
+                    onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
+                    style={{
+                      padding: "6px 8px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      outline: "none",
+                      transition: "border 0.2s",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
+                    onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
+                  />
+                </label>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

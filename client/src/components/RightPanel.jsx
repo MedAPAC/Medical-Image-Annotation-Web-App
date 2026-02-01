@@ -23,15 +23,17 @@ const RightPanel = ({
   zoomLevel,
   setZoomLevel,
   zoomRegion,
-  setZoomRegion
+  setZoomRegion,
+  projectAttributes // NEW PROP: Array of attributes defined in project
 }) => {
   const [showSlices, setShowSlices] = useState(false);
   const slicesRef = useRef(null);
 
   // Helper function for inputs
+  // Now we need to be dynamic. We can't just return fixed keys { checkbox, number... }
+  // We return the raw object for the current slice.
   const getInputsForCurrent = () => 
-    inputsByFileAndSlice[selectedFileName]?.[currentSlice] || 
-    { checkbox: false, number: "", text: "", radio: "", select: "" };
+    inputsByFileAndSlice[selectedFileName]?.[currentSlice] || {};
 
   const updateInputsForCurrent = (updates) => {
     setInputsByFileAndSlice((prev) => ({
@@ -74,6 +76,7 @@ const RightPanel = ({
           setClassificationByFileAndSlice={setClassificationByFileAndSlice}
           getInputsForCurrent={getInputsForCurrent}
           updateInputsForCurrent={updateInputsForCurrent}
+          projectAttributes={projectAttributes} // PASS DOWN
         />
       )}
 
