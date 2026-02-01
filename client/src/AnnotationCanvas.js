@@ -8,55 +8,88 @@ import { fabric } from "fabric";
 
 const AnnotationCanvas = forwardRef(
   (
-    { mode, width, height, selectedLabel, brushColor, brushSize, toolChangeId,  annotationOpacity = 1 },
+    {
+      mode,
+      width,
+      height,
+      selectedLabel,
+      brushColor,
+      brushSize,
+      toolChangeId,
+      annotationOpacity = 1,
+      onShapeComplete, // Callback when a shape is finalized
+    },
     ref
   ) => {
     const canvasRef = useRef(null);
     const fabricRef = useRef(null);
-    const drawingModeRef = useRef(null);
-    const drawingActiveRef = useRef(false);
-    const polygonPoints = useRef([]);
-    const polygonHandles = useRef([]);
-    const polylinePoints = useRef([]);
-    const labelRef = useRef(selectedLabel);
 
+    // State refs
+    const drawingModeRef = useRef(mode); // Internal tracker for mode
+    const labelRef = useRef(selectedLabel);
+    const isMouseDownRef = useRef(false); 
+
+    // Polygon specific
+    const polygonPoints = useRef([]); 
+    const activeLine = useRef(null); 
+    const activeShape = useRef(null); 
+    const pointArray = useRef([]); 
+
+    // Rectangle specific
     const isDrawingBox = useRef(false);
     const boxStart = useRef(null);
     const previewBox = useRef(null);
-
     const crosshairLines = useRef({ horizontal: null, vertical: null });
-const hexToRgba = (color, opacity) => {
-  if (!color) return `rgba(100,0,64,${opacity})`; // fallback
 
-  // Already rgba
-  if (color.startsWith("rgba")) return color.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, `rgba($1,$2,$3,${opacity})`);
+    // Constants
+    const ANNOTATION_STROKE_WIDTH = 2;
+    const HANDLE_RADIUS = 5;
+    const HANDLE_FILL = "white";
+    const HANDLE_STROKE = "black";
+    
+    // REDUCED THRESHOLD: 
+    // Generates more points closer together for smoother "drawing" feel
+    const MIN_DIST_THRESHOLD = 50; 
 
-  // rgb() -> rgba()
-  if (color.startsWith("rgb")) return color.replace(/rgb\(([^)]+)\)/, `rgba($1,${opacity})`);
+    // --- Helpers ---
+    const getRgba = (color, opacity) => {
+      if (!color) return `rgba(100,0,64,${opacity})`;
+      if (color.startsWith("rgba"))
+        return color.replace(
+          /rgba\\(([^,]+),([^,]+),([^,]+),[^)]+\\)/,
+          `rgba($1,$2,$3,${opacity})`
+        );
+      if (color.startsWith("rgb"))
+        return color.replace(/rgb\\(([^)]+)\\)/, `rgba($1,${opacity})`);
+      if (color.startsWith("#")) {
+        let c = color.substring(1).match(/.{1,2}/g);
+        if (!c) return `rgba(64,0,64,${opacity})`;
+        const r = parseInt(c[0], 16);
+        const g = parseInt(c[1], 16);
+        const b = parseInt(c[2], 16);
+        return `rgba(${r},${g},${b},${opacity})`;
+      }
+      return color;
+    };
 
-  // hex -> rgba()
-  if (color.startsWith("#")) {
-    let c = color.substring(1).match(/.{1,2}/g);
-    if (!c) return `rgba(64,0,64,${opacity})`;
-    const r = parseInt(c[0], 16);
-    const g = parseInt(c[1], 16);
-    const b = parseInt(c[2], 16);
-    return `rgba(${r},${g},${b},${opacity})`;
-  }
+    const getColors = () => {
+      const fill = getRgba("#add8e6", annotationOpacity);
+      const stroke = getRgba(brushColor || "#0066cc", 1);
+      return { fill, stroke };
+    };
 
-  return color;
-};
-
-
+    // --- API ---
     useImperativeHandle(ref, () => ({
-      exportAnnotations: () => {
-        if (!fabricRef.current) return null;
-        return fabricRef.current.toJSON(["label", "labelText"]);
-      },
+      exportAnnotations: () =>
+        fabricRef.current?.toJSON(["label", "labelText", "customType"]),
       getSVG: () => fabricRef.current?.toSVG(),
       importAnnotations: (json) => {
         if (fabricRef.current && json) {
           fabricRef.current.loadFromJSON(json, () => {
+             // After import, ensure handles are generated for polygons
+             fabricRef.current.getObjects().forEach(obj => {
+                 if(obj.customType === 'polygon') generatePolygonHandles(obj, fabricRef.current);
+             });
             fabricRef.current.renderAll();
           });
         }
@@ -64,179 +97,298 @@ const hexToRgba = (color, opacity) => {
       clearAnnotations: () => {
         const canvas = fabricRef.current;
         if (!canvas) return;
-        canvas.getObjects().forEach((obj) => {
-          if (obj.labelText) canvas.remove(obj.labelText);
-          canvas.remove(obj);
-        });
-        canvas.discardActiveObject();
-        canvas.requestRenderAll();
+        canvas.clear();
+        canvas.setBackgroundColor("transparent", canvas.renderAll.bind(canvas));
+        polygonPoints.current = [];
       },
       deleteSelected: () => {
         const canvas = fabricRef.current;
         if (!canvas) return;
         const activeObject = canvas.getActiveObject();
         if (activeObject) {
-          if (activeObject.labelText) {
-            canvas.remove(activeObject.labelText);
-          }
-          canvas.remove(activeObject);
-          canvas.discardActiveObject();
-          canvas.requestRenderAll();
+          removeShapeAndLabel(activeObject, canvas);
         }
       },
     }));
-useEffect(() => {
-  const canvas = fabricRef.current;
-  if (!canvas) return;
 
-  // Update brush if in brush mode
-  if (drawingModeRef.current === "brush" && canvas.freeDrawingBrush) {
-    canvas.freeDrawingBrush.color = hexToRgba(brushColor || "#400040", annotationOpacity);
-    canvas.freeDrawingBrush.width = brushSize || 10;
-  }
-}, [annotationOpacity, brushColor, brushSize]);
+    // --- Internal Logic ---
+    const addLabelToShape = (shape, label) => {
+      if (!label || !fabricRef.current) return;
 
+      const text = new fabric.Text(label, {
+        left: shape.left,
+        top: shape.top - 20,
+        fontSize: 14,
+        fill: "white",
+        backgroundColor: "rgba(0,0,0,0.6)",
+        selectable: false,
+        evented: false,
+        excludeFromExport: true,
+      });
 
+      shape.label = label;
+      shape.labelText = text;
+      fabricRef.current.add(text);
+
+      const updateLabelPos = () => {
+        const bound = shape.getBoundingRect();
+        text.set({ left: bound.left, top: bound.top - 20 });
+        text.setCoords();
+      };
+
+      shape.on("moving", updateLabelPos);
+      shape.on("scaling", updateLabelPos);
+      shape.on("rotating", updateLabelPos);
+      shape.on("modified", updateLabelPos);
+    };
+
+    const removeShapeAndLabel = (shape, canvas) => {
+      if (shape.labelText) canvas.remove(shape.labelText);
+      if (shape.editHandles) shape.editHandles.forEach((h) => canvas.remove(h));
+      canvas.remove(shape);
+      canvas.discardActiveObject();
+      canvas.requestRenderAll();
+    };
+
+    // --- Initialization ---
+    useEffect(() => {
+      const canvas = new fabric.Canvas(canvasRef.current, {
+        selection: true,
+        preserveObjectStacking: true,
+      });
+
+      canvas.setWidth(width);
+      canvas.setHeight(height);
+      fabricRef.current = canvas;
+
+      const handleWindowKey = (e) => {
+        if (e.key === "Delete" || e.key === "Backspace") {
+          const active = canvas.getActiveObject();
+          if (
+            drawingModeRef.current === "polygon" &&
+            polygonPoints.current.length > 0
+          )
+            return;
+          if (active) removeShapeAndLabel(active, canvas);
+        }
+        if (e.key === "Enter") {
+          if (
+            drawingModeRef.current === "polygon" &&
+            polygonPoints.current.length > 2
+          ) {
+            finalizePolygonDrawing();
+          }
+        }
+      };
+      window.addEventListener("keydown", handleWindowKey);
+
+      // Canvas Events
+      canvas.on("mouse:down", (opt) => handleMouseDown(opt, canvas));
+      canvas.on("mouse:move", (opt) => handleMouseMove(opt, canvas));
+      canvas.on("mouse:up", (opt) => handleMouseUp(opt, canvas));
+
+      // Selection Events
+      // Note: We do NOT remove handles on selection:cleared anymore
+      // This keeps points visible after deselecting.
+      canvas.on("selection:created", (e) => handleSelection(e.target, canvas));
+      canvas.on("selection:updated", (e) => handleSelection(e.target, canvas));
+      
+      // Sync handles when shape moves
+      canvas.on("object:moving", (e) => updatePolygonHandles(e.target));
+      canvas.on("object:scaling", (e) => updatePolygonHandles(e.target));
+      canvas.on("object:rotating", (e) => updatePolygonHandles(e.target));
+
+      return () => {
+        window.removeEventListener("keydown", handleWindowKey);
+        canvas.dispose();
+      };
+    }, []);
+
+    // --- Prop Updates ---
+    useEffect(() => {
+      // Whenever prop 'mode' changes, we update our internal ref
+      drawingModeRef.current = mode;
+      
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      // Cursor logic
+      canvas.defaultCursor =
+        mode === "rectangle" || mode === "polygon" ? "crosshair" : "default";
+      
+      canvas.selection = mode !== 'polygon' && mode !== 'rectangle';
+
+      // Brush logic
+      canvas.isDrawingMode = mode === "brush";
+      if (mode === "brush") {
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.color = getRgba(brushColor, annotationOpacity);
+        canvas.freeDrawingBrush.width = brushSize || 10;
+      } else {
+        clearPolygonTemp(canvas);
+      }
+    }, [mode, brushColor, brushSize, toolChangeId, annotationOpacity]);
 
     useEffect(() => {
       labelRef.current = selectedLabel;
     }, [selectedLabel]);
 
-    useEffect(() => {
-      const fabricCanvas = new fabric.Canvas(canvasRef.current, {
-        selection: true,
-      });
-const ANNOTATION_FILL = `rgba(173, 216, 230, ${annotationOpacity})`; // apply opacity
-const ANNOTATION_STROKE = `rgba(0, 102, 204, ${annotationOpacity})`; 
-const ANNOTATION_STROKE_WIDTH = 2;
-const HANDLE_FILL = "white";
-const HANDLE_STROKE = "black";
-const HANDLE_RADIUS = 5;
-      fabricCanvas.setWidth(width);
-      fabricCanvas.setHeight(height);
-      fabricRef.current = fabricCanvas;
 
-    fabricCanvas.setWidth(width);
-      fabricCanvas.setHeight(height);
-      fabricRef.current = fabricCanvas;
+    // ==========================================
+    //           CORE DRAWING HELPER
+    // ==========================================
 
-      fabricCanvas.isDrawingMode = false;
-fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+    const addPolygonPoint = (pointer, canvas) => {
+        const { stroke, fill } = getColors();
 
-const defaultBrushColor = `rgba(0, 102, 204, ${annotationOpacity})`;
-const colorWithOpacity = brushColor
-  ? brushColor.includes("rgba")
-    ? brushColor.replace(/rgba\(([^)]+),[^)]+\)/, `rgba($1,${annotationOpacity})`)
-    : brushColor
-  : defaultBrushColor;
+        polygonPoints.current.push({ x: pointer.x, y: pointer.y });
 
-fabricCanvas.freeDrawingBrush.color = colorWithOpacity;
-fabricCanvas.freeDrawingBrush.width = brushSize || 10;
-
-      const addLabelToShape = (shape, label) => {
-        if (!label) return;
-        const text = new fabric.Text(label, {
-          left: shape.left + 5,
-          top: shape.top + 5,
-          fontSize: 14,
-          fill: "black",
-          backgroundColor: "rgba(255,255,255,0.7)",
-          selectable: false,
-          evented: false,
-        });
-
-        shape.label = label;
-        shape.labelText = text;
-
-        fabricCanvas.add(text);
-
-        shape.on("moving", () => {
-          text.set({ left: shape.left + 5, top: shape.top + 5 });
-          fabricCanvas.renderAll();
-        });
-        shape.on("scaling", () => {
-          text.set({ left: shape.left + 5, top: shape.top + 5 });
-          fabricCanvas.renderAll();
-        });
-        shape.on("rotating", () => {
-          text.set({ left: shape.left + 5, top: shape.top + 5 });
-          fabricCanvas.renderAll();
-        });
-      };
-
-      const handleMouseDown = (options) => {
-        const pointer = fabricCanvas.getPointer(options.e);
-
-        if (drawingModeRef.current === "rectangle") {
-          isDrawingBox.current = true;
-          boxStart.current = pointer;
-          previewBox.current = new fabric.Rect({
+        // 1. Visual Dot (Temporary)
+        const circle = new fabric.Circle({
+            radius: 4,
+            fill: 'white',
+            stroke: '#333',
+            strokeWidth: 1,
             left: pointer.x,
             top: pointer.y,
-            width: 1,
-            height: 1,
-     fill: ANNOTATION_FILL,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-  selectable: false,
-  evented: false,
-            customType: "bounding-box-preview",
-          });
-          fabricCanvas.add(previewBox.current);
-        }
-      };
+            selectable: false,
+            evented: false,
+            originX: 'center',
+            originY: 'center',
+            customType: 'temp-point',
+            objectCaching: false 
+        });
+        canvas.add(circle);
+        pointArray.current.push(circle);
 
-      const handleMouseMove = (options) => {
-        const pointer = fabricCanvas.getPointer(options.e);
-
-        if (drawingModeRef.current === "rectangle") {
-          if (!crosshairLines.current.horizontal) {
-            crosshairLines.current.horizontal = new fabric.Line(
-              [0, pointer.y, fabricCanvas.getWidth(), pointer.y],
-              {
-                stroke: "red",
+        // 2. Visual Polygon Preview
+        if (polygonPoints.current.length > 1) {
+            const points = polygonPoints.current.map(p => ({ x: p.x, y: p.y }));
+            if (activeShape.current) canvas.remove(activeShape.current);
+            
+            activeShape.current = new fabric.Polygon(points, {
+                stroke: stroke,
+                strokeWidth: ANNOTATION_STROKE_WIDTH,
+                fill: getRgba(fill, 0.3),
+                selectable: false,
+                evented: false,
+                customType: 'temp-polygon',
+                objectCaching: false
+            });
+            canvas.add(activeShape.current);
+            activeShape.current.sendToBack(); 
+        } 
+        
+        // 3. Initial Line (if only 1 point)
+        if (polygonPoints.current.length === 1) {
+             activeLine.current = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+                stroke: stroke,
+                strokeWidth: 2,
                 strokeDashArray: [5, 5],
                 selectable: false,
                 evented: false,
-                excludeFromExport: true,
-              }
-            );
-            fabricCanvas.add(crosshairLines.current.horizontal);
-          } else {
-            crosshairLines.current.horizontal.set({
-              x1: 0,
-              y1: pointer.y,
-              x2: fabricCanvas.getWidth(),
-              y2: pointer.y,
+                customType: 'temp-line'
             });
-          }
+            canvas.add(activeLine.current);
+        }
+    }
 
-          if (!crosshairLines.current.vertical) {
-            crosshairLines.current.vertical = new fabric.Line(
-              [pointer.x, 0, pointer.x, fabricCanvas.getHeight()],
-              {
-                stroke: "red",
+    // ==========================================
+    //           MOUSE HANDLERS
+    // ==========================================
+
+    const handleMouseDown = (opt, canvas) => {
+      const mode = drawingModeRef.current;
+      
+      // Safety: If mode is select (or 'none'), do nothing
+      if(mode === 'select' || !mode) return;
+
+      isMouseDownRef.current = true;
+      const pointer = canvas.getPointer(opt.e);
+      const { stroke, fill } = getColors();
+
+      // Ignore clicks on existing handles or shapes to allow selection/editing
+      if (opt.target && 
+          opt.target.customType !== 'temp-point' && 
+          opt.target.customType !== 'temp-line' && 
+          opt.target.customType !== 'temp-polygon') {
+          return;
+      }
+
+      // --- Polygon Start / Add Point ---
+      if (mode === "polygon") {
+        canvas.discardActiveObject();
+        addPolygonPoint(pointer, canvas);
+      }
+
+      // --- Rectangle Start ---
+      else if (mode === "rectangle") {
+        canvas.discardActiveObject();
+        isDrawingBox.current = true;
+        boxStart.current = pointer;
+
+        previewBox.current = new fabric.Rect({
+          left: pointer.x,
+          top: pointer.y,
+          width: 0,
+          height: 0,
+          stroke: stroke,
+          strokeWidth: ANNOTATION_STROKE_WIDTH,
+          fill: fill,
+          selectable: false,
+          evented: false,
+          customType: "preview-box",
+        });
+        canvas.add(previewBox.current);
+      }
+    };
+
+    const handleMouseMove = (opt, canvas) => {
+      const pointer = canvas.getPointer(opt.e);
+      const mode = drawingModeRef.current;
+
+      // --- Polygon Drag-to-Draw ---
+      if (mode === "polygon" && polygonPoints.current.length > 0) {
+        
+        // AUTO-GENERATE POINTS ON DRAG
+        if(isMouseDownRef.current) {
+            const lastPoint = polygonPoints.current[polygonPoints.current.length - 1];
+            // Calculate distance from last point
+            const dist = Math.hypot(pointer.x - lastPoint.x, pointer.y - lastPoint.y);
+            
+            // If dragged far enough, add a new point automatically
+            if(dist > MIN_DIST_THRESHOLD) {
+                addPolygonPoint(pointer, canvas);
+            }
+        }
+
+        // Rubber Band Line
+        if (activeLine.current) {
+          activeLine.current.set({ x2: pointer.x, y2: pointer.y });
+        } else {
+             // Fallback
+             const lastPoint = polygonPoints.current[polygonPoints.current.length - 1];
+             const { stroke } = getColors();
+             activeLine.current = new fabric.Line([lastPoint.x, lastPoint.y, pointer.x, pointer.y], {
+                stroke: stroke,
+                strokeWidth: 2,
                 strokeDashArray: [5, 5],
                 selectable: false,
                 evented: false,
-                excludeFromExport: true,
-              }
-            );
-            fabricCanvas.add(crosshairLines.current.vertical);
-          } else {
-            crosshairLines.current.vertical.set({
-              x1: pointer.x,
-              y1: 0,
-              x2: pointer.x,
-              y2: fabricCanvas.getHeight(),
+                customType: 'temp-line'
             });
-          }
+            canvas.add(activeLine.current);
         }
+        canvas.requestRenderAll();
+      }
 
-        if (drawingModeRef.current === "rectangle" && isDrawingBox.current) {
+      // --- Rectangle Resize ---
+      if (mode === "rectangle") {
+        updateCrosshairs(pointer, canvas);
+
+        if (isDrawingBox.current) {
           const startX = boxStart.current.x;
           const startY = boxStart.current.y;
-
           const width = pointer.x - startX;
           const height = pointer.y - startY;
 
@@ -247,476 +399,256 @@ fabricCanvas.freeDrawingBrush.width = brushSize || 10;
             height: Math.abs(height),
           });
         }
-
-        fabricCanvas.renderAll();
-      };
-
-      const handleMouseUp = () => {
-        if (drawingModeRef.current === "rectangle" && isDrawingBox.current) {
-          isDrawingBox.current = false;
-
-          const finalized = new fabric.Rect({
-            left: previewBox.current.left,
-            top: previewBox.current.top,
-            width: previewBox.current.getScaledWidth(),
-            height: previewBox.current.getScaledHeight(),
-  fill: ANNOTATION_FILL,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-            selectable: true,
-            customType: "bounding-box",
-          });
-
-          fabricCanvas.remove(previewBox.current);
-          previewBox.current = null;
-
-          fabricCanvas.add(finalized);
-          addLabelToShape(finalized, labelRef.current);
-          deactivateDrawing();
-
-          if (crosshairLines.current.horizontal) {
-            fabricCanvas.remove(crosshairLines.current.horizontal);
-            crosshairLines.current.horizontal = null;
-          }
-          if (crosshairLines.current.vertical) {
-            fabricCanvas.remove(crosshairLines.current.vertical);
-            crosshairLines.current.vertical = null;
-          }
-        }
-      };
-
-      const handleClick = (options) => {
-        const pointer = fabricCanvas.getPointer(options.e);
-
-        switch (drawingModeRef.current) {
-case "polygon":
-  const lastPoint =
-    polygonPoints.current[polygonPoints.current.length - 1];
-  const newPoint = { x: pointer.x, y: pointer.y };
-
-  if (lastPoint) {
-    const dx = newPoint.x - lastPoint.x;
-    const dy = newPoint.y - lastPoint.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const threshold = 30;
-const segments = Math.floor(dist / threshold); 
-  for (let i = 1; i < segments; i++) {
-    const midPoint = {
-      x: lastPoint.x + (dx * i) / segments,
-      y: lastPoint.y + (dy * i) / segments,
+        canvas.requestRenderAll();
+      }
     };
-    polygonPoints.current.push(midPoint);
 
+    const handleMouseUp = (opt, canvas) => {
+      isMouseDownRef.current = false;
+      const mode = drawingModeRef.current;
 
-      const midHandle = new fabric.Circle({
-        left: midPoint.x - 5,
-        top: midPoint.y - 5,
-        radius: 5,
-        fill: "white",
-        stroke: "black",
-        strokeWidth: 2,
-        selectable: false,
-        evented: false,
-        customType: "polygon-handle",
-      });
-      polygonHandles.current.push(midHandle);
-      fabricCanvas.add(midHandle);
-    }
-  }
+      // --- Rectangle Finalize ---
+      if (mode === "rectangle" && isDrawingBox.current) {
+        isDrawingBox.current = false;
 
-  polygonPoints.current.push(newPoint);
-
-  const handle = new fabric.Circle({
-    left: newPoint.x - 5,
-    top: newPoint.y - 5,
-    radius: 5,
-    fill: "white",
-    stroke: "black",
-    strokeWidth: 2,
-    selectable: false,
-    evented: false,
-    customType: "polygon-handle",
-  });
-  polygonHandles.current.push(handle);
-  fabricCanvas.add(handle);
-
-  const polygonPreview = new fabric.Polyline(polygonPoints.current, {
-  fill: ANNOTATION_FILL,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-    selectable: false,
-    evented: false,
-    customType: "polygon-preview",
-  });
-
-  fabricCanvas.getObjects().forEach((obj) => {
-    if (obj.customType === "polygon-preview") fabricCanvas.remove(obj);
-  });
-  fabricCanvas.add(polygonPreview);
-  break;
-
-
-          case "polyline":
-            polylinePoints.current.push({ x: pointer.x, y: pointer.y });
-            const polylinePreview = new fabric.Polyline(polylinePoints.current, {
-             fill: null,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-              selectable: false,
-              evented: false,
-              customType: "polyline-preview",
-            });
-            fabricCanvas.getObjects().forEach((obj) => {
-              if (obj.customType === "polyline-preview")
-                fabricCanvas.remove(obj);
-            });
-            fabricCanvas.add(polylinePreview);
-            break;
-
-          case "ellipse":
-            const ellipse = new fabric.Ellipse({
-              left: pointer.x - 50,
-              top: pointer.y - 30,
-              rx: 50,
-              ry: 30,
- fill: ANNOTATION_FILL,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-              selectable: true,
-            });
-            fabricCanvas.add(ellipse);
-            addLabelToShape(ellipse, labelRef.current);
-            deactivateDrawing();
-            break;
-
-          case "cuboid":
-            const cuboid = new fabric.Rect({
-              left: pointer.x,
-              top: pointer.y,
-              width: 120,
-              height: 80,
-             fill: ANNOTATION_FILL,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-              selectable: true,
-            });
-            fabricCanvas.add(cuboid);
-            addLabelToShape(cuboid, labelRef.current);
-            deactivateDrawing();
-            break;
-
-          default:
-            break;
-        }
-      };
-
-      const handleKey = (e) => {
-        const canvas = fabricRef.current;
-        if (!canvas) return;
-
-        if (e.key === "Delete" || e.key === "Backspace") {
-          const activeObject = canvas.getActiveObject();
-          if (activeObject) {
-            if (activeObject.labelText) {
-              canvas.remove(activeObject.labelText);
-            }
-            canvas.remove(activeObject);
-            canvas.discardActiveObject();
-            canvas.requestRenderAll();
-          }
+        if (previewBox.current.width < 5 || previewBox.current.height < 5) {
+          canvas.remove(previewBox.current);
+          previewBox.current = null;
+          return;
         }
 
-        if (e.key === "Enter") {
-          if (!drawingActiveRef.current) return;
+        const { stroke, fill } = getColors();
+        const rect = new fabric.Rect({
+          left: previewBox.current.left,
+          top: previewBox.current.top,
+          width: previewBox.current.width,
+          height: previewBox.current.height,
+          fill: fill,
+          stroke: stroke,
+          strokeWidth: ANNOTATION_STROKE_WIDTH,
+          selectable: true,
+          customType: "bounding-box",
+        });
 
-          canvas.getObjects().forEach((obj) => {
-            if (obj.customType?.includes("preview")) {
-              canvas.remove(obj);
-            }
-          });
-
-if (drawingModeRef.current === "polygon" && polygonPoints.current.length > 2) {
-  const polygon = new fabric.Polygon(polygonPoints.current, {
-     fill: ANNOTATION_FILL,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-    selectable: true,
-    customType: "polygon",
-  });
-
-  canvas.add(polygon);
-  addLabelToShape(polygon, labelRef.current);
-
-  polygonHandles.current.forEach((h) => canvas.remove(h));
-  polygonHandles.current = [];
-  canvas.getObjects().forEach((obj) => {
-    if (obj.customType?.includes("preview")) canvas.remove(obj);
-  });
-  polygonPoints.current = [];
-
-  canvas.setActiveObject(polygon);
-  canvas.requestRenderAll();
-  polygon.points.forEach((point, index) => {
-    const handle = new fabric.Circle({
-      left: point.x,
-      top: point.y,
-      radius: 5,
-      fill: "white",
-      stroke: "black",
-      strokeWidth: 2,
-      selectable: true,
-      hasControls: false,
-      hasBorders: false,
-      originX: "center",
-      originY: "center",
-      customType: "polygon-handle",
-      handleIndex: index,
-    });
-
-    handle.on("moving", function () {
-polygon.points[handle.handleIndex].x = handle.left;
-polygon.points[handle.handleIndex].y = handle.top;
-
-polygon.dirty = true; 
-polygon.setCoords();  
-canvas.requestRenderAll();
-
-    });
-
-    polygonHandles.current.push(handle);
-    canvas.add(handle);
-  });
-}
-
-          if (
-            drawingModeRef.current === "polyline" &&
-            polylinePoints.current.length > 1
-          ) {
-            const polyline = new fabric.Polyline(polylinePoints.current, {
- fill: null,
-  stroke: ANNOTATION_STROKE,
-  strokeWidth: ANNOTATION_STROKE_WIDTH,
-              selectable: true,
-              customType: "polyline",
-            });
-            canvas.add(polyline);
-            addLabelToShape(polyline, labelRef.current);
-            polylinePoints.current = [];
-          }
-
-          canvas.discardActiveObject();
-          canvas.requestRenderAll();
-          deactivateDrawing();
-        }
-      };
-
-      const deactivateDrawing = () => {
-        drawingActiveRef.current = false;
-        drawingModeRef.current = null;
-        fabricCanvas.isDrawingMode = false;
-      };
-
-      fabricCanvas.on("object:removed", (e) => {
-        const obj = e.target;
-        if (obj.labelText) {
-          fabricCanvas.remove(obj.labelText);
-        }
-      });
-
-fabricCanvas.on("path:created", (e) => {
-  const path = e.path;
-
-  // Use RGBA color and set stroke opacity
-  const rgbaColor = hexToRgba(brushColor || "#400040", annotationOpacity);
-
-  path.set({
-    stroke: rgbaColor,
-    fill: null,
-    opacity: annotationOpacity, // 👈 this line ensures the stroke opacity is applied
-    selectable: true,
-  });
-
-  if (labelRef.current) {
-    path.label = labelRef.current;
-    addLabelToShape(path, labelRef.current);
-  }
-
-  fabricCanvas.requestRenderAll();
-});
-
-      window.addEventListener("keydown", handleKey);
-      fabricCanvas.on("mouse:down", handleMouseDown);
-      fabricCanvas.on("mouse:move", handleMouseMove);
-      fabricCanvas.on("mouse:up", handleMouseUp);
-      fabricCanvas.on("mouse:down", (options) => {
-        if (drawingModeRef.current !== "rectangle") {
-          handleClick(options);
-        }
-      });
-fabricCanvas.on("selection:created", (e) => {
-  if (!e.target || e.target.customType !== "polygon") return;
-  const polygon = e.target;
-
-  if (polygon._handles) {
-    polygon._handles.forEach((h) => fabricCanvas.remove(h));
-  }
-  polygon._handles = [];
-
-  const updateHandles = () => {
-    if (!polygon._handles) return;
-    const angle = fabric.util.degreesToRadians(polygon.angle);
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-
-    polygon._handles.forEach((handle, i) => {
-      const point = polygon.points[i];
-      const x = point.x * polygon.scaleX;
-      const y = point.y * polygon.scaleY;
-      handle.left = polygon.left + x * cos - y * sin;
-      handle.top = polygon.top + x * sin + y * cos;
-      handle.setCoords();
-      handle.visible = true;
-    });
-    fabricCanvas.requestRenderAll();
-  };
-
-  polygon.points.forEach((point, index) => {
-    const handle = new fabric.Circle({
-      left: 0, 
-      top: 0,
-      radius: HANDLE_RADIUS,
-      fill: HANDLE_FILL,
-      stroke: HANDLE_STROKE,
-      strokeWidth: 2,
-      hasControls: false,
-      hasBorders: false,
-      originX: "center",
-      originY: "center",
-      customType: "polygon-handle",
-      handleIndex: index,
-      selectable: true,
-      evented: true,
-    });
-
-    handle.on("moving", function () {
-      const dx = handle.left - polygon.left;
-      const dy = handle.top - polygon.top;
-
-      const angle = fabric.util.degreesToRadians(polygon.angle);
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-
-      const x = dx * cos + dy * sin;
-      const y = -dx * sin + dy * cos;
-
-      polygon.points[handle.handleIndex].x = x / polygon.scaleX;
-      polygon.points[handle.handleIndex].y = y / polygon.scaleY;
-
-      polygon.dirty = true;
-      polygon.setCoords();
-      updateHandles();
-    });
-
-    polygon._handles.push(handle);
-    fabricCanvas.add(handle);
-  });
-
-  updateHandles();
-
-  polygon.on("moving", updateHandles);
-  polygon.on("scaling", updateHandles);
-  polygon.on("rotating", updateHandles);
-});
-
-
-
-
-fabricCanvas.on("selection:cleared", () => {
-  fabricCanvas.getObjects("polygon").forEach((poly) => {
-    if (poly._handles) {
-      poly._handles.forEach((h) => fabricCanvas.remove(h));
-    }
-  });
-  fabricCanvas.requestRenderAll();
-});
-
-
-      return () => {
-        window.removeEventListener("keydown", handleKey);
-        fabricCanvas.dispose();
-      };
-    }, []);
-useEffect(() => {
-  if (!fabricRef.current) return;
-
-  const canvas = fabricRef.current;
-  canvas.getObjects().forEach((obj) => {
-    if (obj.customType?.includes("bounding-box") || 
-        obj.customType?.includes("polygon") ||
-        obj.customType?.includes("ellipse") ||
-        obj.customType?.includes("polyline")) {
-      if (obj.fill) {
-        const rgb = obj.fill.replace(/rgba?\(([^)]+)\)/, "$1").split(",");
-        obj.set({ fill: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${annotationOpacity})` });
+        canvas.remove(previewBox.current);
+        previewBox.current = null;
+        
+        finishShape(rect, canvas, 'rectangle');
       }
-      if (obj.stroke) {
-        const rgb = obj.stroke.replace(/rgba?\(([^)]+)\)/, "$1").split(",");
-        obj.set({ stroke: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${annotationOpacity})` });
-      }
-    }
-  });
+    };
 
-  // update brush
-  if (canvas.freeDrawingBrush) {
-    const brushRgb = brushColor || "64,0,64"; // fallback
-    canvas.freeDrawingBrush.color = `rgba(${brushRgb},${annotationOpacity})`;
-  }
+    // ==========================================
+    //       FINALIZE & CLEANUP
+    // ==========================================
 
-  canvas.requestRenderAll();
-}, [annotationOpacity, brushColor]);
-
-    useEffect(() => {
-      if (!fabricRef.current) return;
-
+    const finalizePolygonDrawing = () => {
       const canvas = fabricRef.current;
-      canvas.getObjects().forEach((obj) => {
-        if (obj.customType?.includes("preview")) {
-          canvas.remove(obj);
-        }
+      if (!canvas) return;
+
+      if (polygonPoints.current.length < 3) {
+        clearPolygonTemp(canvas);
+        return;
+      }
+
+      const points = polygonPoints.current.map((p) => ({ x: p.x, y: p.y }));
+      const { stroke, fill } = getColors();
+
+      const polygon = new fabric.Polygon(points, {
+        stroke: stroke,
+        strokeWidth: ANNOTATION_STROKE_WIDTH,
+        fill: fill,
+        objectCaching: false,
+        transparentCorners: false,
+        cornerColor: "transparent",
+        hasBorders: false,
+        hasControls: false, 
+        selectable: true,
+        customType: "polygon",
       });
 
-      polygonPoints.current = [];
-      polylinePoints.current = [];
-
-      canvas.requestRenderAll();
-    }, [toolChangeId]);
-
-    useEffect(() => {
-      drawingModeRef.current = mode;
-      drawingActiveRef.current = true;
-      const fabricCanvas = fabricRef.current;
-
-      if (fabricCanvas) {
-        if (mode === "brush") {
-          fabricCanvas.isDrawingMode = true;
-  const defaultBrushColor = `rgba(0, 102, 204, ${annotationOpacity})`;
-  fabricCanvas.freeDrawingBrush.color = brushColor || defaultBrushColor;
-  fabricCanvas.freeDrawingBrush.width = brushSize || 10;
-        } else {
-          fabricCanvas.isDrawingMode = false;
+      clearPolygonTemp(canvas);
+      finishShape(polygon, canvas, 'polygon');
+    };
+    
+    // Shared finish logic
+    const finishShape = (shape, canvas, type) => {
+        canvas.add(shape);
+        addLabelToShape(shape, labelRef.current);
+        
+        if (type === 'polygon') {
+            generatePolygonHandles(shape, canvas);
         }
+
+        canvas.setActiveObject(shape);
+        
+        // Cleanup UI
+        if (crosshairLines.current.horizontal) canvas.remove(crosshairLines.current.horizontal);
+        if (crosshairLines.current.vertical) canvas.remove(crosshairLines.current.vertical);
+        crosshairLines.current = { horizontal: null, vertical: null };
+        
+        // --- KEY FEATURE: DISABLE MOUSE / DRAWING MODE ---
+        // 1. Internally switch to 'select' immediately so dragging/clicking stops drawing
+        drawingModeRef.current = 'select';
+        canvas.defaultCursor = 'default';
+        canvas.selection = true;
+        
+        // 2. Notify parent if prop provided
+        if (onShapeComplete) {
+            onShapeComplete({ type, target: shape });
+        }
+        
+        canvas.requestRenderAll();
+    };
+
+    const clearPolygonTemp = (canvas) => {
+      polygonPoints.current = [];
+      if (activeShape.current) canvas.remove(activeShape.current);
+      if (activeLine.current) canvas.remove(activeLine.current);
+      pointArray.current.forEach((c) => canvas.remove(c));
+
+      activeShape.current = null;
+      activeLine.current = null;
+      pointArray.current = [];
+      canvas.requestRenderAll();
+    };
+
+    // ==========================================
+    //       POLYGON EDITING (HANDLES)
+    // ==========================================
+
+    const handleSelection = (target, canvas) => {
+      if (!target) return;
+      if (target.customType === "polygon") {
+        generatePolygonHandles(target, canvas);
+      }
+    };
+    
+    const generatePolygonHandles = (polygon, canvas) => {
+        if (!polygon || polygon.customType !== 'polygon') return;
+        
+        // Do not regenerate if already correct (optimization)
+        if(polygon.editHandles && polygon.editHandles.length === polygon.points.length) {
+            updatePolygonHandles(polygon);
+            return;
+        }
+
+        // Clean old
+        if(polygon.editHandles) {
+            polygon.editHandles.forEach(h => canvas.remove(h));
+        }
+
+        polygon.hasControls = false;
+        polygon.hasBorders = false;
+        
+        const handles = [];
+        const matrix = polygon.calcTransformMatrix();
+
+        polygon.points.forEach((point, index) => {
+            const pLocal = { x: point.x - polygon.pathOffset.x, y: point.y - polygon.pathOffset.y };
+            const pFinal = fabric.util.transformPoint(pLocal, matrix);
+
+            const handle = new fabric.Circle({
+                radius: HANDLE_RADIUS,
+                fill: HANDLE_FILL,
+                stroke: HANDLE_STROKE,
+                strokeWidth: 1,
+                left: pFinal.x,
+                top: pFinal.y,
+                originX: "center",
+                originY: "center",
+                hasControls: false,
+                hasBorders: false,
+                customType: "polygon-handle",
+                pointIndex: index,
+                parentPoly: polygon,
+                zIndex: 9999
+            });
+            
+            handle.on('moving', (e) => onHandleMove(handle, polygon, canvas));
+            handles.push(handle);
+            canvas.add(handle);
+        });
+
+        polygon.editHandles = handles;
+        polygon.sendToBack(); 
+    };
+
+    const updatePolygonHandles = (poly) => {
+      if (!poly || !poly.editHandles || poly.customType !== "polygon") return;
+
+      const matrix = poly.calcTransformMatrix();
+
+      poly.editHandles.forEach((handle, index) => {
+        const point = poly.points[index];
+        const pLocal = {
+          x: point.x - poly.pathOffset.x,
+          y: point.y - poly.pathOffset.y,
+        };
+        const pFinal = fabric.util.transformPoint(pLocal, matrix);
+
+        handle.set({
+          left: pFinal.x,
+          top: pFinal.y,
+        });
+        handle.setCoords();
+      });
+    };
+
+    const onHandleMove = (handle, poly, canvas) => {
+      const pIndex = handle.pointIndex;
+
+      const polyMatrix = poly.calcTransformMatrix();
+      const invertedMatrix = fabric.util.invertTransform(polyMatrix);
+      const pointer = { x: handle.left, y: handle.top };
+      const localPoint = fabric.util.transformPoint(pointer, invertedMatrix);
+
+      poly.points[pIndex].x = localPoint.x + poly.pathOffset.x;
+      poly.points[pIndex].y = localPoint.y + poly.pathOffset.y;
+
+      if (poly.labelText) {
+        const bound = poly.getBoundingRect();
+        poly.labelText.set({ left: bound.left, top: bound.top - 20 });
       }
 
-      if (canvasRef.current) {
-        canvasRef.current.style.cursor =
-          mode === "rectangle" ? "none" : "crosshair";
+      poly.dirty = true;
+      canvas.requestRenderAll();
+    };
+
+    const updateCrosshairs = (pointer, canvas) => {
+      const w = canvas.getWidth();
+      const h = canvas.getHeight();
+
+      if (!crosshairLines.current.horizontal) {
+        crosshairLines.current.horizontal = new fabric.Line(
+          [0, pointer.y, w, pointer.y],
+          {
+            stroke: "red",
+            strokeDashArray: [5, 5],
+            selectable: false,
+            evented: false,
+          }
+        );
+        crosshairLines.current.vertical = new fabric.Line(
+          [pointer.x, 0, pointer.x, h],
+          {
+            stroke: "red",
+            strokeDashArray: [5, 5],
+            selectable: false,
+            evented: false,
+          }
+        );
+        canvas.add(crosshairLines.current.horizontal);
+        canvas.add(crosshairLines.current.vertical);
+      } else {
+        crosshairLines.current.horizontal.set({ y1: pointer.y, y2: pointer.y });
+        crosshairLines.current.vertical.set({ x1: pointer.x, x2: pointer.x });
       }
-    }, [mode, brushColor, brushSize, toolChangeId]);
+    };
 
     return (
       <canvas
         ref={canvasRef}
-        style={{ border: "1px solid gray", cursor: "crosshair" }}
+        style={{ border: "1px solid gray", width: "100%", height: "100%" }}
       />
     );
   }
