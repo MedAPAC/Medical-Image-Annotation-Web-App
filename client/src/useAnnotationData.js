@@ -1,12 +1,17 @@
 // annotation/hooks/useAnnotationData.js
 import { useState, useRef, useEffect } from "react";
-import axios from "axios";
 
 const useAnnotationData = () => {
   // Tool States
-  const [selectedShape, setSelectedShape] = useState("polygon");
-  const [selectedLabel, setSelectedLabel] = useState("");
-  const [labelOptions, setLabelOptions] = useState(["L1", "L2", "L3"]);
+  // Default to polygon, but we will update this when task data loads
+  const [selectedShape, setSelectedShape] = useState("polygon"); 
+  
+  // Start empty. Will be populated by Annotation.jsx useEffect
+  const [selectedLabel, setSelectedLabel] = useState(null); 
+  
+  // Start empty.
+  const [labelOptions, setLabelOptions] = useState([]); 
+  
   const [selectedFileName, setSelectedFileName] = useState(null);
   
   // Window Settings
@@ -14,10 +19,10 @@ const useAnnotationData = () => {
   const [windowWidth, setWindowWidth] = useState(null);
   
   // Brush Settings
-  const [brushColor, setBrushColor] = useState("rgba(173, 216, 230)");
+  const [brushColor, setBrushColor] = useState("#FFFFFF"); // Default white until label loads
   const [brushSize, setBrushSize] = useState(10);
   const [toolChangeId, setToolChangeId] = useState(0);
-  const [annotationOpacity, setAnnotationOpacity] = useState(0.4);
+  const [annotationOpacity, setAnnotationOpacity] = useState(0.5);
   
   // UI States
   const [openSection, setOpenSection] = useState(null);
@@ -54,7 +59,6 @@ const useAnnotationData = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedFileName, totalSlices]);
 
-  // Helper functions
   const getInputsForCurrent = (fileName, slice) => {
     return inputsByFileAndSlice[fileName]?.[slice] || {
       checkbox: false,
@@ -79,52 +83,27 @@ const useAnnotationData = () => {
   };
 
   return {
-    // State
-    selectedShape,
-    setSelectedShape,
-    selectedLabel,
-    setSelectedLabel,
-    labelOptions,
-    setLabelOptions,
-    selectedFileName,
-    setSelectedFileName,
-    windowCenter,
-    setWindowCenter,
-    windowWidth,
-    setWindowWidth,
-    brushColor,
-    setBrushColor,
-    brushSize,
-    setBrushSize,
-    toolChangeId,
-    setToolChangeId,
-    annotationOpacity,
-    setAnnotationOpacity,
-    openSection,
-    setOpenSection,
-    totalSlices,
-    setTotalSlices,
-    zoomLevel,
-    setZoomLevel,
-    isZoomMode,
-    setIsZoomMode,
-    zoomRegion,
-    setZoomRegion,
-    inputsByFileAndSlice,
-    setInputsByFileAndSlice,
-    currentSlice,
-    setCurrentSlice,
-    classificationByFileAndSlice,
-    setClassificationByFileAndSlice,
-    rightPanelOpen,
-    setRightPanelOpen,
-    viewType,
-    setViewType,
-    
-    // Refs
+    selectedShape, setSelectedShape,
+    selectedLabel, setSelectedLabel,
+    labelOptions, setLabelOptions,
+    selectedFileName, setSelectedFileName,
+    windowCenter, setWindowCenter,
+    windowWidth, setWindowWidth,
+    brushColor, setBrushColor,
+    brushSize, setBrushSize,
+    toolChangeId, setToolChangeId,
+    annotationOpacity, setAnnotationOpacity,
+    openSection, setOpenSection,
+    totalSlices, setTotalSlices,
+    zoomLevel, setZoomLevel,
+    isZoomMode, setIsZoomMode,
+    zoomRegion, setZoomRegion,
+    inputsByFileAndSlice, setInputsByFileAndSlice,
+    currentSlice, setCurrentSlice,
+    classificationByFileAndSlice, setClassificationByFileAndSlice,
+    rightPanelOpen, setRightPanelOpen,
+    viewType, setViewType,
     annotationRefs,
-    
-    // Helper functions
     getInputsForCurrent,
     updateInputsForCurrent
   };
