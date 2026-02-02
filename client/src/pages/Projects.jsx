@@ -94,8 +94,7 @@ const Projects = () => {
     { value: "number", label: "Number" },
     { value: "checkbox", label: "Checkbox" },
     { value: "radio", label: "Radio" },
-    { value: "select", label: "Select" },
-    { value: "date", label: "Date" }
+    { value: "select", label: "Select" }
   ];
 
   const colors = [

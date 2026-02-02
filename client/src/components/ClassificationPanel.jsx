@@ -11,9 +11,9 @@ const ClassificationPanel = ({
   setClassificationByFileAndSlice,
   getInputsForCurrent,
   updateInputsForCurrent,
-  projectAttributes = [] // Updated: receive dynamic attributes
+  projectAttributes = [] 
 }) => {
-  // Updated: helper to get current inputs safe object
+  // Helper to get current inputs safe object
   const inputs = getInputsForCurrent() || {};
 
   return (
@@ -113,18 +113,57 @@ const ClassificationPanel = ({
           })}
         </div>
 
-        {/* Updated: Dynamic Attributes Section (Replaces Hardcoded Inputs) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "8px" }}>
+        {/* Dynamic Attributes Section */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "8px" }}>
           {projectAttributes.length === 0 ? (
             <div style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>
               {t("No attributes configured")}
             </div>
           ) : (
             projectAttributes.map((attr) => {
-              const val = inputs[attr.name] !== undefined ? inputs[attr.name] : "";
+              const val = inputs[attr.name]; // Can be undefined, which represents "no selection"
               
-              // 1. Checkbox Type
+              // 1. Checkbox Type (Multi-Select or Single Boolean)
               if (attr.type === 'checkbox') {
+                const options = attr.values ? attr.values.split(/[\n,]/).map(o => o.trim()).filter(Boolean) : [];
+                
+                // Case A: Multi-Select Checkboxes (User provided values: "A, B, C")
+                if (options.length > 0) {
+                  // Ensure current value is an array, default to empty array if not
+                  const currentSelection = Array.isArray(val) ? val : [];
+
+                  return (
+                    <div key={attr.id} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500 }}>{attr.name} (Select multiple):</span>
+                      {/* Changed from flexDirection: column to row + flexWrap */}
+                      <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: "12px", paddingLeft: "4px" }}>
+                        {options.map((opt) => (
+                          <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#334155", cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={currentSelection.includes(opt)}
+                              onChange={(e) => {
+                                let newSelection;
+                                if (e.target.checked) {
+                                  // Add to array
+                                  newSelection = [...currentSelection, opt];
+                                } else {
+                                  // Remove from array
+                                  newSelection = currentSelection.filter(item => item !== opt);
+                                }
+                                updateInputsForCurrent({ [attr.name]: newSelection });
+                              }}
+                              style={{ width: "14px", height: "14px", cursor: "pointer" }}
+                            />
+                            {opt}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Case B: Single Boolean Checkbox (No values provided)
                 return (
                   <label key={attr.id} style={{ fontSize: "12px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
                     <input
@@ -138,14 +177,14 @@ const ClassificationPanel = ({
                 );
               }
 
-              // 2. Select or Radio Type
-              if (attr.type === 'select' || attr.type === 'radio') {
+              // 2. Select Type (Dropdown)
+              if (attr.type === 'select') {
                 const options = attr.values ? attr.values.split(/[\n,]/).map(o => o.trim()).filter(Boolean) : [];
                 return (
                   <label key={attr.id} style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
                     {attr.name}:
                     <select
-                      value={val}
+                      value={val || ""} // Default to empty string if undefined
                       onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
                       style={{
                         padding: "6px 8px",
@@ -155,6 +194,7 @@ const ClassificationPanel = ({
                         cursor: "pointer",
                         outline: "none",
                         transition: "border 0.2s",
+                        backgroundColor: "#fff"
                       }}
                       onFocus={(e) => (e.currentTarget.style.border = "1px solid #2563eb")}
                       onBlur={(e) => (e.currentTarget.style.border = "1px solid #cbd5e1")}
@@ -168,13 +208,39 @@ const ClassificationPanel = ({
                 );
               }
 
-              // 3. Text / Number / Date Type
+              // 3. Radio Type (Single Selection Group)
+              if (attr.type === 'radio') {
+                const options = attr.values ? attr.values.split(/[\n,]/).map(o => o.trim()).filter(Boolean) : [];
+                return (
+                  <div key={attr.id} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={{ fontSize: "12px", color: "#1e293b", fontWeight: 500 }}>{attr.name} (Select one):</span>
+                    {/* Changed from flexDirection: column to row + flexWrap */}
+                    <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: "12px", paddingLeft: "4px" }}>
+                      {options.map((opt) => (
+                        <label key={opt} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#334155", cursor: "pointer" }}>
+                          <input
+                            type="radio"
+                            name={`radio-group-${attr.id}`} // Unique name ensures only one selected per attribute group
+                            value={opt}
+                            checked={val === opt} // Will be false if val is undefined/empty
+                            onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
+                            style={{ margin: 0, cursor: "pointer" }}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              // 4. Text or Number Type (Default)
               return (
                 <label key={attr.id} style={{ fontSize: "12px", color: "#1e293b", display: "flex", flexDirection: "column", gap: "4px" }}>
                   {attr.name}:
                   <input
-                    type={attr.type === 'number' ? 'number' : attr.type === 'date' ? 'date' : 'text'}
-                    value={val}
+                    type={attr.type === 'number' ? 'number' : 'text'}
+                    value={val || ""}
                     onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
                     style={{
                       padding: "6px 8px",
