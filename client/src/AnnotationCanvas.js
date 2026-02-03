@@ -37,12 +37,18 @@ const AnnotationCanvas = forwardRef(
     const activeLine = useRef(null);
     const activeShape = useRef(null);
     const pointArray = useRef([]);
+    
+    // Rectangle
     const isDrawingBox = useRef(false);
     const boxStart = useRef(null);
     const previewBox = useRef(null);
+    
+    // Ellipse
     const isDrawingEllipse = useRef(false);
     const ellipseStart = useRef(null);
     const previewEllipse = useRef(null);
+    
+    // Guides
     const crosshairLines = useRef({ horizontal: null, vertical: null });
 
     const ANNOTATION_STROKE_WIDTH = 2;
@@ -54,14 +60,12 @@ const AnnotationCanvas = forwardRef(
     useEffect(() => { colorRef.current = brushColor; }, [brushColor]);
     useEffect(() => { opacityRef.current = annotationOpacity; }, [annotationOpacity]);
 
-    // --- Color Helpers (FIXED) ---
-    // Use fabric.Color for robust conversion of hex, rgb, rgba, and named colors
+    // --- Color Helpers ---
     const getColors = () => {
       const colorInput = colorRef.current || "#0066cc";
       const opacity = opacityRef.current !== undefined ? opacityRef.current : 0.5;
 
       const fColor = new fabric.Color(colorInput);
-      
       const fill = fColor.setAlpha(opacity).toRgba();
       const stroke = fColor.setAlpha(1).toRgba(); // Stroke usually opaque
 
@@ -75,17 +79,46 @@ const AnnotationCanvas = forwardRef(
 
     // --- API Exposed to Parent ---
     useImperativeHandle(ref, () => ({
-      exportAnnotations: () => fabricRef.current?.toJSON(["label", "labelText", "customType"]),
+      exportAnnotations: () => {
+         if (fabricRef.current && polygonPoints.current.length > 0) {
+            clearPolygonTemp(fabricRef.current);
+         }
+         return fabricRef.current?.toJSON(["label", "labelText", "customType"]);
+      },
       getSVG: () => fabricRef.current?.toSVG(),
       importAnnotations: (json) => {
-        if (fabricRef.current && json) {
-          fabricRef.current.loadFromJSON(json, () => {
-            fabricRef.current.getObjects().forEach((obj) => {
+        const canvas = fabricRef.current;
+        if (canvas && json) {
+          // Reset internal state before loading
+          polygonPoints.current = [];
+          pointArray.current = [];
+          activeLine.current = null;
+          activeShape.current = null;
+
+          canvas.loadFromJSON(json, () => {
+            const objects = canvas.getObjects().slice();
+            
+            // CLEANUP: Remove ghost artifacts and bad objects
+            objects.forEach((obj) => {
+               if (["vertex-handle", "temp-point", "temp-line", "temp-polygon", "temp-polyline", "preview-box", "preview-ellipse"].includes(obj.customType)) {
+                   canvas.remove(obj);
+                   return;
+               }
+               // Remove labelText object blob if imported (we recreate it fresh)
+               if (obj.labelText) delete obj.labelText;
+               if (obj.editHandles) delete obj.editHandles;
+            });
+
+            // REGENERATE: Add functionality back to shapes
+            canvas.getObjects().forEach((obj) => {
               if (obj.customType === "polygon" || obj.customType === "polyline") {
-                generateVertexHandles(obj, fabricRef.current);
+                generateVertexHandles(obj, canvas);
+              }
+              if (obj.label) {
+                addLabelToShape(obj, obj.label);
               }
             });
-            fabricRef.current.renderAll();
+            canvas.renderAll();
           });
         }
       },
@@ -95,6 +128,9 @@ const AnnotationCanvas = forwardRef(
         canvas.clear();
         canvas.setBackgroundColor("transparent", canvas.renderAll.bind(canvas));
         polygonPoints.current = [];
+        pointArray.current = [];
+        activeLine.current = null;
+        activeShape.current = null;
       },
       deleteSelected: () => {
         const canvas = fabricRef.current;
@@ -108,14 +144,18 @@ const AnnotationCanvas = forwardRef(
 
     // --- Internal Helpers ---
     const addLabelToShape = (shape, label) => {
-      // Even if label is empty, we allow creation, but text won't show if string is empty
       if (!fabricRef.current) return;
+      const labelString = label || ""; 
 
-      const labelString = label || ""; // Fallback to empty string
+      // Cleanup if existing
+      if (shape.labelText && typeof shape.labelText.set === 'function') {
+         fabricRef.current.remove(shape.labelText);
+      }
 
+      const bound = shape.getBoundingRect();
       const text = new fabric.Text(labelString, {
-        left: shape.left,
-        top: shape.top - 20,
+        left: bound.left,
+        top: bound.top - 20,
         fontSize: 14,
         fill: "white",
         backgroundColor: "rgba(0,0,0,0.6)",
@@ -129,8 +169,9 @@ const AnnotationCanvas = forwardRef(
       fabricRef.current.add(text);
 
       const updateLabelPos = () => {
-        const bound = shape.getBoundingRect();
-        text.set({ left: bound.left, top: bound.top - 20 });
+        if (!text || typeof text.set !== 'function') return;
+        const b = shape.getBoundingRect();
+        text.set({ left: b.left, top: b.top - 20 });
         text.setCoords();
       };
 
@@ -141,7 +182,9 @@ const AnnotationCanvas = forwardRef(
     };
 
     const removeShapeAndLabel = (shape, canvas) => {
-      if (shape.labelText) canvas.remove(shape.labelText);
+      if (shape.labelText && typeof shape.labelText.set === 'function') {
+          canvas.remove(shape.labelText);
+      }
       if (shape.editHandles) shape.editHandles.forEach((h) => canvas.remove(h));
       canvas.remove(shape);
       canvas.discardActiveObject();
@@ -162,10 +205,8 @@ const AnnotationCanvas = forwardRef(
       const handleWindowKey = (e) => {
         if (e.key === "Delete" || e.key === "Backspace") {
           const active = canvas.getActiveObject();
-          if (
-            (drawingModeRef.current === "polygon" || drawingModeRef.current === "polyline") &&
-            polygonPoints.current.length > 0
-          ) return;
+          // Don't delete while drawing
+          if ((drawingModeRef.current === "polygon" || drawingModeRef.current === "polyline") && polygonPoints.current.length > 0) return;
           if (active) removeShapeAndLabel(active, canvas);
         }
         if (e.key === "Enter") {
@@ -202,17 +243,18 @@ const AnnotationCanvas = forwardRef(
       
       canvas.defaultCursor = isDrawing ? "crosshair" : "default";
       canvas.selection = !isDrawing;
-
-      // Brush Logic
       canvas.isDrawingMode = mode === "brush";
+
       if (mode === "brush") {
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-        // FIX: Ensure brush gets the correct color immediately
         canvas.freeDrawingBrush.color = getBrushColor(); 
         canvas.freeDrawingBrush.width = brushSize || 10;
         canvas.freeDrawingBrush.decimate = 20; 
       } else {
-        clearPolygonTemp(canvas);
+         // If we switch modes mid-draw, clear temp stuff
+         if (polygonPoints.current.length > 0 && !["polygon", "polyline"].includes(mode)) {
+             clearPolygonTemp(canvas);
+         }
       }
     }, [mode, brushColor, brushSize, toolChangeId, annotationOpacity]);
 
@@ -220,11 +262,12 @@ const AnnotationCanvas = forwardRef(
     //         POLYGON / POLYLINE LOGIC
     // ==========================================
     const addPolygonPoint = (pointer, canvas) => {
-      const { stroke, fill } = getColors(); // Dynamic color fetch
+      const { stroke } = getColors(); 
       const mode = drawingModeRef.current;
 
       polygonPoints.current.push({ x: pointer.x, y: pointer.y });
 
+      // Add vertex marker
       const circle = new fabric.Circle({
         radius: 4,
         fill: "white",
@@ -238,10 +281,44 @@ const AnnotationCanvas = forwardRef(
         originY: "center",
         customType: "temp-point",
         objectCaching: false,
+        excludeFromExport: true,
       });
       canvas.add(circle);
       pointArray.current.push(circle);
 
+      // --- 1. Manage Active Line (Rubber Band) ---
+      if (polygonPoints.current.length === 1) {
+          // First point: Create the line starting here
+          activeLine.current = new fabric.Line(
+              [pointer.x, pointer.y, pointer.x, pointer.y],
+              {
+                  stroke: stroke,
+                  strokeWidth: 2,
+                  strokeDashArray: [5, 5],
+                  selectable: false,
+                  evented: false,
+                  customType: "temp-line",
+                  objectCaching: false, // Vital for animation
+                  excludeFromExport: true,
+              }
+          );
+          canvas.add(activeLine.current);
+      } else {
+          // Subsequent points: 
+          // The previous segment is now 'locked' by the fill shape.
+          // We move the activeLine's START to the NEW point, so it can rubber-band to the mouse.
+          if (activeLine.current) {
+              activeLine.current.set({
+                  x1: pointer.x,
+                  y1: pointer.y,
+                  x2: pointer.x,
+                  y2: pointer.y
+              });
+              activeLine.current.setCoords();
+          }
+      }
+
+      // --- 2. Manage Active Shape (Fill Preview) ---
       if (polygonPoints.current.length > 1) {
         const points = polygonPoints.current.map((p) => ({ x: p.x, y: p.y }));
         
@@ -251,11 +328,12 @@ const AnnotationCanvas = forwardRef(
             activeShape.current = new fabric.Polygon(points, {
                 stroke: stroke,
                 strokeWidth: ANNOTATION_STROKE_WIDTH,
-                fill: new fabric.Color(stroke).setAlpha(0.2).toRgba(), // Lighter fill for drawing
+                fill: new fabric.Color(stroke).setAlpha(0.2).toRgba(), 
                 selectable: false,
                 evented: false,
                 customType: "temp-polygon",
                 objectCaching: false,
+                excludeFromExport: true,
             });
         } else {
             activeShape.current = new fabric.Polyline(points, {
@@ -266,25 +344,14 @@ const AnnotationCanvas = forwardRef(
                 evented: false,
                 customType: "temp-polyline",
                 objectCaching: false,
+                excludeFromExport: true,
             });
         }
         canvas.add(activeShape.current);
         activeShape.current.sendToBack();
-      }
-
-      if (polygonPoints.current.length === 1) {
-        activeLine.current = new fabric.Line(
-          [pointer.x, pointer.y, pointer.x, pointer.y],
-          {
-            stroke: stroke,
-            strokeWidth: 2,
-            strokeDashArray: [5, 5],
-            selectable: false,
-            evented: false,
-            customType: "temp-line",
-          }
-        );
-        canvas.add(activeLine.current);
+        
+        // Ensure the rubber-band line remains on top of the fill
+        if (activeLine.current) activeLine.current.bringToFront();
       }
     };
 
@@ -294,14 +361,11 @@ const AnnotationCanvas = forwardRef(
     const handleMouseDown = (opt, canvas) => {
       const mode = drawingModeRef.current;
       if (mode === "select" || !mode) return;
+      if (opt.target && opt.target.customType === "vertex-handle") return;
 
       isMouseDownRef.current = true;
       const pointer = canvas.getPointer(opt.e);
-      const { stroke, fill } = getColors(); // Dynamic color fetch
-
-      if (opt.target && !["temp-point", "temp-line", "temp-polygon", "temp-polyline"].includes(opt.target.customType)) {
-        return;
-      }
+      const { stroke, fill } = getColors();
 
       if (mode === "polygon" || mode === "polyline") {
         canvas.discardActiveObject();
@@ -323,6 +387,7 @@ const AnnotationCanvas = forwardRef(
           selectable: false,
           evented: false,
           customType: "preview-box",
+          excludeFromExport: true,
         });
         canvas.add(previewBox.current);
       }
@@ -343,7 +408,8 @@ const AnnotationCanvas = forwardRef(
             evented: false,
             originX: 'center',
             originY: 'center',
-            customType: 'preview-ellipse'
+            customType: 'preview-ellipse',
+            excludeFromExport: true,
         });
         canvas.add(previewEllipse.current);
       }
@@ -355,9 +421,22 @@ const AnnotationCanvas = forwardRef(
 
       if (['rectangle', 'ellipse'].includes(mode)) {
           updateCrosshairs(pointer, canvas);
+      } else if (crosshairLines.current.horizontal) {
+          canvas.remove(crosshairLines.current.horizontal);
+          canvas.remove(crosshairLines.current.vertical);
+          crosshairLines.current = { horizontal: null, vertical: null };
       }
 
+      // --- Polygon Rubber-Banding ---
       if ((mode === "polygon" || mode === "polyline") && polygonPoints.current.length > 0) {
+        
+        // 1. Update Line (Rubber Band effect)
+        if (activeLine.current) {
+            activeLine.current.set({ x2: pointer.x, y2: pointer.y });
+            activeLine.current.setCoords();
+        }
+
+        // 2. Drag-to-add logic (if user drags mouse far enough, add point automatically)
         if (isMouseDownRef.current) {
           const lastPoint = polygonPoints.current[polygonPoints.current.length - 1];
           const dist = Math.hypot(pointer.x - lastPoint.x, pointer.y - lastPoint.y);
@@ -365,24 +444,11 @@ const AnnotationCanvas = forwardRef(
             addPolygonPoint(pointer, canvas);
           }
         }
-
-        if (activeLine.current) {
-          activeLine.current.set({ x2: pointer.x, y2: pointer.y });
-        } else {
-            const last = polygonPoints.current[polygonPoints.current.length-1];
-            if(last) {
-                const { stroke } = getColors();
-                activeLine.current = new fabric.Line(
-                    [last.x, last.y, pointer.x, pointer.y], 
-                    { stroke, strokeDashArray: [5,5], selectable: false }
-                );
-                canvas.add(activeLine.current);
-            }
-        }
+        
         canvas.requestRenderAll();
       }
 
-      if (mode === "rectangle" && isDrawingBox.current) {
+      if (mode === "rectangle" && isDrawingBox.current && previewBox.current) {
         const startX = boxStart.current.x;
         const startY = boxStart.current.y;
         const width = pointer.x - startX;
@@ -397,7 +463,7 @@ const AnnotationCanvas = forwardRef(
         canvas.requestRenderAll();
       }
 
-      if (mode === "ellipse" && isDrawingEllipse.current) {
+      if (mode === "ellipse" && isDrawingEllipse.current && previewEllipse.current) {
           const rx = Math.abs(pointer.x - ellipseStart.current.x);
           const ry = Math.abs(pointer.y - ellipseStart.current.y);
           previewEllipse.current.set({ rx, ry });
@@ -412,8 +478,8 @@ const AnnotationCanvas = forwardRef(
 
       if (mode === "rectangle" && isDrawingBox.current) {
         isDrawingBox.current = false;
-        if (previewBox.current.width < 5 || previewBox.current.height < 5) {
-          canvas.remove(previewBox.current);
+        if (!previewBox.current || previewBox.current.width < 5 || previewBox.current.height < 5) {
+          if (previewBox.current) canvas.remove(previewBox.current);
           previewBox.current = null;
           return;
         }
@@ -444,6 +510,7 @@ const AnnotationCanvas = forwardRef(
 
       if (mode === "ellipse" && isDrawingEllipse.current) {
           isDrawingEllipse.current = false;
+          if (!previewEllipse.current) return;
           const { rx, ry, left, top } = previewEllipse.current;
           
           if(rx < 5 || ry < 5) {
@@ -452,7 +519,7 @@ const AnnotationCanvas = forwardRef(
               return;
           }
 
-          const numPoints = 12; 
+          const numPoints = 16; 
           const points = [];
           for (let i = 0; i < numPoints; i++) {
               const angle = (i / numPoints) * 2 * Math.PI;
@@ -615,10 +682,8 @@ const AnnotationCanvas = forwardRef(
 
     const generateVertexHandles = (poly, canvas) => {
       if (!poly || (poly.customType !== "polygon" && poly.customType !== "polyline")) return;
-      if (poly.editHandles && poly.editHandles.length === poly.points.length) {
-        updateVertexHandles(poly);
-        return;
-      }
+      
+      // Clean up old handles
       if (poly.editHandles) {
         poly.editHandles.forEach((h) => canvas.remove(h));
       }
@@ -647,6 +712,7 @@ const AnnotationCanvas = forwardRef(
           pointIndex: index,
           parentPoly: poly,
           zIndex: 9999,
+          excludeFromExport: true,
         });
 
         handle.on("moving", (e) => onHandleMove(handle, poly, canvas));
@@ -655,7 +721,8 @@ const AnnotationCanvas = forwardRef(
       });
 
       poly.editHandles = handles;
-      poly.sendToBack();
+      // Ensure handles are on top
+      handles.forEach(h => h.bringToFront());
     };
 
     const updateVertexHandles = (poly) => {
@@ -680,7 +747,7 @@ const AnnotationCanvas = forwardRef(
       poly.points[pIndex].x = localPoint.x + poly.pathOffset.x;
       poly.points[pIndex].y = localPoint.y + poly.pathOffset.y;
 
-      if (poly.labelText) {
+      if (poly.labelText && typeof poly.labelText.set === 'function') {
         const bound = poly.getBoundingRect();
         poly.labelText.set({ left: bound.left, top: bound.top - 20 });
       }
@@ -692,8 +759,22 @@ const AnnotationCanvas = forwardRef(
       const w = canvas.getWidth();
       const h = canvas.getHeight();
       if (!crosshairLines.current.horizontal) {
-        crosshairLines.current.horizontal = new fabric.Line([0, pointer.y, w, pointer.y], { stroke: "red", strokeDashArray: [5, 5], selectable: false, evented: false });
-        crosshairLines.current.vertical = new fabric.Line([pointer.x, 0, pointer.x, h], { stroke: "red", strokeDashArray: [5, 5], selectable: false, evented: false });
+        crosshairLines.current.horizontal = new fabric.Line([0, pointer.y, w, pointer.y], { 
+            stroke: "rgba(255,0,0,0.5)", 
+            strokeWidth: 1, 
+            strokeDashArray: [5, 5], 
+            selectable: false, 
+            evented: false,
+            excludeFromExport: true 
+        });
+        crosshairLines.current.vertical = new fabric.Line([pointer.x, 0, pointer.x, h], { 
+            stroke: "rgba(255,0,0,0.5)", 
+            strokeWidth: 1, 
+            strokeDashArray: [5, 5], 
+            selectable: false, 
+            evented: false,
+            excludeFromExport: true 
+        });
         canvas.add(crosshairLines.current.horizontal);
         canvas.add(crosshairLines.current.vertical);
       } else {
@@ -705,10 +786,7 @@ const AnnotationCanvas = forwardRef(
     };
 
     return (
-      <canvas
-        ref={canvasRef}
-        style={{ width: "100%", height: "100%" }}
-      />
+      <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
     );
   }
 );

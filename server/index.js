@@ -403,47 +403,72 @@ app.post("/upload", authenticateToken, upload.single("file"), (req, res) => {
   });
 });
 
+// server.js (or your routes file)
+
+// POST: Save Annotations & Classifications
+// Payload: { taskId, filename, sliceData: { "0": { ... }, "1": { ... } } }
 app.post("/save-annotations", authenticateToken, async (req, res) => {
   if (!annotationsCollection) {
     return res.status(500).json({ error: "Database not initialized" });
   }
-  const { filename, annotations, classification } = req.body;
+
+  const { taskId, filename, sliceData } = req.body;
+
+  if (!filename || !taskId) {
+    return res.status(400).json({ error: "Missing filename or taskId" });
+  }
 
   try {
+    // We update the specific document for this file/user/task
+    // We use $set to update the 'slices' field. 
+    // Note: This replaces the slices map for this file with the new state from frontend.
+    
     await annotationsCollection.updateOne(
-      { filename, userId: req.user.id },
+      { 
+        filename: filename, 
+        taskId: taskId,
+        userId: req.user.id 
+      },
       {
         $set: {
-          annotations,
-          classification,
+          slices: sliceData, // Map of index -> data
           userId: req.user.id,
           updatedAt: new Date(),
         },
       },
       { upsert: true }
     );
+
     res.json({ message: "Changes Successfully Saved!" });
   } catch (err) {
     console.error("Failed to save annotations to DB:", err);
-    res.status(500).json({ error: "Failed to Save Changes. Please Try Again!" });
+    res.status(500).json({ error: "Failed to Save Changes." });
   }
 });
 
-app.get("/annotations/:filename", authenticateToken, async (req, res) => {
+// GET: Retrieve Annotations
+app.get("/annotations/:taskId", authenticateToken, async (req, res) => {
   if (!annotationsCollection) {
     return res.status(500).json({ error: "Database not initialized" });
   }
 
-  const filename = req.params.filename;
+  const { taskId } = req.params;
+  const { fileName } = req.query; // Expect filename in query string
+
   try {
     const doc = await annotationsCollection.findOne({ 
-      filename, 
+      filename: fileName, 
+      taskId: taskId,
       userId: req.user.id 
     });
+
     if (!doc) {
-      return res.status(404).json({ error: "Annotations not found" });
+      // Return empty structure if new file
+      return res.json({}); 
     }
-    res.json({ annotations: doc.annotations, classification: doc.classification });
+
+    // Return the 'slices' map: { "0": { editorState, classification... }, "1": ... }
+    res.json(doc.slices || {}); 
   } catch (err) {
     console.error("Failed to fetch annotations from DB", err);
     res.status(500).json({ error: "Failed to fetch annotations" });

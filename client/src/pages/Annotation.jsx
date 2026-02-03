@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from '../AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios'; // Required for saving
+import axios from 'axios';
 
 // Hooks
 import useTaskData from "../useTaskData";
@@ -31,13 +31,8 @@ function Annotation() {
 
   // 1. Task Data Hook
   const {
-    isLoading,
-    error,
-    taskData,
-    setTaskData,
-    uploadedFiles: taskUploadedFiles,
-    setUploadedFiles: setTaskUploadedFiles,
-    fetchTask
+    isLoading, error, taskData, setTaskData,
+    uploadedFiles: taskUploadedFiles, fetchTask
   } = useTaskData(taskId, isAuthenticated, token, i18n.language, navigate);
 
   // 2. Annotation Data Hook
@@ -60,8 +55,8 @@ function Annotation() {
     inputsByFileAndSlice, setInputsByFileAndSlice,
     currentSlice, setCurrentSlice,
     classificationByFileAndSlice, setClassificationByFileAndSlice,
-    annotationsByFileAndSlice, setAnnotationsByFileAndSlice, // Destructured
-    saveSliceAnnotationToState, // Destructured
+    annotationsByFileAndSlice, setAnnotationsByFileAndSlice,
+    saveSliceAnnotationToState,
     rightPanelOpen, setRightPanelOpen,
     viewType, setViewType,
     annotationRefs
@@ -69,349 +64,245 @@ function Annotation() {
 
   // 3. File Handling Hook
   const {
-    files, setFiles,
-    uploadProgress, setUploadProgress,
-    uploadedFiles: newlyUploadedFiles, setUploadedFiles: setNewlyUploadedFiles,
-    uploadMode, setUploadMode,
-    handleDrop, handleFileChange, handleUpload
+    files, uploadProgress, uploadMode, setUploadMode,
+    handleDrop, handleFileChange, handleUpload, uploadedFiles: newlyUploadedFiles
   } = useFileHandling(taskId, token, setSelectedFileName);
 
-  // -----------------------------------------------------------------------
-  // CRITICAL: File Switching Handler (Fixes NaN / Crash issues)
-  // -----------------------------------------------------------------------
-  const handleFileSwitch = useCallback((newFileName) => {
-    if (newFileName === selectedFileName) return;
+  const allUploadedFiles = useMemo(() => [...taskUploadedFiles, ...newlyUploadedFiles], [taskUploadedFiles, newlyUploadedFiles]);
 
-    // 1. SAVE: Save the current canvas state before leaving the old file
-    if (selectedFileName && annotationRefs.current[selectedFileName]?.current) {
-      saveSliceAnnotationToState(
-        selectedFileName, 
-        currentSlice, 
-        annotationRefs.current[selectedFileName].current
-      );
-    }
-
-    // 2. RESET COUNTERS: Critical to prevent "NaN" or accessing out-of-bounds slices
-    // This forces the viewer to reset its internal slider constraints immediately
-    setTotalSlices(0); 
-    setCurrentSlice(0);
-
-    // 3. SWITCH: Update the filename to trigger loading the new file
-    setSelectedFileName(newFileName);
-  }, [selectedFileName, currentSlice, annotationRefs, saveSliceAnnotationToState, setTotalSlices, setCurrentSlice, setSelectedFileName]);
-
-  // -----------------------------------------------------------------------
-  // STANDARDIZED SAVING LOGIC
-  // -----------------------------------------------------------------------
-  const generateStandardizedPayload = useCallback(() => {
-    // Ensure the CURRENT slice is saved to state before generating payload
-    if (selectedFileName && annotationRefs.current[selectedFileName]?.current) {
-      saveSliceAnnotationToState(
-        selectedFileName, 
-        currentSlice, 
-        annotationRefs.current[selectedFileName].current
-      );
-    }
-
-    // Helper to merge data from our 3 state objects
-    const fileNames = new Set([
-      ...Object.keys(annotationsByFileAndSlice),
-      ...Object.keys(classificationByFileAndSlice),
-      ...Object.keys(inputsByFileAndSlice)
-    ]);
-
-    const resultSlices = [];
-
-    fileNames.forEach(fileName => {
-      // Find all slice indices for this file that have ANY data
-      const slices = new Set([
-        ...Object.keys(annotationsByFileAndSlice[fileName] || {}),
-        ...Object.keys(classificationByFileAndSlice[fileName] || {}),
-        ...Object.keys(inputsByFileAndSlice[fileName] || {})
-      ]);
-
-      slices.forEach(sliceIndexStr => {
-        const sliceIndex = parseInt(sliceIndexStr, 10);
-        
-        resultSlices.push({
-          sliceIndex: sliceIndex,
-          fileName: fileName,
-          classification: classificationByFileAndSlice[fileName]?.[sliceIndex] || {},
-          attributes: inputsByFileAndSlice[fileName]?.[sliceIndex] || {},
-          // Parse the FabricJS JSON if it exists, or pass empty array
-          annotations: annotationsByFileAndSlice[fileName]?.[sliceIndex]?.objects || [] 
-        });
-      });
-    });
-
-    return {
-      taskId: taskId,
-      lastModified: new Date().toISOString(),
-      slices: resultSlices
-    };
-  }, [selectedFileName, currentSlice, annotationRefs, saveSliceAnnotationToState, annotationsByFileAndSlice, classificationByFileAndSlice, inputsByFileAndSlice, taskId]);
-
-  const handleStandardSave = useCallback(async () => {
-    try {
-      const payload = generateStandardizedPayload();
-      console.log("Saving Payload:", payload);
-
-      await axios.post('http://localhost:5000/api/annotations/save', payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      alert("Saved successfully!");
-    } catch (err) {
-      console.error("Save failed", err);
-      alert("Failed to save annotations.");
-    }
-  }, [generateStandardizedPayload, token]);
-
-  // -----------------------------------------------------------------------
-  // LABEL & TOOL FILTERING LOGIC
-  // -----------------------------------------------------------------------
-  const [allProjectLabels, setAllProjectLabels] = useState([]);
-
-  // Load labels from Task Data
+  // --- Auth & Init ---
   useEffect(() => {
-    if (taskData && taskData.labels) {
-      const formatted = taskData.labels.map(l => ({
-        value: l.name,
-        label: l.name,
-        color: l.color || "#ffffff",
-        type: l.type
-      }));
-      setAllProjectLabels(formatted);
-    }
-  }, [taskData]);
+    if (!isAuthenticated) navigate('/login');
+    else if (taskId) fetchTask();
+  }, [isAuthenticated, token, taskId, fetchTask, navigate]);
 
-  // Filter Options based on Selected Shape (Tool)
-  useEffect(() => {
-    if (allProjectLabels.length > 0) {
-      // Fix: If selectedShape is NULL (cursor), show ALL labels
-      const relevantLabels = allProjectLabels.filter(
-        l => !selectedShape || l.type === selectedShape || !l.type
-      );
-      setLabelOptions(relevantLabels);
-    }
-  }, [selectedShape, allProjectLabels, setLabelOptions]);
-
-  // Auto-Select Valid Label & Sync Color
-  useEffect(() => {
-    if (labelOptions.length > 0) {
-      const currentLabelIsValid = labelOptions.find(l => l.value === selectedLabel);
-
-      if (!currentLabelIsValid) {
-        // Switch to first valid option
-        const firstOption = labelOptions[0];
-        setSelectedLabel(firstOption.value);
-        // Do not set color here, let the next effect handle it
-      }
-    }
-  }, [labelOptions, selectedLabel, setSelectedLabel]);
-
-  // Sync Color when Label Changes
-  useEffect(() => {
-    if (selectedLabel && labelOptions.length > 0) {
-      const activeOption = labelOptions.find(opt => opt.value === selectedLabel);
-      if (activeOption && activeOption.color !== brushColor) {
-        setBrushColor(activeOption.color);
-      }
-    } else if (labelOptions.length > 0 && !selectedLabel) {
-       setBrushColor(labelOptions[0].color);
-    }
-  }, [selectedLabel, labelOptions, brushColor, setBrushColor]);
-
-  // -----------------------------------------------------------------------
-  // CALCULATED VALUES
-  // -----------------------------------------------------------------------
-
-  const allowedShapeIds = useMemo(() => {
-    if (!taskData || !taskData.labels || taskData.labels.length === 0) {
-      return SHAPES.map(s => s.id); 
-    }
-    return Array.from(new Set(taskData.labels.map(l => l.type)));
-  }, [taskData]);
-
-  const projectAttributes = useMemo(() => {
-    if (!taskData || !taskData.attributes) return [];
-    return taskData.attributes;
-  }, [taskData]);
-
-  const allUploadedFiles = useMemo(() => {
-    return [...taskUploadedFiles, ...newlyUploadedFiles];
-  }, [taskUploadedFiles, newlyUploadedFiles]);
-
-  // Initial file selection
   useEffect(() => {
     if (allUploadedFiles.length > 0 && !selectedFileName) {
       setSelectedFileName(allUploadedFiles[0].originalName);
     }
   }, [allUploadedFiles, selectedFileName, setSelectedFileName]);
 
-  // Auth & Data Loading
+  // --- Labels ---
+  const [allProjectLabels, setAllProjectLabels] = useState([]);
   useEffect(() => {
-    if (!isAuthenticated) navigate('/login');
-  }, [isAuthenticated, navigate]);
+    if (taskData && taskData.labels) {
+      const formatted = taskData.labels.map(l => ({ value: l.name, label: l.name, color: l.color, type: l.type }));
+      setAllProjectLabels(formatted);
+    }
+  }, [taskData]);
 
   useEffect(() => {
-    if (isAuthenticated && token && taskId) fetchTask();
-  }, [isAuthenticated, token, taskId, fetchTask]);
+    const relevant = allProjectLabels.filter(l => !selectedShape || l.type === selectedShape || !l.type);
+    setLabelOptions(relevant);
+    if (relevant.length > 0 && !relevant.find(l => l.value === selectedLabel)) {
+       setSelectedLabel(relevant[0].value);
+    }
+  }, [selectedShape, allProjectLabels, selectedLabel, setSelectedLabel, setLabelOptions]);
+
+  useEffect(() => {
+    const opt = labelOptions.find(o => o.value === selectedLabel);
+    if (opt) setBrushColor(opt.color);
+  }, [selectedLabel, labelOptions, setBrushColor]);
+
+  const allowedShapeIds = useMemo(() => {
+    return (taskData?.labels?.length) ? Array.from(new Set(taskData.labels.map(l => l.type))) : SHAPES.map(s => s.id);
+  }, [taskData]);
+
+  const projectAttributes = useMemo(() => taskData?.attributes || [], [taskData]);
+
+  // --- File Switch Logic ---
+  const handleFileSwitch = useCallback((newFileName) => {
+    if (newFileName === selectedFileName) return;
+
+    // Save current canvas to state before switching
+    if (selectedFileName && annotationRefs.current[selectedFileName]?.current) {
+      saveSliceAnnotationToState(
+        selectedFileName, 
+        currentSlice, 
+        annotationRefs.current[selectedFileName].current.exportAnnotations()
+      );
+    }
+
+    setTotalSlices(0); 
+    setCurrentSlice(0);
+    setSelectedFileName(newFileName);
+  }, [selectedFileName, currentSlice, annotationRefs, saveSliceAnnotationToState, setTotalSlices, setCurrentSlice, setSelectedFileName]);
+
 
   // -----------------------------------------------------------------------
-  // RENDER
+  // STANDARDIZED SAVING LOGIC
   // -----------------------------------------------------------------------
+  
+  // Converter: Fabric Objects -> Standard Coordinates
+  const extractStandardData = (fabricObjects) => {
+    if (!fabricObjects || !Array.isArray(fabricObjects)) return [];
 
-  if (isLoading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
-        <div>Loading task data...</div>
-      </div>
-    );
-  }
+    return fabricObjects.map(obj => {
+      let points = [];
+      let type = obj.type;
 
-  if (!taskData) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: "20px" }}>
-        <div style={{ fontSize: "18px", color: "#dc2626" }}>{error || "Task not found."}</div>
-        <button onClick={() => navigate('/tasks')}>Back to Tasks</button>
-      </div>
-    );
-  }
+      if (type === 'polygon' || type === 'polyline') {
+        // Convert to absolute coordinates
+        // Simple approximation: add object position to point position
+        points = (obj.points || []).map(p => {
+             return [ p.x + obj.left, p.y + obj.top ]; 
+        });
+      } 
+      else if (type === 'rect') {
+        type = "rectangle";
+        const x = obj.left;
+        const y = obj.top;
+        const w = obj.width * obj.scaleX;
+        const h = obj.height * obj.scaleY;
+        points = [ [x, y], [x+w, y], [x+w, y+h], [x, y+h] ];
+      }
+
+      return {
+        label: obj.label || "Unlabeled",
+        type: type,
+        points: points, 
+        bbox: obj.getBoundingRect ? obj.getBoundingRect() : null
+      };
+    });
+  };
+
+  const handleSaveAll = useCallback(async () => {
+    if (!selectedFileName) return;
+
+    try {
+      // 1. Force update state with current canvas content (ensure latest drawing is saved)
+      let currentCanvasJson = null;
+      if (annotationRefs.current[selectedFileName]?.current) {
+        currentCanvasJson = annotationRefs.current[selectedFileName].current.exportAnnotations();
+        saveSliceAnnotationToState(selectedFileName, currentSlice, currentCanvasJson);
+      }
+
+      // 2. Prepare Payload using Data in State
+      const fileAnnotations = annotationsByFileAndSlice[selectedFileName] || {};
+      const fileClassifications = classificationByFileAndSlice[selectedFileName] || {};
+      const fileInputs = inputsByFileAndSlice[selectedFileName] || {};
+
+      // Identify all slices that have data
+      const allActiveSlices = new Set([
+        ...Object.keys(fileAnnotations),
+        ...Object.keys(fileClassifications),
+        ...Object.keys(fileInputs),
+        currentSlice.toString() // Ensure current is included
+      ]);
+
+      const slicesPayload = {};
+
+      allActiveSlices.forEach(idx => {
+        // Use the just-captured canvas data if it's the current slice, otherwise use state
+        const editorState = (parseInt(idx) === currentSlice && currentCanvasJson) 
+          ? currentCanvasJson 
+          : fileAnnotations[idx];
+
+        // Generate Standard Data (for Deep Learning) from Editor State
+        const standardData = editorState ? extractStandardData(editorState.objects) : [];
+
+        slicesPayload[idx] = {
+          editorState: editorState,      // Raw FabricJS (for UI Restore)
+          standardData: standardData,    // Clean Coords (for AI)
+          classification: fileClassifications[idx] || null,
+          attributes: fileInputs[idx] || {}
+        };
+      });
+
+      // 3. Send to Backend
+      await axios.post('http://localhost:5000/save-annotations', {
+        taskId,
+        filename: selectedFileName,
+        sliceData: slicesPayload
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert("Changes Saved Successfully!");
+    } catch (err) {
+      console.error("Save failed", err);
+      alert("Failed to save annotations.");
+    }
+  }, [selectedFileName, currentSlice, annotationRefs, annotationsByFileAndSlice, classificationByFileAndSlice, inputsByFileAndSlice, taskId, token, saveSliceAnnotationToState]);
+
+
+  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #f8fafc, #fff)", display: "flex", flexDirection: "column" }}>
       <Header page="tasks" />
+      <TaskInfoBar taskData={taskData} files={allUploadedFiles} selectedFileName={selectedFileName} onFileSelect={handleFileSwitch} />
       
-      {/* 
-        Updated TaskInfoBar:
-        - Passed 'files' (allUploadedFiles)
-        - Passed 'onFileSelect' (handleFileSwitch)
-      */}
-      <TaskInfoBar 
-        taskData={taskData} 
-        files={allUploadedFiles}
-        selectedFileName={selectedFileName}
-        onFileSelect={handleFileSwitch}
-      />
-      
-      {allUploadedFiles.length === 0 && !isLoading && (
+      {allUploadedFiles.length === 0 ? (
         <FileUploadSection
-          files={files}
-          uploadProgress={uploadProgress}
-          uploadMode={uploadMode}
-          setUploadMode={setUploadMode}
-          handleDrop={handleDrop}
-          handleFileChange={handleFileChange}
+          files={files} uploadProgress={uploadProgress} uploadMode={uploadMode} setUploadMode={setUploadMode}
+          handleDrop={handleDrop} handleFileChange={handleFileChange}
           handleUpload={() => handleUpload().then(() => fetchTask())} 
         />
-      )}
-
-      {allUploadedFiles.length > 0 && (
+      ) : (
         <>
           <div style={{ flex: 1, display: "grid", gridTemplateColumns: "250px 1fr 250px", gap: "16px", padding: "16px", height: "100%" }}>
             <div style={{ flexBasis: "48px", flexShrink: 0 }}> </div>
             
             <ToolbarLeft
-              shapes={SHAPES} 
-              allowedShapeIds={allowedShapeIds}
-              selectedShape={selectedShape}
-              setSelectedShape={setSelectedShape}
-              setToolChangeId={setToolChangeId}
-              sectionIcons={SECTION_ICONS}
-              openSection={openSection}
-              setOpenSection={setOpenSection}
+              shapes={SHAPES} allowedShapeIds={allowedShapeIds}
+              selectedShape={selectedShape} setSelectedShape={setSelectedShape}
+              setToolChangeId={setToolChangeId} sectionIcons={SECTION_ICONS}
+              openSection={openSection} setOpenSection={setOpenSection}
             />
 
             <LeftDrawer
-              openSection={openSection}
-              windowCenter={windowCenter}
-              windowWidth={windowWidth}
-              setWindowCenter={setWindowCenter}
-              setWindowWidth={setWindowWidth}
-              annotationOpacity={annotationOpacity}
-              setAnnotationOpacity={setAnnotationOpacity}
-              selectedShape={selectedShape}
-              brushColor={brushColor}
-              setBrushColor={setBrushColor}
-              brushSize={brushSize}
-              setBrushSize={setBrushSize}
-              
-              selectedLabel={selectedLabel}
-              setSelectedLabel={setSelectedLabel}
-              labelOptions={labelOptions}
-              t={t}
+              openSection={openSection} windowCenter={windowCenter} windowWidth={windowWidth}
+              setWindowCenter={setWindowCenter} setWindowWidth={setWindowWidth}
+              annotationOpacity={annotationOpacity} setAnnotationOpacity={setAnnotationOpacity}
+              selectedShape={selectedShape} brushColor={brushColor} setBrushColor={setBrushColor}
+              brushSize={brushSize} setBrushSize={setBrushSize}
+              selectedLabel={selectedLabel} setSelectedLabel={setSelectedLabel}
+              labelOptions={labelOptions} t={t}
             />
 
-            {/* 
-              MainViewer:
-              - Passed saveSliceAnnotationToState to ensure canvas saves on internal logic
-              - Passed annotationsByFileAndSlice for restoration
-            */}
             <MainViewer
-              uploadedFiles={allUploadedFiles}
-              selectedFileName={selectedFileName}
-              windowCenter={windowCenter}
-              windowWidth={windowWidth}
-              currentSlice={currentSlice}
-              setCurrentSlice={setCurrentSlice}
-              setTotalSlices={setTotalSlices}
-              zoomLevel={zoomLevel}
-              zoomRegion={zoomRegion}
-              isZoomMode={isZoomMode}
-              viewType={viewType}
-              
-              selectedShape={selectedShape}
-              selectedLabel={selectedLabel}
-              brushColor={brushColor}
-              brushSize={brushSize}
-              
-              toolChangeId={toolChangeId}
+              uploadedFiles={allUploadedFiles} selectedFileName={selectedFileName}
+              windowCenter={windowCenter} windowWidth={windowWidth}
+              currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
+              setTotalSlices={setTotalSlices} zoomLevel={zoomLevel} zoomRegion={zoomRegion}
+              isZoomMode={isZoomMode} viewType={viewType}
+              selectedShape={selectedShape} selectedLabel={selectedLabel}
+              brushColor={brushColor} brushSize={brushSize} toolChangeId={toolChangeId}
               annotationOpacity={annotationOpacity}
-              
               classificationByFileAndSlice={classificationByFileAndSlice}
               annotationsByFileAndSlice={annotationsByFileAndSlice}
               saveSliceAnnotationToState={saveSliceAnnotationToState}
-              
+              setInputsByFileAndSlice={setInputsByFileAndSlice}
+              setClassificationByFileAndSlice={setClassificationByFileAndSlice}
+              setAnnotationsByFileAndSlice={setAnnotationsByFileAndSlice}
               annotationRefs={annotationRefs}
               totalSlices={totalSlices}
+              taskId={taskId}
             />
           </div>
 
           <ToolbarRight
             buttons_right={RIGHT_BUTTONS}
+            buttons={LEFT_BUTTONS}
             selectedFileName={selectedFileName}
             annotationRefs={annotationRefs}
-            buttons={LEFT_BUTTONS}
             rightPanelOpen={rightPanelOpen}
             setRightPanelOpen={setRightPanelOpen}
-            taskData={taskData}
-            currentSlice={currentSlice}
-            totalSlices={totalSlices}
-            token={token}
-            taskId={taskId}
-            setTaskData={setTaskData}
-            onSave={handleStandardSave} // Passed Standardized Save Handler
+            onSave={handleSaveAll} // Pass the centralized save handler
           />
 
           <RightPanel
-            rightPanelOpen={rightPanelOpen}
-            t={t}
-            viewType={viewType}
-            setViewType={setViewType}
+            rightPanelOpen={rightPanelOpen} t={t}
+            viewType={viewType} setViewType={setViewType}
             selectedFileName={selectedFileName}
-            currentSlice={currentSlice}
-            setCurrentSlice={setCurrentSlice}
+            currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
             classificationByFileAndSlice={classificationByFileAndSlice}
             setClassificationByFileAndSlice={setClassificationByFileAndSlice}
             inputsByFileAndSlice={inputsByFileAndSlice}
             setInputsByFileAndSlice={setInputsByFileAndSlice}
-            totalSlices={totalSlices}
-            isZoomMode={isZoomMode}
-            setIsZoomMode={setIsZoomMode}
-            zoomLevel={zoomLevel}
-            setZoomLevel={setZoomLevel}
-            zoomRegion={setZoomRegion}
+            totalSlices={totalSlices} isZoomMode={isZoomMode} setIsZoomMode={setIsZoomMode}
+            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} zoomRegion={setZoomRegion}
             projectAttributes={projectAttributes} 
           />
         </>
