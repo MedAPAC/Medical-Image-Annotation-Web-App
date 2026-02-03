@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 const useAnnotationData = () => {
   // Tool States
   // Default to polygon, but we will update this when task data loads
-  const [selectedShape, setSelectedShape] = useState("polygon"); 
+  const [selectedShape, setSelectedShape] = useState(null); 
   
   // Start empty. Will be populated by Annotation.jsx useEffect
   const [selectedLabel, setSelectedLabel] = useState(null); 
