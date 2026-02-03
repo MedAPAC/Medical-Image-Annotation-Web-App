@@ -1,86 +1,90 @@
-// annotation/hooks/useAnnotationData.js
-import { useState, useRef, useEffect } from "react";
+// hooks/useAnnotationData.js
+import { useState, useRef, useEffect, useCallback } from "react";
 
 const useAnnotationData = () => {
-  // Tool States
-  // Default to polygon, but we will update this when task data loads
+  // --- Tool & UI States ---
   const [selectedShape, setSelectedShape] = useState(null); 
-  
-  // Start empty. Will be populated by Annotation.jsx useEffect
   const [selectedLabel, setSelectedLabel] = useState(null); 
-  
-  // Start empty.
   const [labelOptions, setLabelOptions] = useState([]); 
-  
   const [selectedFileName, setSelectedFileName] = useState(null);
   
-  // Window Settings
+  // --- Window / DICOM Settings ---
   const [windowCenter, setWindowCenter] = useState(null);
   const [windowWidth, setWindowWidth] = useState(null);
   
-  // Brush Settings
-  const [brushColor, setBrushColor] = useState("#FFFFFF"); // Default white until label loads
+  // --- Drawing Settings ---
+  const [brushColor, setBrushColor] = useState("#FFFFFF");
   const [brushSize, setBrushSize] = useState(10);
   const [toolChangeId, setToolChangeId] = useState(0);
   const [annotationOpacity, setAnnotationOpacity] = useState(0.5);
   
-  // UI States
+  // --- Viewer States ---
   const [openSection, setOpenSection] = useState(null);
-  const [totalSlices, setTotalSlices] = useState(0);
+  const [totalSlices, setTotalSlices] = useState(0); // Initialize as 0
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isZoomMode, setIsZoomMode] = useState(false);
   const [zoomRegion, setZoomRegion] = useState(null);
   
-  // Data States
+  // --- Data States ---
   const [inputsByFileAndSlice, setInputsByFileAndSlice] = useState({});
   const [classificationByFileAndSlice, setClassificationByFileAndSlice] = useState({});
+  const [annotationsByFileAndSlice, setAnnotationsByFileAndSlice] = useState({});
+  
   const [currentSlice, setCurrentSlice] = useState(0);
   
-  // Panel States
+  // --- Layout States ---
   const [rightPanelOpen, setRightPanelOpen] = useState(null);
   const [viewType, setViewType] = useState("axial");
   
-  // Refs
   const annotationRefs = useRef({});
 
-  // Keyboard navigation for slices
+  // --- Keyboard Navigation ---
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!selectedFileName) return;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
 
       if (e.key === "ArrowRight") {
-        setCurrentSlice((prev) => Math.min(prev + 1, totalSlices - 1));
+        setCurrentSlice((prev) => (totalSlices > 0 ? Math.min(prev + 1, totalSlices - 1) : 0));
       } else if (e.key === "ArrowLeft") {
         setCurrentSlice((prev) => Math.max(prev - 1, 0));
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedFileName, totalSlices]);
 
-  const getInputsForCurrent = (fileName, slice) => {
-    return inputsByFileAndSlice[fileName]?.[slice] || {
-      checkbox: false,
-      number: "",
-      text: "",
-      radio: "",
-      select: ""
-    };
-  };
+  // --- HELPER FUNCTIONS (Wrapped in useCallback) ---
 
-  const updateInputsForCurrent = (fileName, slice, updates) => {
+  const getInputsForCurrent = useCallback((fileName, slice) => {
+    return inputsByFileAndSlice[fileName]?.[slice] || {
+      checkbox: false, number: "", text: "", radio: "", select: ""
+    };
+  }, [inputsByFileAndSlice]);
+
+  const updateInputsForCurrent = useCallback((fileName, slice, updates) => {
     setInputsByFileAndSlice((prev) => ({
       ...prev,
       [fileName]: {
         ...(prev[fileName] || {}),
-        [slice]: {
-          ...(prev[fileName]?.[slice] || {}),
-          ...updates,
-        },
+        [slice]: { ...(prev[fileName]?.[slice] || {}), ...updates },
       },
     }));
-  };
+  }, []);
+
+  const saveSliceAnnotationToState = useCallback((fileName, sliceIndex, canvasRef) => {
+    if (!fileName || !canvasRef) return;
+    const json = canvasRef.exportAnnotations ? canvasRef.exportAnnotations() : null;
+    if (!json) return;
+
+    setAnnotationsByFileAndSlice(prev => ({
+      ...prev,
+      [fileName]: {
+        ...(prev[fileName] || {}),
+        [sliceIndex]: json
+      }
+    }));
+  }, []);
 
   return {
     selectedShape, setSelectedShape,
@@ -98,14 +102,16 @@ const useAnnotationData = () => {
     zoomLevel, setZoomLevel,
     isZoomMode, setIsZoomMode,
     zoomRegion, setZoomRegion,
-    inputsByFileAndSlice, setInputsByFileAndSlice,
     currentSlice, setCurrentSlice,
+    inputsByFileAndSlice, setInputsByFileAndSlice,
     classificationByFileAndSlice, setClassificationByFileAndSlice,
+    annotationsByFileAndSlice, setAnnotationsByFileAndSlice,
     rightPanelOpen, setRightPanelOpen,
     viewType, setViewType,
     annotationRefs,
     getInputsForCurrent,
-    updateInputsForCurrent
+    updateInputsForCurrent,
+    saveSliceAnnotationToState
   };
 };
 
