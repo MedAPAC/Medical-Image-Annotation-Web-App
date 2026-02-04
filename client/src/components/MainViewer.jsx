@@ -25,7 +25,7 @@ const MainViewer = ({
   toolChangeId,
   annotationOpacity,
   
-  // Data State Setters
+  // Data State
   classificationByFileAndSlice,
   annotationsByFileAndSlice,
   saveSliceAnnotationToState,
@@ -44,14 +44,14 @@ const MainViewer = ({
 
   const file = uploadedFiles.find((f) => f.originalName === selectedFileName);
 
-  // Initialize Ref for Canvas
+  // Initialize Ref for Canvas if needed
   if (file && !annotationRefs.current[file.originalName]) {
     annotationRefs.current[file.originalName] = React.createRef();
   }
   
   const currentCanvasRef = file ? annotationRefs.current[file.originalName] : null;
 
-  // --- 1. LOAD DATA ON FILE CHANGE ---
+  // --- 1. LOAD DATA FROM BACKEND ---
   useEffect(() => {
     if (!selectedFileName || !token || !taskId) return;
 
@@ -62,7 +62,6 @@ const MainViewer = ({
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // Response structure: { "0": { editorState: {...}, classification: "...", standardData: [...] } }
         const sliceDataMap = response.data || {};
         
         const newAnnotations = {};
@@ -71,14 +70,14 @@ const MainViewer = ({
 
         Object.keys(sliceDataMap).forEach(sliceIdx => {
            const sData = sliceDataMap[sliceIdx];
-           // Restore Editor State (Fabric JSON)
+           // Map Backend response to Frontend State
            if (sData.editorState) newAnnotations[sliceIdx] = sData.editorState;
-           // Restore Attributes
            if (sData.attributes) newInputs[sliceIdx] = sData.attributes;
-           // Restore Classification
            if (sData.classification) newClassifications[sliceIdx] = sData.classification;
         });
 
+        // Batch update state
+        // We use functional updates to ensure we don't clobber other files if state structure changes
         setAnnotationsByFileAndSlice(prev => ({ ...prev, [selectedFileName]: newAnnotations }));
         setInputsByFileAndSlice(prev => ({ ...prev, [selectedFileName]: newInputs }));
         setClassificationByFileAndSlice(prev => ({ ...prev, [selectedFileName]: newClassifications }));
@@ -89,33 +88,52 @@ const MainViewer = ({
     };
 
     fetchData();
-  }, [selectedFileName, taskId, token]);
+  }, [selectedFileName, taskId, token, setAnnotationsByFileAndSlice, setInputsByFileAndSlice, setClassificationByFileAndSlice]);
 
-  // --- 2. HANDLE SLICE SWITCHING (Save Old -> Load New) ---
+
+  // --- 2. HANDLE CANVAS SYNC (Slice Switch OR Data Load) ---
+  // Get the specific data for the current slice from the global store
+  const currentSliceData = annotationsByFileAndSlice[selectedFileName]?.[currentSlice];
+
   useEffect(() => {
     if (!currentCanvasRef || !currentCanvasRef.current) return;
 
+    const canvas = currentCanvasRef.current;
     const oldSlice = prevSliceRef.current;
     const oldFile = prevFileRef.current;
     
-    // Save previous slice to state
-    if (oldFile === selectedFileName) {
-        const json = currentCanvasRef.current.exportAnnotations();
+    // A. If we are switching slices/files, SAVE the previous one first
+    // Note: We only save if it's the SAME file (switching slices) or if we are handling a file switch cleanup
+    // But usually file switch cleanup is handled in parent. Here we focus on Slice Switch.
+    if (oldFile === selectedFileName && oldSlice !== currentSlice) {
+        const json = canvas.exportAnnotations();
+        // Don't save if empty? Or save empty to clear? 
+        // Better to save whatever is there to preserve state.
         saveSliceAnnotationToState(oldFile, oldSlice, json);
     }
 
-    // Clear and Load new slice
-    currentCanvasRef.current.clearAnnotations();
-
-    const savedData = annotationsByFileAndSlice[selectedFileName]?.[currentSlice];
-    if (savedData) {
-      currentCanvasRef.current.importAnnotations(savedData);
+    // B. LOAD the new slice data
+    // We do this if the slice changed, the file changed, OR if data just arrived from the backend (currentSliceData changed)
+    
+    // Clear first to prevent ghosts
+    canvas.clearAnnotations(); 
+    
+    if (currentSliceData) {
+      canvas.importAnnotations(currentSliceData);
     }
 
+    // Update refs
     prevSliceRef.current = currentSlice;
     prevFileRef.current = selectedFileName;
 
-  }, [currentSlice, selectedFileName, currentCanvasRef]); 
+  }, [
+    currentSlice, 
+    selectedFileName, 
+    currentCanvasRef, 
+    currentSliceData, // CRITICAL: This triggers the reload when API data returns!
+    saveSliceAnnotationToState
+  ]); 
+
 
   if (!file) return null;
 
@@ -124,13 +142,15 @@ const MainViewer = ({
   const imageIds = dicomFiles.map((f) => `wadouri:${f.url}`);
 
   const classification = classificationByFileAndSlice[selectedFileName]?.[currentSlice];
-  const borderColor = classification === "positive" ? "#16a34a" : classification === "negative" ? "#dc2626" : "#94a3b8";
-  const glowColor = classification === "positive" ? "rgba(22,163,74,0.3)" : classification === "negative" ? "rgba(220,38,38,0.3)" : "rgba(148,163,184,0.25)";
+  
+  // Visual feedback for classification
+  const borderColor = classification === "positive" ? "#16a34a" : classification === "negative" ? "#dc2626" : "#e2e8f0";
+  const glowColor = classification === "positive" ? "rgba(22,163,74,0.3)" : classification === "negative" ? "rgba(220,38,38,0.3)" : "rgba(0,0,0,0.05)";
   const finalLabel = (selectedLabel && typeof selectedLabel === 'object') ? selectedLabel.name : selectedLabel;
 
   return (
     <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
-      <div style={{ borderRadius: "16px", boxShadow: `0 3px 12px rgba(0,0,0,0.08), 0 0 0 2px ${glowColor}`, position: "relative", border: `1px solid ${borderColor}`, padding: "8px", width: "max-content" }}>
+      <div style={{ borderRadius: "16px", boxShadow: `0 3px 12px rgba(0,0,0,0.08), 0 0 0 4px ${glowColor}`, position: "relative", border: `2px solid ${borderColor}`, padding: "8px", width: "max-content", transition: "all 0.3s ease" }}>
         <div style={{ position: "relative", display: "flex", flexDirection: "column" }}>
           <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
             
@@ -166,12 +186,12 @@ const MainViewer = ({
             </div>
 
             {classification && (
-              <div style={{ position: "absolute", top: "4px", right: "4px", backgroundColor: borderColor, color: "#fff", padding: "2px 6px", borderRadius: "8px", fontSize: "10px", fontWeight: 600, zIndex: 20 }}>
-                {classification}
+              <div style={{ position: "absolute", top: "8px", right: "8px", backgroundColor: borderColor, color: "#fff", padding: "4px 8px", borderRadius: "6px", fontSize: "12px", fontWeight: "bold", zIndex: 20, boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
+                {classification.toUpperCase()}
               </div>
             )}
           </div>
-          <div style={{ marginTop: "4px", textAlign: "center", fontSize: "12px" }}>
+          <div style={{ marginTop: "8px", textAlign: "center", fontSize: "14px", color: "#64748b", fontWeight: 500 }}>
             Slice {currentSlice + 1} / {isDicom ? imageIds.length : totalSlices}
           </div>
         </div>

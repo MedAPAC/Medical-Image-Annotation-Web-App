@@ -31,7 +31,7 @@ function Annotation() {
 
   // 1. Task Data Hook
   const {
-    isLoading, error, taskData, setTaskData,
+    isLoading, taskData,
     uploadedFiles: taskUploadedFiles, fetchTask
   } = useTaskData(taskId, isAuthenticated, token, i18n.language, navigate);
 
@@ -78,11 +78,12 @@ function Annotation() {
 
   useEffect(() => {
     if (allUploadedFiles.length > 0 && !selectedFileName) {
+      // If no file selected, select the first one
       setSelectedFileName(allUploadedFiles[0].originalName);
     }
   }, [allUploadedFiles, selectedFileName, setSelectedFileName]);
 
-  // --- Labels ---
+  // --- Labels Logic ---
   const [allProjectLabels, setAllProjectLabels] = useState([]);
   useEffect(() => {
     if (taskData && taskData.labels) {
@@ -114,7 +115,7 @@ function Annotation() {
   const handleFileSwitch = useCallback((newFileName) => {
     if (newFileName === selectedFileName) return;
 
-    // Save current canvas to state before switching
+    // 1. Save current canvas state before switching files
     if (selectedFileName && annotationRefs.current[selectedFileName]?.current) {
       saveSliceAnnotationToState(
         selectedFileName, 
@@ -123,8 +124,11 @@ function Annotation() {
       );
     }
 
+    // 2. Reset slice controls
     setTotalSlices(0); 
     setCurrentSlice(0);
+    
+    // 3. Change File
     setSelectedFileName(newFileName);
   }, [selectedFileName, currentSlice, annotationRefs, saveSliceAnnotationToState, setTotalSlices, setCurrentSlice, setSelectedFileName]);
 
@@ -132,23 +136,20 @@ function Annotation() {
   // -----------------------------------------------------------------------
   // STANDARDIZED SAVING LOGIC
   // -----------------------------------------------------------------------
-  
-  // Converter: Fabric Objects -> Standard Coordinates
   const extractStandardData = (fabricObjects) => {
     if (!fabricObjects || !Array.isArray(fabricObjects)) return [];
 
     return fabricObjects.map(obj => {
       let points = [];
-      let type = obj.type;
+      let type = obj.customType || obj.type; // Use customType (polygon/polyline) if available
 
       if (type === 'polygon' || type === 'polyline') {
-        // Convert to absolute coordinates
-        // Simple approximation: add object position to point position
         points = (obj.points || []).map(p => {
-             return [ p.x + obj.left, p.y + obj.top ]; 
+             // Handle offset mapping for FabricJS
+             return [ p.x + (obj.pathOffset?.x || 0) + obj.left, p.y + (obj.pathOffset?.y || 0) + obj.top ]; 
         });
       } 
-      else if (type === 'rect') {
+      else if (type === 'rect' || type === 'rectangle') {
         type = "rectangle";
         const x = obj.left;
         const y = obj.top;
@@ -156,6 +157,7 @@ function Annotation() {
         const h = obj.height * obj.scaleY;
         points = [ [x, y], [x+w, y], [x+w, y+h], [x, y+h] ];
       }
+      // Ellipse logic could be added here
 
       return {
         label: obj.label || "Unlabeled",
@@ -198,8 +200,10 @@ function Annotation() {
           ? currentCanvasJson 
           : fileAnnotations[idx];
 
-        // Generate Standard Data (for Deep Learning) from Editor State
-        const standardData = editorState ? extractStandardData(editorState.objects) : [];
+        // Only generate standard data if objects exist
+        const standardData = (editorState && editorState.objects) 
+          ? extractStandardData(editorState.objects) 
+          : [];
 
         slicesPayload[idx] = {
           editorState: editorState,      // Raw FabricJS (for UI Restore)
@@ -218,15 +222,14 @@ function Annotation() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert("Changes Saved Successfully!");
+      alert(t("Changes Saved Successfully!"));
     } catch (err) {
       console.error("Save failed", err);
-      alert("Failed to save annotations.");
+      alert(t("Failed to save annotations."));
     }
-  }, [selectedFileName, currentSlice, annotationRefs, annotationsByFileAndSlice, classificationByFileAndSlice, inputsByFileAndSlice, taskId, token, saveSliceAnnotationToState]);
+  }, [selectedFileName, currentSlice, annotationRefs, annotationsByFileAndSlice, classificationByFileAndSlice, inputsByFileAndSlice, taskId, token, saveSliceAnnotationToState, t]);
 
-
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <div className="flex h-screen items-center justify-center">Loading Task...</div>;
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #f8fafc, #fff)", display: "flex", flexDirection: "column" }}>
@@ -289,7 +292,7 @@ function Annotation() {
             annotationRefs={annotationRefs}
             rightPanelOpen={rightPanelOpen}
             setRightPanelOpen={setRightPanelOpen}
-            onSave={handleSaveAll} // Pass the centralized save handler
+            onSave={handleSaveAll} 
           />
 
           <RightPanel
