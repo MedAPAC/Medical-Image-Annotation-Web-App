@@ -56,9 +56,7 @@ const AnnotationCanvas = forwardRef(
 
     // --- Sync Props to Refs ---
     useEffect(() => { labelRef.current = selectedLabel; }, [selectedLabel]);
-    useEffect(() => { colorRef.current = brushColor; }, [brushColor]);
-    useEffect(() => { opacityRef.current = annotationOpacity; }, [annotationOpacity]);
-
+    
     // --- Color Helpers ---
     const getColors = () => {
       const colorInput = colorRef.current || "#0066cc";
@@ -75,6 +73,44 @@ const AnnotationCanvas = forwardRef(
       const { fill } = getColors();
       return fill;
     };
+
+    // --- DYNAMIC OPACITY & COLOR UPDATE ---
+    // This effect fixes the issue where opacity slider didn't affect active objects or the brush
+    useEffect(() => {
+      opacityRef.current = annotationOpacity;
+      colorRef.current = brushColor;
+
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      const { fill, stroke } = getColors();
+
+      // 1. Update Brush Settings immediately
+      if (canvas.freeDrawingBrush) {
+        // The brush uses the 'fill' (color + opacity) for its stroke style in this context
+        canvas.freeDrawingBrush.color = fill; 
+      }
+
+      // 2. Update Currently Selected Object
+      const activeObject = canvas.getActiveObject();
+      if (activeObject) {
+        // If it's a standard shape (Polygon, Rect, Ellipse)
+        // In your code, brush strokes are converted to Polygons, so this covers them too.
+        if (
+             activeObject.type === 'polygon' || 
+             activeObject.type === 'rect' || 
+             activeObject.type === 'ellipse' || 
+             activeObject.customType === 'polygon'
+        ) {
+           activeObject.set({ fill: fill, stroke: stroke });
+        } 
+        // Fallback for standard paths if they exist
+        else if (activeObject.type === 'path' || activeObject.customType === 'path') {
+           activeObject.set({ stroke: fill });
+        }
+        canvas.requestRenderAll();
+      }
+    }, [annotationOpacity, brushColor]);
 
     // --- API Exposed to Parent ---
     useImperativeHandle(ref, () => ({
@@ -134,8 +170,6 @@ const AnnotationCanvas = forwardRef(
     }));
 
     // --- Strict Cleanup Helper ---
-    // This removes ONLY specific temporary types and ignores "polygon"/"polyline"
-    // preventing the disappearing shape issue.
     const cleanupTempObjects = (canvas) => {
       // 1. Reset Logic flags
       polygonPoints.current = [];
@@ -159,7 +193,7 @@ const AnnotationCanvas = forwardRef(
         "temp-polyline", 
         "preview-box", 
         "preview-ellipse", 
-        "vertex-handle" // Remove handles when switching tools (they regenerate on select)
+        "vertex-handle" 
       ]);
 
       // 4. Remove temporary objects
@@ -292,7 +326,6 @@ const AnnotationCanvas = forwardRef(
       if (!canvas) return;
 
       // 1. Strict Cleanup: removes only temps, deselects current object
-      // This runs safely every time the tool changes, without deleting finished shapes
       cleanupTempObjects(canvas);
 
       // 2. Update Ref
@@ -301,7 +334,7 @@ const AnnotationCanvas = forwardRef(
       // 3. Configure Canvas
       const isDrawing = ["rectangle", "polygon", "polyline", "ellipse"].includes(mode);
       canvas.defaultCursor = isDrawing ? "crosshair" : "default";
-      canvas.selection = !isDrawing; // Enable drag-selection only in select mode
+      canvas.selection = !isDrawing; 
       canvas.isDrawingMode = mode === "brush";
 
       if (mode === "brush") {
@@ -312,7 +345,7 @@ const AnnotationCanvas = forwardRef(
       }
       
       canvas.requestRenderAll();
-    }, [mode, brushColor, brushSize, toolChangeId, annotationOpacity]); 
+    }, [mode, brushSize, toolChangeId]); // Removed brushColor/opacity here as they are handled in the dynamic effect above
 
     // ==========================================
     //         POLYGON / POLYLINE LOGIC

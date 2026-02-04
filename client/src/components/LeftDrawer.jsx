@@ -146,9 +146,6 @@ const LeftDrawer = ({
       )}
 
       {/* Brush Settings */}
-      {/* Logic: Show brush settings if the tool is 'brush'. 
-          Note: If a Label enforces a color, we might want to disable the color picker here or hide it.
-          For now, we keep it editable but initialized by the label. */}
       {openSection === "brush" && selectedShape === "brush" && (
         <div
           style={{

@@ -78,7 +78,6 @@ function Annotation() {
 
   useEffect(() => {
     if (allUploadedFiles.length > 0 && !selectedFileName) {
-      // If no file selected, select the first one
       setSelectedFileName(allUploadedFiles[0].originalName);
     }
   }, [allUploadedFiles, selectedFileName, setSelectedFileName]);
@@ -141,11 +140,10 @@ function Annotation() {
 
     return fabricObjects.map(obj => {
       let points = [];
-      let type = obj.customType || obj.type; // Use customType (polygon/polyline) if available
+      let type = obj.customType || obj.type;
 
       if (type === 'polygon' || type === 'polyline') {
         points = (obj.points || []).map(p => {
-             // Handle offset mapping for FabricJS
              return [ p.x + (obj.pathOffset?.x || 0) + obj.left, p.y + (obj.pathOffset?.y || 0) + obj.top ]; 
         });
       } 
@@ -157,7 +155,6 @@ function Annotation() {
         const h = obj.height * obj.scaleY;
         points = [ [x, y], [x+w, y], [x+w, y+h], [x, y+h] ];
       }
-      // Ellipse logic could be added here
 
       return {
         label: obj.label || "Unlabeled",
@@ -172,48 +169,42 @@ function Annotation() {
     if (!selectedFileName) return;
 
     try {
-      // 1. Force update state with current canvas content (ensure latest drawing is saved)
       let currentCanvasJson = null;
       if (annotationRefs.current[selectedFileName]?.current) {
         currentCanvasJson = annotationRefs.current[selectedFileName].current.exportAnnotations();
         saveSliceAnnotationToState(selectedFileName, currentSlice, currentCanvasJson);
       }
 
-      // 2. Prepare Payload using Data in State
       const fileAnnotations = annotationsByFileAndSlice[selectedFileName] || {};
       const fileClassifications = classificationByFileAndSlice[selectedFileName] || {};
       const fileInputs = inputsByFileAndSlice[selectedFileName] || {};
 
-      // Identify all slices that have data
       const allActiveSlices = new Set([
         ...Object.keys(fileAnnotations),
         ...Object.keys(fileClassifications),
         ...Object.keys(fileInputs),
-        currentSlice.toString() // Ensure current is included
+        currentSlice.toString()
       ]);
 
       const slicesPayload = {};
 
       allActiveSlices.forEach(idx => {
-        // Use the just-captured canvas data if it's the current slice, otherwise use state
         const editorState = (parseInt(idx) === currentSlice && currentCanvasJson) 
           ? currentCanvasJson 
           : fileAnnotations[idx];
 
-        // Only generate standard data if objects exist
         const standardData = (editorState && editorState.objects) 
           ? extractStandardData(editorState.objects) 
           : [];
 
         slicesPayload[idx] = {
-          editorState: editorState,      // Raw FabricJS (for UI Restore)
-          standardData: standardData,    // Clean Coords (for AI)
+          editorState: editorState, 
+          standardData: standardData,
           classification: fileClassifications[idx] || null,
           attributes: fileInputs[idx] || {}
         };
       });
 
-      // 3. Send to Backend
       await axios.post('http://localhost:5000/save-annotations', {
         taskId,
         filename: selectedFileName,
