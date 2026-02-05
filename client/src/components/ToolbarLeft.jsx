@@ -3,7 +3,7 @@ import React from "react";
 
 const ToolbarLeft = ({
   shapes,
-  allowedShapeIds = [], // New prop: list of allowed tool names/ids
+  allowedShapeIds = [], 
   selectedShape,
   setSelectedShape,
   setToolChangeId,
@@ -34,21 +34,36 @@ const ToolbarLeft = ({
       <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
         {shapes.map(({ name, icon }) => {
           // Check if this specific tool is allowed
-          // We assume 'name' here matches the IDs in your allowedShapeIds list (e.g., 'brush', 'rectangle')
           const isAllowed = allowedShapeIds.includes(name);
           const isSelected = selectedShape === name;
 
           return (
             <button
               key={name}
-              disabled={!isAllowed} // Disable interaction
+              disabled={!isAllowed} 
               onClick={() => {
-                if (isAllowed) {
+                if (!isAllowed) return;
+
+                if (isSelected) {
+                  // CASE 1: Deselect if already selected
+                  setSelectedShape(null);
+                  
+                  // If we are deselecting the brush, close the brush settings panel if it's open
+                  if (name === 'brush' && openSection === 'brush') {
+                    setOpenSection(null);
+                  }
+                } else {
+                  // CASE 2: Select new tool
                   setSelectedShape(name);
                   setToolChangeId((prev) => prev + 1);
+                  
+                  // Auto-close brush settings if switching away from brush to a different tool
+                  if (openSection === 'brush' && name !== 'brush') {
+                    setOpenSection(null);
+                  }
                 }
               }}
-              title={isAllowed ? name : "Tool disabled for this project"}
+              title={isAllowed ? (isSelected ? `Deselect ${name}` : name) : "Tool disabled for this project"}
               style={{
                 width: "48px",
                 height: "48px",
@@ -63,7 +78,7 @@ const ToolbarLeft = ({
                 // Conditional Background
                 background: isSelected 
                   ? "#eff6ff" 
-                  : isAllowed ? "#fff" : "#f1f5f9", // darker grey if disabled
+                  : isAllowed ? "#fff" : "#f1f5f9", 
                 // Conditional Opacity & Cursor
                 opacity: isAllowed ? 1 : 0.5,
                 cursor: isAllowed ? "pointer" : "not-allowed",
@@ -88,38 +103,52 @@ const ToolbarLeft = ({
         })}
       </div>
 
-      {/* Drawer/Panel Toggles Section (Unchanged logic, just keeping style consistent) */}
-      {Object.entries(sectionIcons).map(([id, icon]) => (
-        <button
-          key={id}
-          onClick={() => setOpenSection(openSection === id ? null : id)}
-          style={{
-            width: "48px",
-            height: "48px",
-            border: "none",
-            borderRadius: "12px",
-            background: openSection === id ? "#e0f2fe" : "transparent",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "background 0.2s",
-            padding: 0,
-          }}
-        >
-          <img
-            src={icon}
-            alt={id}
+      {/* Drawer/Panel Toggles Section */}
+      {Object.entries(sectionIcons).map(([id, icon]) => {
+        
+        // Determine if this specific section button should be disabled
+        // Specifically for 'brush' settings, ensure 'brush' tool is active
+        const isBrushSettings = id === 'brush';
+        const isDisabled = isBrushSettings && selectedShape !== 'brush';
+
+        return (
+          <button
+            key={id}
+            disabled={isDisabled} 
+            onClick={() => !isDisabled && setOpenSection(openSection === id ? null : id)}
+            title={isDisabled ? "Select Brush tool to edit settings" : ""}
             style={{
-              width: 24,
-              height: 24,
-              filter: openSection === id 
-                ? "invert(34%) sepia(87%) saturate(3390%) hue-rotate(212deg) brightness(95%) contrast(95%)" 
-                : "none",
+              width: "48px",
+              height: "48px",
+              border: "none",
+              borderRadius: "12px",
+              // Visual feedback: Blue if open, Transparent if closed
+              background: openSection === id ? "#e0f2fe" : "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              // Cursor and Opacity feedback for disabled state
+              cursor: isDisabled ? "not-allowed" : "pointer",
+              opacity: isDisabled ? 0.3 : 1,
+              transition: "all 0.2s",
+              padding: 0,
             }}
-          />
-        </button>
-      ))}
+          >
+            <img
+              src={icon}
+              alt={id}
+              style={{
+                width: 24,
+                height: 24,
+                // Logic: Active = Blue, Disabled = Grayscale, Standard = Black/Grey
+                filter: openSection === id 
+                  ? "invert(34%) sepia(87%) saturate(3390%) hue-rotate(212deg) brightness(95%) contrast(95%)" 
+                  : (isDisabled ? "grayscale(100%)" : "none"),
+              }}
+            />
+          </button>
+        );
+      })}
     </div>
   );
 };

@@ -284,7 +284,7 @@ const LeftDrawer = ({
         .left-drawer {
           position: fixed;
           top: 104px;
-          left: ${openSection ? "80px" : "-320px"};
+          left: ${openSection ? "56px" : "-320px"}; /* Adjusted to 56px to match Toolbar width */
           bottom: 0;
           width: 320px;
           background: #ffffff;
