@@ -951,32 +951,45 @@ app.get('/api/projects/:projectId/tasks', authenticateToken, checkProjectAccess,
 });
 
 // Get single task
+// Get single task
 app.get('/api/tasks/:taskId', authenticateToken, checkTaskAccess, async (req, res) => {
   if (!tasksCollection) {
     return res.status(500).json({ error: "Database not initialized" });
   }
 
   try {
-    // Get assignee details
+    const task = req.task;
+
+    // 1. Populate Single Assignee (Legacy)
     let assigneeDetails = null;
-    if (req.task.assignedTo) {
+    if (task.assignedTo) {
       const user = await usersCollection.findOne(
-        { _id: new ObjectId(req.task.assignedTo) },
+        { _id: new ObjectId(task.assignedTo) },
         { projection: { name: 1, email: 1 } }
       );
-      if (user) {
-        assigneeDetails = {
-          id: user._id,
-          name: user.name,
-          email: user.email
-        };
-      }
+      if (user) assigneeDetails = { id: user._id, name: user.name, email: user.email };
+    }
+
+    // 2. Populate Multiple Assignees (New)
+    let assigneesList = []; // This will contain emails/names
+    if (task.assignees && Array.isArray(task.assignees) && task.assignees.length > 0) {
+        // Find all users whose IDs are in the assignees array
+        const users = await usersCollection.find({
+            _id: { $in: task.assignees.map(id => new ObjectId(id)) }
+        }).project({ email: 1, name: 1 }).toArray();
+        
+        // We mostly need the emails for the frontend tags
+        assigneesList = users.map(u => u.email); 
+    } else if (assigneeDetails) {
+        // Fallback: if only old assignedTo exists, add it to the list
+        assigneesList = [assigneeDetails.email];
     }
 
     res.json({ 
       task: {
-        ...req.task,
-        assigneeDetails
+        ...task,
+        assigneeDetails, // Legacy object
+        assignees: assigneesList // New Array of emails ['a@b.com', 'c@d.com']
       }
     });
   } catch (err) {
@@ -985,44 +998,45 @@ app.get('/api/tasks/:taskId', authenticateToken, checkTaskAccess, async (req, re
   }
 });
 
+
+// Create a new task
 // Create a new task
 app.post('/api/tasks', authenticateToken, async (req, res) => {
   if (!tasksCollection || !projectsCollection) {
     return res.status(500).json({ error: "Database not initialized" });
   }
 
-  const { name, projectId, subset, description, assigneeEmail, priority } = req.body;
+  // Accept assigneeEmails (Array) OR assigneeEmail (String - legacy)
+  const { name, projectId, subset, description, assigneeEmails, assigneeEmail, priority } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: "Task name is required" });
   }
-
   if (!projectId) {
     return res.status(400).json({ error: "Project ID is required" });
   }
 
   try {
-    // Verify project exists and user has access (is an owner)
     const project = await projectsCollection.findOne({ 
       _id: new ObjectId(projectId),
-      $or: [
-        { userId: req.user.id },
-        { owners: req.user.id }
-      ]
+      $or: [{ userId: req.user.id }, { owners: req.user.id }]
     });
 
     if (!project) {
       return res.status(404).json({ error: 'Project not found or access denied' });
     }
 
-    // Validate assignee if provided
-    let assignedTo = null;
-    if (assigneeEmail) {
-      const assignee = await getUserByEmail(assigneeEmail);
-      if (!assignee) {
-        return res.status(400).json({ error: `Assignee email "${assigneeEmail}" is not a registered user` });
-      }
-      assignedTo = assignee._id.toString();
+    // Handle Assignees
+    let assigneeIds = [];
+    
+    // 1. Check for new array format
+    if (assigneeEmails && Array.isArray(assigneeEmails) && assigneeEmails.length > 0) {
+        assigneeIds = await validateAndGetUserIds(assigneeEmails);
+    } 
+    // 2. Fallback to old single string format
+    else if (assigneeEmail) {
+        const userIds = await validateAndGetUserIds([assigneeEmail]);
+        assigneeIds = userIds;
     }
 
     const newTask = {
@@ -1031,7 +1045,10 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
       projectId: projectId,
       projectName: project.name,
       subset: subset || 'train',
-      assignedTo: assignedTo,
+      
+      assignees: assigneeIds, // New Array
+      assignedTo: assigneeIds.length > 0 ? assigneeIds[0] : null, // Legacy support
+      
       priority: priority || 'medium',
       status: 'pending',
       state: 'new',
@@ -1049,23 +1066,14 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
 
     const result = await tasksCollection.insertOne(newTask);
     
-    // Update project with task count - THIS IS THE KEY FIX
     await projectsCollection.updateOne(
       { _id: new ObjectId(projectId) },
-      { 
-        $inc: { tasks: 1 },
-        $set: { updatedAt: new Date() }
-      }
+      { $inc: { tasks: 1 }, $set: { updatedAt: new Date() } }
     );
-
-    console.log(`Task count updated for project ${projectId}. New count: ${project.tasks + 1}`);
 
     res.json({
       message: "Task created successfully",
-      task: {
-        id: result.insertedId,
-        ...newTask
-      }
+      task: { id: result.insertedId, ...newTask }
     });
   } catch (err) {
     console.error("Failed to create task:", err);
@@ -1073,13 +1081,15 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
   }
 });
 
-// Update task assignee
+
+// Update task assignees (Multiple)
 app.put('/api/tasks/:taskId/assign', authenticateToken, checkTaskAccess, async (req, res) => {
   if (!tasksCollection) {
     return res.status(500).json({ error: "Database not initialized" });
   }
 
-  const { assigneeEmail } = req.body;
+  // Expecting an array of emails
+  const { assigneeEmails } = req.body; 
 
   try {
     // Verify user has permission (must be project owner)
@@ -1092,36 +1102,51 @@ app.put('/api/tasks/:taskId/assign', authenticateToken, checkTaskAccess, async (
       return res.status(403).json({ error: "You don't have permission to assign tasks for this project" });
     }
 
-    let assignedTo = null;
-    if (assigneeEmail) {
-      const assignee = await getUserByEmail(assigneeEmail);
-      if (!assignee) {
-        return res.status(400).json({ error: `Assignee email "${assigneeEmail}" is not a registered user` });
-      }
-      assignedTo = assignee._id.toString();
+    // Use the existing helper function to validate and convert emails to IDs
+    let assigneeIds = [];
+    if (assigneeEmails && Array.isArray(assigneeEmails) && assigneeEmails.length > 0) {
+        assigneeIds = await validateAndGetUserIds(assigneeEmails);
     }
 
     const result = await tasksCollection.updateOne(
       { _id: new ObjectId(req.params.taskId) },
       { 
         $set: { 
-          assignedTo: assignedTo,
+          assignees: assigneeIds, // New Array Field
+          // Maintain backward compatibility by setting assignedTo to the first user
+          assignedTo: assigneeIds.length > 0 ? assigneeIds[0] : null,
           updatedAt: new Date() 
         }
       }
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(404).json({ error: 'Task not found' });
+      // It's possible the data was the same, but we return success
+      // return res.status(404).json({ error: 'Task not found' });
     }
 
+    // Fetch the updated task to return the full list of emails
+    const updatedTask = await tasksCollection.findOne({ _id: new ObjectId(req.params.taskId) });
+    
+    // Resolve IDs back to emails for the frontend response
+    let resolvedEmails = [];
+    if (updatedTask.assignees && updatedTask.assignees.length > 0) {
+        const users = await usersCollection.find({ 
+            _id: { $in: updatedTask.assignees.map(id => new ObjectId(id)) } 
+        }).toArray();
+        resolvedEmails = users.map(u => u.email);
+    }
+    
+    // Manually attach this to the response object so frontend updates immediately
+    updatedTask.assignees = resolvedEmails;
+
     res.json({
-      message: 'Task assignment updated successfully',
-      assignedTo: assignedTo
+      message: 'Task assignments updated successfully',
+      task: updatedTask
     });
   } catch (err) {
     console.error('Failed to update task assignment:', err);
-    res.status(500).json({ error: 'Failed to update task assignment' });
+    res.status(500).json({ error: err.message || 'Failed to update task assignment' });
   }
 });
 
@@ -1136,10 +1161,12 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
+    // Generate ObjectId for each file to allow specific deletion later
     const files = req.files.map(file => ({
+      _id: new ObjectId(), // <--- CRITICAL: Generate ID for the file
       originalName: file.originalname,
       filename: file.filename,
-      path: file.path,
+      path: file.path, // relative path usually handled by multer storage
       size: file.size,
       mimetype: file.mimetype,
       type: getFileType(file.originalname),
@@ -1160,6 +1187,7 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
       }
     );
 
+    // Return the files with their new IDs
     res.json({
       message: 'Files uploaded successfully',
       files: files,
@@ -1168,6 +1196,74 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
   } catch (err) {
     console.error('File upload error:', err);
     res.status(500).json({ error: 'Failed to upload files: ' + err.message });
+  }
+});
+
+// Delete a specific file from a task
+app.delete('/api/tasks/:taskId/files/:fileId', authenticateToken, async (req, res) => {
+  if (!tasksCollection) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  const { taskId, fileId } = req.params;
+
+  try {
+    // 1. Get the task to find the file path
+    const task = await tasksCollection.findOne({ _id: new ObjectId(taskId) });
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    // Check permissions (Project Owner or Creator)
+    const project = await projectsCollection.findOne({
+        _id: new ObjectId(task.projectId),
+        $or: [{ owners: req.user.id }, { userId: req.user.id }]
+    });
+
+    if (!project && task.createdBy !== req.user.email) {
+        return res.status(403).json({ error: "Permission denied" });
+    }
+
+    // 2. Find the file in the array
+    // We check both string ID and ObjectId for backward compatibility
+    const fileToDelete = task.files.find(f => 
+        (f._id && f._id.toString() === fileId) || f.filename === fileId
+    );
+
+    if (!fileToDelete) {
+        return res.status(404).json({ error: 'File not found in task' });
+    }
+
+    // 3. Remove from Disk
+    if (fileToDelete.path) {
+        // Construct absolute path. 
+        // Note: fileToDelete.path from Multer is usually the full path, 
+        // but if it's relative, ensure we join it correctly.
+        const filePath = path.resolve(fileToDelete.path); 
+        
+        if (fs.existsSync(filePath)) {
+            try {
+                fs.unlinkSync(filePath);
+                console.log(`Deleted file from disk: ${filePath}`);
+            } catch (unlinkErr) {
+                console.error("Error deleting file from disk:", unlinkErr);
+                // Continue to remove from DB even if disk delete fails
+            }
+        }
+    }
+
+    // 4. Remove from Database
+    await tasksCollection.updateOne(
+        { _id: new ObjectId(taskId) },
+        { 
+            $pull: { files: { _id: fileToDelete._id } },
+            $inc: { totalItems: -1 } // Decrease total items count
+        }
+    );
+
+    res.json({ success: true, message: 'File deleted successfully' });
+
+  } catch (err) {
+    console.error("Delete file error:", err);
+    res.status(500).json({ error: "Failed to delete file" });
   }
 });
 
