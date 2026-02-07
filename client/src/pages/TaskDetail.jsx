@@ -11,8 +11,16 @@ import {
   X,
   User,
   Calendar,
-  FileText
+  FileText,
+  Folder,
+  Download,
+  BarChart3,
+  Target,
+  Clock,
+  Layers,
+  File
 } from 'lucide-react';
+import '../styles/TaskDetail.css';
 
 const TaskDetail = () => {
   const { taskId } = useParams();
@@ -26,11 +34,13 @@ const TaskDetail = () => {
   const [editingTaskName, setEditingTaskName] = useState(false);
   const [taskName, setTaskName] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
-  const [subset, setSubset] = useState('');
+  const [subset, setSubset] = useState('train');
   const [status, setStatus] = useState('pending');
   const [progress, setProgress] = useState(0);
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState([]);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // API base URL
   const API_BASE_URL = 'http://localhost:5000';
@@ -96,6 +106,7 @@ const TaskDetail = () => {
     if (!task || !token) return;
     
     try {
+      setIsUpdating(true);
       const response = await axios.put(
         `${API_BASE_URL}/api/tasks/${taskId}`,
         updates,
@@ -114,6 +125,8 @@ const TaskDetail = () => {
     } catch (err) {
       console.error('Error updating task:', err);
       alert(err.response?.data?.error || 'Failed to update task');
+    } finally {
+      setIsUpdating(false);
     }
     return false;
   };
@@ -134,6 +147,7 @@ const TaskDetail = () => {
     if (!task || !token) return;
     
     try {
+      setIsUpdating(true);
       const response = await axios.put(
         `${API_BASE_URL}/api/tasks/${taskId}/assign`,
         { assigneeEmail: email || null },
@@ -159,6 +173,8 @@ const TaskDetail = () => {
     } catch (err) {
       console.error('Error updating assignment:', err);
       alert(err.response?.data?.error || 'Failed to update assignment');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -179,7 +195,7 @@ const TaskDetail = () => {
   const handleUpdateDescription = async () => {
     const success = await handleUpdateTask({ description });
     if (success) {
-      alert('Description updated successfully');
+      setIsEditingDescription(false);
     }
   };
 
@@ -193,7 +209,13 @@ const TaskDetail = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown date';
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const getStatusColor = (status) => {
@@ -222,67 +244,49 @@ const TaskDetail = () => {
     return '#10b981';
   };
 
+  const handleFileDownload = (file) => {
+    // Implement file download logic
+    console.log('Download file:', file);
+    // This would typically trigger a download from the server
+  };
+
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f8fafc'
-      }}>
-        <div>Loading task details...</div>
+      <div className="task-detail-loading">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <p>Loading task details...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !task) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
-        backgroundColor: '#f8fafc'
-      }}>
-        <div style={{ color: '#ef4444', marginBottom: '20px' }}>{error || 'Task not found'}</div>
-        <button
-          onClick={() => navigate('/tasks')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer'
-          }}
-        >
-          Back to Tasks
-        </button>
+      <div className="task-detail-error">
+        <div className="error-content">
+          <div className="error-icon">!</div>
+          <h3>{error || 'Task not found'}</h3>
+          <p>The requested task could not be found or you don't have permission to view it.</p>
+          <button
+            onClick={() => navigate('/tasks')}
+            className="error-button"
+          >
+            Back to Tasks
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <div className="task-detail-container">
       <Header page="tasks" />
       
       {/* Main Content */}
-      <div style={{ 
-        padding: '40px 20px', 
-        flex: 1,
-        maxWidth: '1400px',
-        margin: '0 auto',
-        width: '100%'
-      }}>
-        {/* Back to Project/Tasks Link */}
-        <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <div className="task-detail-content">
+        {/* Back Navigation */}
+        {/* <nav className="task-breadcrumb">
           <button
             onClick={() => {
               if (task?.projectId) {
@@ -291,388 +295,340 @@ const TaskDetail = () => {
                 navigate('/tasks');
               }
             }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#3b82f6',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '500',
-              padding: '8px 0'
-            }}
+            className="back-button"
           >
-            <ArrowLeft size={16} />
-            {task?.projectId ? 'Back to project' : 'Back to tasks'}
+            <ArrowLeft size={20} />
+            <span>{task?.projectId ? 'Back to project' : 'Back to tasks'}</span>
           </button>
-        </div>
+        </nav> */}
 
         {/* Task Header */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '24px',
-          marginBottom: '20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <div style={{ flex: 1 }}>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                margin: '0 0 8px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                {editingTaskName ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                    <input
-                      type="text"
-                      value={taskName}
-                      onChange={(e) => setTaskName(e.target.value)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '4px',
-                        fontSize: '18px',
-                        fontWeight: '600'
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleUpdateTaskName();
-                        } else if (e.key === 'Escape') {
-                          setTaskName(task.name);
-                          setEditingTaskName(false);
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleUpdateTaskName}
-                      style={{
-                        padding: '8px',
-                        backgroundColor: '#10b981',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Check size={16} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setTaskName(task.name);
-                        setEditingTaskName(false);
-                      }}
-                      style={{
-                        padding: '8px',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    {task.name}
-                    <button 
-                      onClick={() => setEditingTaskName(true)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
-                    >
-                      <Edit3 size={16} color="#6b7280" />
-                    </button>
-                  </>
-                )}
-              </h1>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280' }}>
-                  <User size={14} />
-                  <span>Created by {task.createdBy || user?.email || 'Unknown'}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280' }}>
-                  <Calendar size={14} />
-                  <span>Created on {formatDate(task.createdAt)}</span>
-                </div>
-                {task.projectName && (
-                  <div style={{
-                    backgroundColor: '#dbeafe',
-                    color: '#1d4ed8',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}>
-                    Project: {task.projectName}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ textAlign: 'left' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                  Assigned to
-                </label>
+        <div className="task-header">
+          <div className="task-title-section">
+            {editingTaskName ? (
+              <div className="task-title-edit">
                 <input
-                  type="email"
-                  placeholder="Enter user email"
-                  value={assignedTo}
-                  onChange={(e) => {
-                    const email = e.target.value;
-                    setAssignedTo(email);
-                  }}
-                  onBlur={(e) => {
-                    handleUpdateAssignedTo(e.target.value);
-                  }}
+                  type="text"
+                  value={taskName}
+                  onChange={(e) => setTaskName(e.target.value)}
+                  className="title-input"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      handleUpdateAssignedTo(e.target.value);
-                      e.target.blur();
+                      handleUpdateTaskName();
+                    } else if (e.key === 'Escape') {
+                      setTaskName(task.name);
+                      setEditingTaskName(false);
                     }
                   }}
-                  style={{
-                    padding: '10px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    width: '300px',
-                    backgroundColor: 'white'
-                  }}
+                  autoFocus
                 />
+                <div className="edit-actions">
+                  <button
+                    onClick={handleUpdateTaskName}
+                    className="action-button save"
+                    disabled={isUpdating}
+                  >
+                    <Check size={18} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTaskName(task.name);
+                      setEditingTaskName(false);
+                    }}
+                    className="action-button cancel"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>Progress</span>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: getProgressColor(progress) }}>
-                {progress}%
-              </span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: '#e5e7eb',
-              borderRadius: '4px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${progress}%`,
-                height: '100%',
-                backgroundColor: getProgressColor(progress),
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              {[0, 25, 50, 75, 100].map((value) => (
-                <button
-                  key={value}
-                  onClick={() => handleUpdateProgress(value)}
-                  style={{
-                    padding: '4px 8px',
-                    backgroundColor: value === progress ? '#3b82f6' : '#f3f4f6',
-                    color: value === progress ? 'white' : '#374151',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    cursor: 'pointer'
-                  }}
+            ) : (
+              <div className="task-title-display">
+                <h1>{task.name}</h1>
+                <button 
+                  onClick={() => setEditingTaskName(true)}
+                  className="edit-title-button"
                 >
-                  {value}%
+                  <Edit3 size={18} />
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Task Details */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Subset
-              </label>
-              <select
-                value={subset}
-                onChange={(e) => handleUpdateSubset(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  backgroundColor: 'white',
-                  width: '100%'
-                }}
-              >
-                <option value="train">Train</option>
-                <option value="test">Test</option>
-                <option value="validation">Validation</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Status
-              </label>
-              <select
-                value={status}
-                onChange={(e) => handleUpdateStatus(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  backgroundColor: 'white',
-                  width: '100%',
-                  color: getStatusColor(status)
-                }}
-              >
-                <option value="pending" style={{ color: '#6b7280' }}>Pending</option>
-                <option value="in_progress" style={{ color: '#3b82f6' }}>In Progress</option>
-                <option value="completed" style={{ color: '#10b981' }}>Completed</option>
-                <option value="rejected" style={{ color: '#ef4444' }}>Rejected</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-              <FileText size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleUpdateDescription}
-              rows={4}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                resize: 'vertical',
-                fontFamily: 'inherit'
-              }}
-              placeholder="Add task description..."
-            />
-          </div>
-
-          {/* Files Section */}
-          {files.length > 0 && (
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Files ({files.length})
-              </label>
-              <div style={{
-                backgroundColor: '#f9fafb',
-                borderRadius: '6px',
-                padding: '16px',
-                maxHeight: '200px',
-                overflowY: 'auto'
-              }}>
-                {files.map((file, index) => (
-                  <div key={index} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px',
-                    borderBottom: index < files.length - 1 ? '1px solid #e5e7eb' : 'none'
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: '500', color: '#1f2937' }}>{file.originalName}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                        {file.type} • {(file.size / 1024).toFixed(2)} KB
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button
-              onClick={() => navigate(`/annotation/${taskId}`)}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              Open for Annotation
-            </button>
-            
-            {task.projectId && (
-              <button
-                onClick={() => navigate(`/projects/${task.projectId}`)}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                View Project
-              </button>
             )}
+            
+            <div className="task-meta">
+              <div className="meta-item">
+                <User size={16} />
+                <span>Created by {task.createdBy || user?.email || 'Unknown'}</span>
+              </div>
+              <div className="meta-item">
+                <Calendar size={16} />
+                <span>Created on {formatDate(task.createdAt)}</span>
+              </div>
+              {task.projectName && (
+                <div className="project-badge">
+                  <Folder size={16} />
+                  <span>Project: {task.projectName}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Assignment Section */}
+          <div className="assignment-section">
+            <label className="section-label">Assigned to</label>
+            <div className="assignee-input-container">
+              <User size={18} className="assignee-icon" />
+              <input
+                type="email"
+                placeholder="Enter user email"
+                value={assignedTo}
+                onChange={(e) => {
+                  const email = e.target.value;
+                  setAssignedTo(email);
+                }}
+                onBlur={(e) => {
+                  if (e.target.value !== (task.assigneeDetails?.email || '')) {
+                    handleUpdateAssignedTo(e.target.value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleUpdateAssignedTo(e.target.value);
+                    e.target.blur();
+                  }
+                }}
+                className="assignee-input"
+              />
+            </div>
           </div>
         </div>
 
         {/* Task Statistics */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '20px'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>{files.length}</div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Total Files</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: getStatusColor(status) }}>
-              {getStatusLabel(status)}
+        <div className="task-statistics">
+          <div className="stat-item">
+            <div className="stat-icon">
+              <File size={24} />
             </div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Current Status</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: getProgressColor(progress) }}>
-              {progress}%
+            <div className="stat-content">
+              <h3>{files.length}</h3>
+              <p>Total Files</p>
             </div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Completion</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>{subset}</div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Dataset Subset</div>
+          <div className="stat-item">
+            <div className="stat-icon" style={{ color: getStatusColor(status) }}>
+              <BarChart3 size={24} />
+            </div>
+            <div className="stat-content">
+              <h3 style={{ color: getStatusColor(status) }}>{getStatusLabel(status)}</h3>
+              <p>Current Status</p>
+            </div>
           </div>
+          <div className="stat-item">
+            <div className="stat-icon" style={{ color: getProgressColor(progress) }}>
+              <Target size={24} />
+            </div>
+            <div className="stat-content">
+              <h3 style={{ color: getProgressColor(progress) }}>{progress}%</h3>
+              <p>Completion</p>
+            </div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon">
+              <Layers size={24} />
+            </div>
+            <div className="stat-content">
+              <h3>{subset.charAt(0).toUpperCase() + subset.slice(1)}</h3>
+              <p>Dataset Subset</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="task-content-grid">
+          {/* Left Column - Progress & Details */}
+          <div className="task-details-column">
+            {/* Progress Section */}
+            <div className="detail-section">
+              <div className="section-header">
+                <h3><Target size={20} /> Progress Tracking</h3>
+              </div>
+              <div className="progress-container">
+                <div className="progress-header">
+                  <span className="progress-label">Completion</span>
+                  <span className="progress-value" style={{ color: getProgressColor(progress) }}>
+                    {progress}%
+                  </span>
+                </div>
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill"
+                    style={{ 
+                      width: `${progress}%`,
+                      backgroundColor: getProgressColor(progress)
+                    }}
+                  />
+                </div>
+                <div className="progress-steps">
+                  {[0, 25, 50, 75, 100].map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => handleUpdateProgress(value)}
+                      className={`progress-step ${value === progress ? 'active' : ''}`}
+                    >
+                      {value}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Details Section */}
+            <div className="detail-section">
+              <div className="section-header">
+                <h3><Layers size={20} /> Task Details</h3>
+              </div>
+              <div className="details-grid">
+                <div className="detail-field">
+                  <label>Subset</label>
+                  <select
+                    value={subset}
+                    onChange={(e) => handleUpdateSubset(e.target.value)}
+                    className="detail-select"
+                  >
+                    <option value="train">Train</option>
+                    <option value="test">Test</option>
+                    <option value="validation">Validation</option>
+                  </select>
+                </div>
+                <div className="detail-field">
+                  <label>Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => handleUpdateStatus(e.target.value)}
+                    className="detail-select status-select"
+                    style={{ color: getStatusColor(status) }}
+                  >
+                    <option value="pending" style={{ color: '#6b7280' }}>Pending</option>
+                    <option value="in_progress" style={{ color: '#3b82f6' }}>In Progress</option>
+                    <option value="completed" style={{ color: '#10b981' }}>Completed</option>
+                    <option value="rejected" style={{ color: '#ef4444' }}>Rejected</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Description & Files */}
+          <div className="task-content-column">
+            {/* Description Section */}
+            <div className="detail-section">
+              <div className="section-header">
+                <h3><FileText size={20} /> Description</h3>
+                {!isEditingDescription ? (
+                  <button 
+                    onClick={() => setIsEditingDescription(true)}
+                    className="edit-button"
+                  >
+                    <Edit3 size={16} />
+                    Edit
+                  </button>
+                ) : (
+                  <div className="edit-actions">
+                    <button
+                      onClick={handleUpdateDescription}
+                      className="action-button save small"
+                      disabled={isUpdating}
+                    >
+                      <Check size={16} />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDescription(task.description || '');
+                        setIsEditingDescription(false);
+                      }}
+                      className="action-button cancel small"
+                    >
+                      <X size={16} />
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+              {isEditingDescription ? (
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="description-editor"
+                  placeholder="Enter task description..."
+                  rows={6}
+                />
+              ) : (
+                <div className="description-content">
+                  {description || 'No description provided'}
+                </div>
+              )}
+            </div>
+
+            {/* Files Section */}
+            {files.length > 0 && (
+              <div className="detail-section">
+                <div className="section-header">
+                  <h3><File size={20} /> Attached Files ({files.length})</h3>
+                </div>
+                <div className="files-list">
+                  {files.map((file, index) => (
+                    <div key={index} className="file-item">
+                      <div className="file-icon">
+                        <File size={20} />
+                      </div>
+                      <div className="file-info">
+                        <div className="file-name">{file.originalName}</div>
+                        <div className="file-details">
+                          <span className="file-type">{file.type}</span>
+                          <span className="file-size">{(file.size / 1024).toFixed(2)} KB</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleFileDownload(file)}
+                        className="download-button"
+                      >
+                        <Download size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="action-buttons">
+          <button
+            onClick={() => navigate(`/annotation/${taskId}`)}
+            className="primary-button"
+            disabled={isUpdating}
+          >
+            <Target size={18} />
+            Open for Annotation
+          </button>
+          
+          {task.projectId && (
+            <button
+              onClick={() => navigate(`/projects/${task.projectId}`)}
+              className="secondary-button"
+            >
+              <Folder size={18} />
+              View Project
+            </button>
+          )}
+          
+          <button
+            onClick={() => navigate('/tasks')}
+            className="outline-button"
+          >
+            <ArrowLeft size={18} />
+            All Tasks
+          </button>
         </div>
       </div>
     </div>
