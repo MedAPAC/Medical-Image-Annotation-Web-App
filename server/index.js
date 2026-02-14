@@ -1586,6 +1586,110 @@ app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
   }
 });
 
+// server.js - Add these routes
+
+
+// ---------------------------------------------------------
+// GET: Fetch Teams (Owned by user or where user is member)
+// ---------------------------------------------------------
+app.get('/api/teams', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userEmail = req.user.email; // Assuming your auth token has email
+
+    const teams = await db.collection('teamsCollection').find({
+      $or: [
+        { createdBy: userId },       // Teams I created
+        { members: userEmail }       // Teams I am a member of
+      ]
+    }).sort({ createdAt: -1 }).toArray();
+
+    res.json(teams);
+  } catch (err) {
+    console.error("Error fetching teams:", err);
+    res.status(500).json({ error: "Failed to fetch teams" });
+  }
+});
+
+// ---------------------------------------------------------
+// POST: Create New Team
+// ---------------------------------------------------------
+app.post('/api/teams', authenticateToken, async (req, res) => {
+  try {
+    const { name, members } = req.body; // members should be array of emails
+    const userId = req.user.id;
+
+    if (!name) return res.status(400).json({ error: "Team name is required" });
+
+    const newTeam = {
+      name,
+      members: members || [],
+      createdBy: userId,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await db.collection('teamsCollection').insertOne(newTeam);
+    res.status(201).json({ ...newTeam, _id: result.insertedId });
+  } catch (err) {
+    console.error("Error creating team:", err);
+    res.status(500).json({ error: "Failed to create team" });
+  }
+});
+
+// ---------------------------------------------------------
+// PUT: Update Team (Edit name or members)
+// ---------------------------------------------------------
+app.put('/api/teams/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, members } = req.body;
+    const userId = req.user.id;
+
+    // Check ownership
+    const team = await db.collection('teamsCollection').findOne({ _id: new ObjectId(id) });
+    if (!team) return res.status(404).json({ error: "Team not found" });
+    if (team.createdBy !== userId) return res.status(403).json({ error: "Not authorized to edit this team" });
+
+    await db.collection('teamsCollection').updateOne(
+      { _id: new ObjectId(id) },
+      { 
+        $set: { 
+          name, 
+          members, 
+          updatedAt: new Date() 
+        } 
+      }
+    );
+
+    res.json({ success: true, message: "Team updated" });
+  } catch (err) {
+    console.error("Error updating team:", err);
+    res.status(500).json({ error: "Failed to update team" });
+  }
+});
+
+// ---------------------------------------------------------
+// DELETE: Delete Team
+// ---------------------------------------------------------
+app.delete('/api/teams/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check ownership
+    const team = await db.collection('teamsCollection').findOne({ _id: new ObjectId(id) });
+    if (!team) return res.status(404).json({ error: "Team not found" });
+    if (team.createdBy !== userId) return res.status(403).json({ error: "Not authorized to delete this team" });
+
+    await db.collection('teamsCollection').deleteOne({ _id: new ObjectId(id) });
+    res.json({ success: true, message: "Team deleted" });
+  } catch (err) {
+    console.error("Error deleting team:", err);
+    res.status(500).json({ error: "Failed to delete team" });
+  }
+});
+
 // ==================== SERVER START ====================
 
 app.listen(port, () => {

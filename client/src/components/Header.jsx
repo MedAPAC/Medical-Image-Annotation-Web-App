@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { LogOut, User, Home, FolderKanban, ListChecks } from 'lucide-react';
+import { LogOut, Home, FolderKanban, ListChecks, Users } from 'lucide-react'; // Added Users icon
 import '../styles/Header.css';
 
 function Header({ page }) {
@@ -71,7 +71,14 @@ function Header({ page }) {
             <Home size={16} style={{ marginRight: '6px' }} />
             {t('header.home')}
           </button>
-
+   <button
+            onClick={() => navigate('/teams')}
+            className={`nav-button ${currentPage === 'teams' ? 'active' : ''}`}
+          >
+            <Users size={16} style={{ marginRight: '6px' }} />
+            Teams
+            {/* Use {t('header.teams')} if you update translation files */}
+          </button>
           <button
             onClick={() => navigate('/projects')}
             className={`nav-button ${currentPage === 'projects' ? 'active' : ''}`}

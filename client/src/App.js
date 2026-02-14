@@ -16,6 +16,8 @@ import UploadPage from "./pages/Upload";
 import HomePage from "./pages/Home";
 import TasksPage from "./pages/Tasks";
 import TaskDetailPage from "./pages/TaskDetail";
+import TeamManagementPage from "./pages/TeamManagement";
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import Header from "./components/Header";
@@ -28,6 +30,7 @@ import {
   Shapes,
   Brush,
 } from "lucide-react";
+import TeamManagement from "./pages/TeamManagement";
 
 const shapes = [
   { name: "ellipse", icon: Circle },
@@ -948,6 +951,7 @@ function App() {
           <Route path="/annotation/:taskId" element={<AnnotationPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
+          <Route path="/teams" element={<TeamManagementPage/>}/>
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </Router>
