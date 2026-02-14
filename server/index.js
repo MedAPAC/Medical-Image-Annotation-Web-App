@@ -42,6 +42,9 @@ MongoClient.connect(mongoUrl, { useUnifiedTopology: true })
     usersCollection = db.collection("users");
     projectsCollection = db.collection("projects");
     tasksCollection = db.collection("tasks");
+    taskTimersCollection = db.collection("task_timers"); 
+    taskTimersCollection.createIndex({ taskId: 1, userId: 1 }, { unique: true });
+
     console.log("Connected to MongoDB!");
     
     // Create indexes
@@ -1264,6 +1267,76 @@ app.delete('/api/tasks/:taskId/files/:fileId', authenticateToken, async (req, re
   } catch (err) {
     console.error("Delete file error:", err);
     res.status(500).json({ error: "Failed to delete file" });
+  }
+});
+
+// -------------------------------------------------------------------------
+// GET: Retrieve Timer
+// -------------------------------------------------------------------------
+app.get('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`[Timer GET] Fetching for Task: ${taskId}, User: ${userId}`);
+
+    // Try finding exact match first (String comparison)
+    let timerRecord = await db.collection('taskTimersCollection').findOne({ 
+      taskId: taskId, 
+      userId: userId 
+    });
+
+    // If not found, logic to handle ObjectId mismatch just in case
+    // (Only strictly necessary if your DB mixes types, but safer to keep simple first)
+    
+    const seconds = timerRecord ? timerRecord.seconds : 0;
+    console.log(`[Timer GET] Found seconds: ${seconds}`);
+    
+    res.json({ seconds });
+  } catch (err) {
+    console.error("Timer GET Error:", err);
+    res.status(500).json({ error: "Failed to fetch timer" });
+  }
+});
+
+// -------------------------------------------------------------------------
+// POST: Save Timer (Update or Insert)
+// -------------------------------------------------------------------------
+app.post('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.id;
+    const { seconds } = req.body;
+
+    console.log(`[Timer POST] Saving ${seconds}s for Task: ${taskId}`);
+
+    // Validation
+    if (seconds === undefined || seconds === null) {
+        console.error("[Timer POST] Error: 'seconds' is missing in body");
+        return res.status(400).json({ error: "Seconds required" });
+    }
+
+    // Upsert Logic
+    const result = await db.collection('taskTimersCollection').updateOne(
+      { taskId: taskId, userId: userId },
+      { 
+        $set: { 
+          seconds: Number(seconds), // Force Number type
+          updatedAt: new Date() 
+        },
+        $setOnInsert: { 
+          createdAt: new Date(),
+          taskId: taskId, // Ensure these fields exist on creation
+          userId: userId 
+        }
+      },
+      { upsert: true }
+    );
+
+    res.json({ success: true, savedSeconds: seconds });
+  } catch (err) {
+    console.error("Timer POST Error:", err);
+    res.status(500).json({ error: "Failed to save timer" });
   }
 });
 

@@ -11,6 +11,7 @@ import useAnnotationData from "../useAnnotationData";
 import useFileHandling from "../useFileHandling";
 
 // Components
+import TaskTimer from "../components/TaskTimer"; // Import the Timer Component
 import Header from '../components/Header';
 import TaskInfoBar from "../components/TaskInfoBar";
 import FileUploadSection from "../components/FileUploadSection";
@@ -172,6 +173,7 @@ function Annotation() {
       let currentCanvasJson = null;
       if (annotationRefs.current[selectedFileName]?.current) {
         currentCanvasJson = annotationRefs.current[selectedFileName].current.exportAnnotations();
+        // Optimistic update of local state
         saveSliceAnnotationToState(selectedFileName, currentSlice, currentCanvasJson);
       }
 
@@ -225,7 +227,19 @@ function Annotation() {
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #f8fafc, #fff)", display: "flex", flexDirection: "column" }}>
       <Header page="tasks" />
-      <TaskInfoBar taskData={taskData} files={allUploadedFiles} selectedFileName={selectedFileName} onFileSelect={handleFileSwitch} />
+      
+      {/* Task Info Bar & Timer Container */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{ flex: 1 }}>
+          <TaskInfoBar taskData={taskData} files={allUploadedFiles} selectedFileName={selectedFileName} onFileSelect={handleFileSwitch} />
+        </div>
+        {/* Render Timer if Task ID exists */}
+        {taskId && (
+            <div style={{ paddingRight: "16px", flexShrink: 0 }}>
+                <TaskTimer taskId={taskId} token={token} />
+            </div>
+        )}
+      </div>
       
       {allUploadedFiles.length === 0 ? (
         <FileUploadSection
