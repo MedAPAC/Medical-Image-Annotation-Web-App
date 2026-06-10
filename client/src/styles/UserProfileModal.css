@@ -1,0 +1,518 @@
+/* =========================================================
+   UserProfileModal — Medical-grade precision design
+   Palette: deep navy (#0f1b2d) · clinical white (#f8fafc)
+   Accent: cerulean (#2563eb) · success green (#059669)
+   Danger: (#dc2626)  Mono body: Inter / system-ui
+   ========================================================= */
+
+/* --- Overlay --- */
+.upm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 40, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: upm-fade-in 0.18s ease;
+}
+
+/* --- Panel --- */
+.upm-panel {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgba(15, 27, 45, 0.08),
+    0 8px 24px rgba(15, 27, 45, 0.12),
+    0 32px 64px rgba(15, 27, 45, 0.14);
+  width: 92%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: upm-slide-up 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --- Header --- */
+.upm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #0f1b2d;
+}
+
+.upm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upm-header-icon {
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.upm-header-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.upm-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.upm-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+/* --- Identity block --- */
+.upm-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 24px 20px;
+  background: #f8fafc;
+}
+
+.upm-avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.upm-avatar span {
+  width: 62px;
+  height: 62px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  /* span inside .upm-avatar needs block layout */
+  display: flex;
+}
+
+/* Restate width/height on the span element */
+.upm-avatar > span {
+  width: 62px;
+  height: 62px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.upm-avatar-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 14px;
+  border: 2px solid #2563eb;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.upm-identity-text {
+  min-width: 0;
+}
+
+.upm-display-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.upm-display-email {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Divider --- */
+.upm-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 0;
+}
+
+/* --- Body --- */
+.upm-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* --- Feedback banners --- */
+.upm-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  animation: upm-shake 0.28s ease;
+}
+
+.upm-feedback--error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.upm-feedback--success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #059669;
+  animation: none;
+}
+
+/* --- Fields --- */
+.upm-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.upm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upm-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.upm-input {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.upm-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.upm-input::placeholder {
+  color: #c1c9d6;
+}
+
+.upm-value {
+  padding: 10px 13px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0f172a;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+}
+
+.upm-empty {
+  color: #c1c9d6;
+  font-style: italic;
+}
+
+/* --- Footer --- */
+.upm-footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+/* --- Buttons --- */
+.upm-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.12s, opacity 0.15s;
+  border: none;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+}
+
+.upm-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.upm-btn--ghost {
+  background: #ffffff;
+  color: #64748b;
+  border: 1.5px solid #e2e8f0;
+}
+
+.upm-btn--ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.upm-btn--primary {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.upm-btn--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Saving state: swap primary to teal */
+.upm-btn--primary:has(.upm-spinner) {
+  background: #0f766e;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+}
+
+/* --- Spinner --- */
+.upm-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: upm-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+/* --- Animations --- */
+@keyframes upm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes upm-slide-up {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+@keyframes upm-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-4px); }
+  60%       { transform: translateX(4px); }
+}
+
+@keyframes upm-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Responsive --- */
+@media (max-width: 500px) {
+  .upm-panel {
+    width: 97%;
+    border-radius: 12px;
+  }
+
+  .upm-identity {
+    padding: 18px 18px 16px;
+  }
+
+  .upm-body {
+    padding: 16px 18px;
+  }
+
+  .upm-footer {
+    padding: 14px 18px;
+    flex-direction: column;
+  }
+}
+
+/* --- Dark mode --- */
+@media (prefers-color-scheme: dark) {
+  .upm-panel {
+    background: #0f172a;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 8px 24px rgba(0, 0, 0, 0.4),
+      0 32px 64px rgba(0, 0, 0, 0.5);
+  }
+
+  .upm-identity {
+    background: #1e293b;
+  }
+
+  .upm-divider {
+    background: #1e293b;
+  }
+
+  .upm-display-name {
+    color: #f1f5f9;
+  }
+
+  .upm-display-email {
+    color: #94a3b8;
+  }
+
+  .upm-value {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .upm-input {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .upm-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
+  .upm-footer {
+    background: #1e293b;
+    border-top-color: #334155;
+  }
+
+  .upm-btn--ghost {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+  }
+
+  .upm-btn--ghost:hover:not(:disabled) {
+    background: #0f172a;
+    color: #cbd5e1;
+    border-color: #475569;
+  }
+}
+/* ================================================================
+   UserProfileModal.css  — ADD these rules to your existing file
+   (or replace the file entirely with your existing rules + these)
+   ================================================================ */
+
+/* ── Tabs ──────────────────────────────────────────────────────── */
+.upm-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  margin-top: 12px;
+}
+
+.upm-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--upm-text-muted, #6b7280);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.upm-tab:hover {
+  color: var(--upm-text, #111827);
+  background: var(--upm-hover-bg, #f3f4f6);
+}
+
+.upm-tab--active {
+  color: var(--upm-primary, #2563eb);
+  background: var(--upm-primary-bg, #eff6ff);
+  border-color: var(--upm-primary-border, #bfdbfe);
+}
+
+/* ── Password input wrapper (relative container for eye button) ── */
+.upm-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.upm-input--with-icon {
+  width: 100%;
+  padding-right: 38px; /* room for the eye button */
+  box-sizing: border-box;
+}
+
+.upm-eye-btn {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--upm-text-muted, #9ca3af);
+  border-radius: 4px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.upm-eye-btn:hover {
+  color: var(--upm-text, #374151);
+}
