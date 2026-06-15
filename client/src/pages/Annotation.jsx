@@ -11,7 +11,7 @@ import useAnnotationData from "../useAnnotationData";
 import useFileHandling from "../useFileHandling";
 
 // Components
-import TaskTimer from "../components/TaskTimer"; // Import the Timer Component
+import TaskTimer from "../components/TaskTimer";
 import Header from '../components/Header';
 import TaskInfoBar from "../components/TaskInfoBar";
 import FileUploadSection from "../components/FileUploadSection";
@@ -40,7 +40,7 @@ function Annotation() {
   const {
     selectedShape, setSelectedShape,
     selectedLabel, setSelectedLabel,
-    labelOptions, setLabelOptions, 
+    labelOptions, setLabelOptions,
     selectedFileName, setSelectedFileName,
     windowCenter, setWindowCenter,
     windowWidth, setWindowWidth,
@@ -96,7 +96,7 @@ function Annotation() {
     const relevant = allProjectLabels.filter(l => !selectedShape || l.type === selectedShape || !l.type);
     setLabelOptions(relevant);
     if (relevant.length > 0 && !relevant.find(l => l.value === selectedLabel)) {
-       setSelectedLabel(relevant[0].value);
+      setSelectedLabel(relevant[0].value);
     }
   }, [selectedShape, allProjectLabels, selectedLabel, setSelectedLabel, setLabelOptions]);
 
@@ -114,53 +114,42 @@ function Annotation() {
   // --- File Switch Logic ---
   const handleFileSwitch = useCallback((newFileName) => {
     if (newFileName === selectedFileName) return;
-
-    // 1. Save current canvas state before switching files
     if (selectedFileName && annotationRefs.current[selectedFileName]?.current) {
       saveSliceAnnotationToState(
-        selectedFileName, 
-        currentSlice, 
+        selectedFileName,
+        currentSlice,
         annotationRefs.current[selectedFileName].current.exportAnnotations()
       );
     }
-
-    // 2. Reset slice controls
-    setTotalSlices(0); 
+    setTotalSlices(0);
     setCurrentSlice(0);
-    
-    // 3. Change File
     setSelectedFileName(newFileName);
   }, [selectedFileName, currentSlice, annotationRefs, saveSliceAnnotationToState, setTotalSlices, setCurrentSlice, setSelectedFileName]);
-
 
   // -----------------------------------------------------------------------
   // STANDARDIZED SAVING LOGIC
   // -----------------------------------------------------------------------
   const extractStandardData = (fabricObjects) => {
     if (!fabricObjects || !Array.isArray(fabricObjects)) return [];
-
     return fabricObjects.map(obj => {
       let points = [];
       let type = obj.customType || obj.type;
-
       if (type === 'polygon' || type === 'polyline') {
         points = (obj.points || []).map(p => {
-             return [ p.x + (obj.pathOffset?.x || 0) + obj.left, p.y + (obj.pathOffset?.y || 0) + obj.top ]; 
+          return [p.x + (obj.pathOffset?.x || 0) + obj.left, p.y + (obj.pathOffset?.y || 0) + obj.top];
         });
-      } 
-      else if (type === 'rect' || type === 'rectangle') {
+      } else if (type === 'rect' || type === 'rectangle') {
         type = "rectangle";
         const x = obj.left;
         const y = obj.top;
         const w = obj.width * obj.scaleX;
         const h = obj.height * obj.scaleY;
-        points = [ [x, y], [x+w, y], [x+w, y+h], [x, y+h] ];
+        points = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
       }
-
       return {
         label: obj.label || "Unlabeled",
         type: type,
-        points: points, 
+        points: points,
         bbox: obj.getBoundingRect ? obj.getBoundingRect() : null
       };
     });
@@ -168,45 +157,36 @@ function Annotation() {
 
   const handleSaveAll = useCallback(async () => {
     if (!selectedFileName) return;
-
     try {
       let currentCanvasJson = null;
       if (annotationRefs.current[selectedFileName]?.current) {
         currentCanvasJson = annotationRefs.current[selectedFileName].current.exportAnnotations();
-        // Optimistic update of local state
         saveSliceAnnotationToState(selectedFileName, currentSlice, currentCanvasJson);
       }
-
       const fileAnnotations = annotationsByFileAndSlice[selectedFileName] || {};
       const fileClassifications = classificationByFileAndSlice[selectedFileName] || {};
       const fileInputs = inputsByFileAndSlice[selectedFileName] || {};
-
       const allActiveSlices = new Set([
         ...Object.keys(fileAnnotations),
         ...Object.keys(fileClassifications),
         ...Object.keys(fileInputs),
         currentSlice.toString()
       ]);
-
       const slicesPayload = {};
-
       allActiveSlices.forEach(idx => {
-        const editorState = (parseInt(idx) === currentSlice && currentCanvasJson) 
-          ? currentCanvasJson 
+        const editorState = (parseInt(idx) === currentSlice && currentCanvasJson)
+          ? currentCanvasJson
           : fileAnnotations[idx];
-
-        const standardData = (editorState && editorState.objects) 
-          ? extractStandardData(editorState.objects) 
+        const standardData = (editorState && editorState.objects)
+          ? extractStandardData(editorState.objects)
           : [];
-
         slicesPayload[idx] = {
-          editorState: editorState, 
+          editorState: editorState,
           standardData: standardData,
           classification: fileClassifications[idx] || null,
           attributes: fileInputs[idx] || {}
         };
       });
-
       await axios.post('http://localhost:5000/save-annotations', {
         taskId,
         filename: selectedFileName,
@@ -214,7 +194,6 @@ function Annotation() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
       alert(t("Changes Saved Successfully!"));
     } catch (err) {
       console.error("Save failed", err);
@@ -227,31 +206,30 @@ function Annotation() {
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #f8fafc, #fff)", display: "flex", flexDirection: "column" }}>
       <Header page="tasks" />
-      
+
       {/* Task Info Bar & Timer Container */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderBottom: "1px solid #f1f5f9" }}>
         <div style={{ flex: 1 }}>
           <TaskInfoBar taskData={taskData} files={allUploadedFiles} selectedFileName={selectedFileName} onFileSelect={handleFileSwitch} />
         </div>
-        {/* Render Timer if Task ID exists */}
         {taskId && (
-            <div style={{ paddingRight: "16px", flexShrink: 0 }}>
-                <TaskTimer taskId={taskId} token={token} />
-            </div>
+          <div style={{ paddingRight: "16px", flexShrink: 0 }}>
+            <TaskTimer taskId={taskId} token={token} />
+          </div>
         )}
       </div>
-      
+
       {allUploadedFiles.length === 0 ? (
         <FileUploadSection
           files={files} uploadProgress={uploadProgress} uploadMode={uploadMode} setUploadMode={setUploadMode}
           handleDrop={handleDrop} handleFileChange={handleFileChange}
-          handleUpload={() => handleUpload().then(() => fetchTask())} 
+          handleUpload={() => handleUpload().then(() => fetchTask())}
         />
       ) : (
         <>
           <div style={{ flex: 1, display: "grid", gridTemplateColumns: "250px 1fr 250px", gap: "16px", padding: "16px", height: "100%" }}>
             <div style={{ flexBasis: "48px", flexShrink: 0 }}> </div>
-            
+
             <ToolbarLeft
               shapes={SHAPES} allowedShapeIds={allowedShapeIds}
               selectedShape={selectedShape} setSelectedShape={setSelectedShape}
@@ -287,6 +265,9 @@ function Annotation() {
               annotationRefs={annotationRefs}
               totalSlices={totalSlices}
               taskId={taskId}
+              setZoomLevel={setZoomLevel}
+              setZoomRegion={setZoomRegion}
+              setIsZoomMode={setIsZoomMode}
             />
           </div>
 
@@ -297,7 +278,7 @@ function Annotation() {
             annotationRefs={annotationRefs}
             rightPanelOpen={rightPanelOpen}
             setRightPanelOpen={setRightPanelOpen}
-            onSave={handleSaveAll} 
+            onSave={handleSaveAll}
           />
 
           <RightPanel
@@ -310,8 +291,10 @@ function Annotation() {
             inputsByFileAndSlice={inputsByFileAndSlice}
             setInputsByFileAndSlice={setInputsByFileAndSlice}
             totalSlices={totalSlices} isZoomMode={isZoomMode} setIsZoomMode={setIsZoomMode}
-            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} zoomRegion={setZoomRegion}
-            projectAttributes={projectAttributes} 
+            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+            zoomRegion={zoomRegion}
+            setZoomRegion={setZoomRegion}
+            projectAttributes={projectAttributes}
           />
         </>
       )}

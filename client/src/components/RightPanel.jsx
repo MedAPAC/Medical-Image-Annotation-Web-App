@@ -155,6 +155,7 @@ const RightPanel = ({
               setIsZoomMode={setIsZoomMode}
               zoomLevel={zoomLevel}
               setZoomLevel={setZoomLevel}
+              zoomRegion={zoomRegion}
               setZoomRegion={setZoomRegion}
             />
           </div>
