@@ -11,11 +11,44 @@ const SlicesPanel = ({
   setCurrentSlice
 }) => {
   useEffect(() => {
-    if (showSlices && slicesRef.current) {
+    if (!showSlices || !slicesRef.current) return;
+    // GUARD: currentSlice can momentarily be undefined/NaN/negative
+    // (e.g. right after switching viewType, before totalSlices/currentSlice
+    // are reconciled). `querySelector(\`#slice-${currentSlice}\`)` with a
+    // non-integer id (like "#slice-NaN" or "#slice-undefined") throws a
+    // SyntaxError and crashes the component. Validate first.
+    if (
+      typeof currentSlice !== "number" ||
+      !Number.isFinite(currentSlice) ||
+      currentSlice < 0
+    ) {
+      return;
+    }
+
+    try {
       const selected = slicesRef.current.querySelector(`#slice-${currentSlice}`);
       selected?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    } catch (err) {
+      console.warn("SlicesPanel: failed to scroll to slice", currentSlice, err);
     }
   }, [showSlices, currentSlice, slicesRef]);
+
+  // GUARD: never render a negative/garbage slice count
+  const safeTotalSlices = Number.isFinite(totalSlices) && totalSlices > 0 ? totalSlices : 0;
+
+  // Display value for the slider/label — falls back to 0 if currentSlice
+  // is momentarily invalid, so the UI never shows "NaN" or crashes.
+  const safeCurrentSlice =
+    typeof currentSlice === "number" && Number.isFinite(currentSlice)
+      ? Math.min(Math.max(currentSlice, 0), Math.max(safeTotalSlices - 1, 0))
+      : 0;
+
+  const handleSliderChange = (e) => {
+    const raw = Number(e.target.value);
+    if (!Number.isFinite(raw)) return; // ignore invalid input (e.g. cleared field)
+    const clamped = Math.min(Math.max(raw, 0), Math.max(safeTotalSlices - 1, 0));
+    setCurrentSlice(clamped);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "12px", position: "relative" }}>
@@ -58,19 +91,19 @@ const SlicesPanel = ({
             boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
           }}
         >
-          {Array.from({ length: totalSlices }, (_, i) => (
+          {Array.from({ length: safeTotalSlices }, (_, i) => (
             <div
               key={i}
               id={`slice-${i}`}
               onClick={() => {
-                const clamped = Math.min(i, totalSlices - 1);
+                const clamped = Math.min(Math.max(i, 0), Math.max(safeTotalSlices - 1, 0));
                 setCurrentSlice(clamped);
                 setShowSlices(false);
               }}
               style={{
                 padding: "8px 12px",
                 cursor: "pointer",
-                background: i === currentSlice ? "#e0f2fe" : "#fff",
+                background: i === safeCurrentSlice ? "#e0f2fe" : "#fff",
                 borderBottom: "1px solid #f1f5f9",
                 fontSize: "12px",
                 fontWeight: 500,
@@ -79,7 +112,7 @@ const SlicesPanel = ({
               onMouseOver={(e) => (e.currentTarget.style.background = "#f0f9ff")}
               onMouseOut={(e) =>
                 (e.currentTarget.style.background =
-                  i === currentSlice ? "#e0f2fe" : "#fff")
+                  i === safeCurrentSlice ? "#e0f2fe" : "#fff")
               }
             >
               Slice {i + 1}
@@ -92,18 +125,19 @@ const SlicesPanel = ({
         <input
           type="range"
           min={0}
-          max={Math.max(totalSlices - 1, 0)}
-          value={currentSlice}
-          onChange={(e) => setCurrentSlice(Number(e.target.value))}
+          max={Math.max(safeTotalSlices - 1, 0)}
+          value={safeCurrentSlice}
+          onChange={handleSliderChange}
+          disabled={safeTotalSlices <= 1}
           style={{
             width: "100%",
-            cursor: "pointer",
+            cursor: safeTotalSlices <= 1 ? "not-allowed" : "pointer",
             height: "6px",
             marginBottom: "6px",
           }}
         />
         <div style={{ fontSize: "11px", color: "#64748b" }}>
-          {t("Slice")} {currentSlice + 1} / {totalSlices}
+          {t("Slice")} {safeCurrentSlice + 1} / {safeTotalSlices}
         </div>
       </div>
     </div>

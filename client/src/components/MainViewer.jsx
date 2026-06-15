@@ -180,8 +180,31 @@ const MainViewer = ({
   if (!file) return null;
 
   const isDicom = file.type === "dicom";
+
+  // -----------------------------------------------------------------------
+  // FIX: "all dicom slices = one file"
+  // Previously this grabbed *every* uploaded DICOM file regardless of which
+  // series/file the user selected, and the order was whatever order they
+  // were uploaded in. DicomViewer now treats this whole array as ONE
+  // volume (sorting + reformatting happens inside DicomViewer), so we just
+  // need to make sure we pass it the correct, complete set of slices for
+  // the *selected* series.
+  //
+  // If your uploaded file objects carry a series/study identifier (e.g.
+  // f.seriesInstanceUID or f.seriesId), group by that. Otherwise, fall back
+  // to treating all uploaded DICOM files as one series (single-series
+  // uploads).
+  // -----------------------------------------------------------------------
   const imageIds = isDicom
-    ? uploadedFiles.filter((f) => f.type === "dicom").map((f) => `wadouri:${f.url}`)
+    ? uploadedFiles
+        .filter((f) => {
+          if (f.type !== "dicom") return false;
+          if (file.seriesInstanceUID || f.seriesInstanceUID) {
+            return f.seriesInstanceUID === file.seriesInstanceUID;
+          }
+          return true;
+        })
+        .map((f) => `wadouri:${f.url}`)
     : [];
 
   const classification = classificationByFileAndSlice[selectedFileName]?.[currentSlice];
@@ -276,7 +299,8 @@ const MainViewer = ({
                     onSliceChange={setCurrentSlice}
                     setTotalSlices={setTotalSlices}
                     viewType={viewType}
-                    style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
+                    width={500}
+                    height={500}
                   />
                 ) : (
                   <NiftiViewer
@@ -287,7 +311,8 @@ const MainViewer = ({
                     onSliceChange={setCurrentSlice}
                     setTotalSlices={setTotalSlices}
                     viewType={viewType}
-                    style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
+                    width={500}
+                    height={500}
                   />
                 )}
               </div>
@@ -365,7 +390,7 @@ const MainViewer = ({
               fontWeight: 500,
             }}
           >
-            Slice {currentSlice + 1} / {isDicom ? imageIds.length : totalSlices}
+            Slice {currentSlice + 1} / {totalSlices}
             {zoomLevel > 1 && (
               <span
                 style={{
