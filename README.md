@@ -1,218 +1,151 @@
-# Medical Image Annotation Web App
+# Medical Image Annotation Web Application
 
-A full-stack web application for creating medical imaging projects, assigning annotation tasks, uploading image volumes, drawing annotations, classifying slices, and saving structured annotation data. The app is built with a React frontend, an Express/Node.js backend, and MongoDB as the live database.
+> A production-shaped workspace for medical image annotation, project coordination, task assignment, volumetric image review, and structured annotation export.
 
-The application is designed for medical image annotation workflows involving standard images, DICOM files, and NIfTI volumes. It includes project and task management, multi-user access controls, real-time annotation update notifications, optional Google Drive backup/export-sync, and a production-oriented annotation workspace.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Feature Highlights](#feature-highlights)
-- [Screenshots and GIFs](#screenshots-and-gifs)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Repository Structure](#repository-structure)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Environment Configuration](#environment-configuration)
-- [Google Drive Backup Setup](#google-drive-backup-setup)
-- [Core Workflows](#core-workflows)
-- [Annotation Data Format](#annotation-data-format)
-- [API Overview](#api-overview)
-- [Development Commands](#development-commands)
-- [Production Notes](#production-notes)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+![Platform status](https://img.shields.io/badge/status-active_development-256fb8)
+![Frontend](https://img.shields.io/badge/frontend-React-2f80d0)
+![Backend](https://img.shields.io/badge/backend-Node.js_Express-15803d)
+![Database](https://img.shields.io/badge/database-MongoDB-10b981)
+![Medical formats](https://img.shields.io/badge/formats-DICOM_%7C_NIfTI_%7C_Images-b45309)
 
 ## Overview
 
-This project supports a complete annotation workflow:
+Medical Image Annotation Web Application is a full-stack platform for organizing medical imaging work into projects, tasks, files, annotation sessions, and exportable datasets. It is designed for hospitals, radiology labs, clinical research teams, and AI annotation teams that need a practical workflow around DICOM, NIfTI, and standard image files.
 
-1. Users create accounts and authenticate.
-2. Project owners configure labels and classification attributes.
-3. Owners add individual users or teams as project owners.
-4. Owners create tasks and assign users or teams.
-5. Users upload image files, DICOM files, or NIfTI files to tasks.
-6. Annotators open the annotation page, navigate slices, draw annotations, classify slices, and save work.
-7. Annotation data is saved to MongoDB as the source of truth.
-8. If enabled, files and JSON snapshots are mirrored to Google Drive as a backup/export layer.
+MongoDB is the live source of truth for users, projects, tasks, teams, annotations, timers, and project state. Google Drive can be enabled as an optional project-level backup/export-sync layer for uploaded files, annotation JSON snapshots, and project exports.
 
-MongoDB remains the live operational database. Google Drive is optional and is used only for backup, file mirroring, and export-sync.
+## Product Snapshot
 
-## Feature Highlights
+| Area | What it provides |
+| --- | --- |
+| Project operations | Project creation, ownership, labels, attributes, configuration import/export, and optional Drive backup |
+| Task workflow | Task creation, assignment, status/progress tracking, file uploads, timers, and task detail management |
+| Annotation workspace | Slice navigation, annotation canvas, label controls, classification, unsaved-change protection, and real-time update notices |
+| Medical file support | Standard images, DICOM series handling, NIfTI volumes, and file-type-aware viewers |
+| Collaboration | Authentication, project ownership, team expansion for owners/assignees, and protected project/task routes |
+| Backup/export | Optional Google Drive folder sync while MongoDB remains the operational database |
 
-### Project Management
+## Visual Documentation
 
-- Create, view, update, and delete projects.
-- Configure annotation labels such as rectangle, polygon, polyline, ellipse, and brush.
-- Configure attributes such as text, number, checkbox, radio, and select.
-- Add project owners by email.
-- Add all members of a user-created team as project owners.
-- Edit project labels and attributes from the project detail page.
-
-### Task Management
-
-- Create tasks under projects.
-- Assign tasks to individual users.
-- Assign tasks to all members of a user-created team.
-- Track task status, priority, progress, timers, uploaded files, and metadata.
-- Upload multiple files per task.
-- Manage task files and task-level details.
-
-### Medical Image Support
-
-- Standard image uploads, including JPEG and PNG.
-- DICOM support through DICOM parsing/viewing tools.
-- NIfTI support through NIfTI reader utilities.
-- Slice navigation for volumetric datasets.
-- File-type-aware viewer behavior.
-
-### Annotation Workspace
-
-- Canvas-based annotation tools.
-- Bounding boxes, polygons, polylines, ellipse annotations, and brush workflows.
-- Slice-level classification panel.
-- Label and attribute controls.
-- Real-time update notification channel for concurrent annotation sessions.
-- Unsaved-change protection before navigation or reload.
-- One-based saved slice indexing for exported annotation data.
-
-### Collaboration and Access Control
-
-- JWT-based authentication.
-- Project owners control project-level access.
-- Task assignees and project owners can access relevant task data.
-- Teams can be created and managed by their creator.
-- Team creators can use their own teams for owner/assignee expansion.
-
-### Optional Google Drive Backup
-
-- Connect a Google Drive account.
-- Enable Drive backup per project.
-- Use an existing shared Drive folder or let the app create a folder.
-- Mirror uploaded task files to Drive.
-- Save annotation JSON snapshots to Drive.
-- Create project export JSON snapshots.
-- Keep MongoDB as the live source of truth.
-
-## Screenshots and GIFs
-
-Use a predictable documentation media layout so the README stays clean and easy to maintain.
-
-Place README screenshots here:
+Use this structure for README screenshots and GIFs:
 
 ```text
-docs/media/screenshots/
+docs/media/
+  screenshots/
+    home-dashboard.png
+    projects-page.png
+    project-detail.png
+    task-detail.png
+    annotation-workspace.png
+    google-drive-backup.png
+  gifs/
+    create-project.gif
+    upload-medical-files.gif
+    draw-polygon.gif
+    navigate-slices.gif
+    save-annotations.gif
 ```
 
-Place README GIFs here:
+Recommended README placement:
 
-```text
-docs/media/gifs/
+```md
+![Project detail dashboard](docs/media/screenshots/project-detail.png)
+![Polygon annotation workflow](docs/media/gifs/draw-polygon.gif)
 ```
 
-Recommended filenames:
+Keep documentation-only images in `docs/media/`. Keep assets imported by React under `client/src/` or `client/public/`.
 
-```text
-docs/media/screenshots/project-dashboard.png
-docs/media/screenshots/project-detail.png
-docs/media/screenshots/task-detail.png
-docs/media/screenshots/annotation-workspace.png
-docs/media/screenshots/google-drive-backup.png
-
-docs/media/gifs/create-project.gif
-docs/media/gifs/upload-medical-files.gif
-docs/media/gifs/draw-polygon.gif
-docs/media/gifs/navigate-slices.gif
-docs/media/gifs/save-annotations.gif
-```
-
-Existing demo GIFs are currently stored in:
-
-```text
-assets/
-```
-
-Current examples:
+Existing demo GIF examples are currently available in `assets/`:
 
 - `assets/boundingbox.gif`
 - `assets/editpolygon.gif`
 - `assets/polygon.gif`
 - `assets/scroller.gif`
 
-Suggested README placement:
+## Core Features
 
-```md
-![Annotation workspace](docs/media/screenshots/annotation-workspace.png)
-![Polygon drawing workflow](docs/media/gifs/draw-polygon.gif)
-```
+### Project Management
 
-If an image is only for documentation, prefer `docs/media/...`. If an image is imported by React code, place it under `client/src/assets/` or `client/public/` depending on how it is used by the app.
+- Create, view, update, and delete projects.
+- Configure annotation labels and classification attributes.
+- Import and export label/attribute configuration as JSON.
+- Add project owners by email.
+- Add all members of a user-created team as project owners.
+- Enable optional Google Drive backup per project.
+
+### Task Management
+
+- Create tasks under projects.
+- Assign tasks to individual users or teams.
+- Track status, priority, progress, subset, timers, uploaded files, and metadata.
+- Upload supported medical image files to task records.
+- Open task detail views for review, file management, and annotation entry.
+
+### Annotation Workspace
+
+- Draw bounding boxes, polygons, polylines, ellipses, and brush annotations.
+- Navigate volumetric slices for DICOM and NIfTI workflows.
+- Apply slice-level classification and annotation attributes.
+- Preserve annotations by file and slice.
+- Warn users before leaving with unsaved changes.
+- Save annotation data using one-based slice indexing for standard export readability.
+
+### Collaboration and Access Control
+
+- JWT-based authentication.
+- Authenticated project and task routes.
+- Project owners control project-level access.
+- Task assignees and project owners can access relevant task data.
+- Team creators can manage their teams and use them for project/task expansion.
+
+### Google Drive Backup
+
+- Optional Google OAuth connection.
+- Project-level backup enable/disable controls.
+- Use an existing Drive folder or let the app create a project folder.
+- Sync uploaded files, annotation snapshots, and export JSON files.
+- Keep Google Drive as backup/export storage, not as the live database.
 
 ## Architecture
 
 ```text
-React Client
+React client
   |
-  | HTTP / JSON / multipart uploads
+  | HTTP JSON, multipart uploads, annotation saves
   v
-Express Server
+Express server
   |
   | MongoDB driver
   v
 MongoDB
 
-Optional:
-Express Server
+Optional backup path:
+
+Express server
   |
   | Google OAuth + Drive API
   v
-Google Drive backup folder
+Google Drive project folder
 ```
 
 ### Data Ownership
 
-- MongoDB stores users, projects, tasks, teams, timers, and annotation documents.
-- The server filesystem stores uploaded task files locally.
-- Google Drive stores optional backup copies and export snapshots only.
-- The frontend never stores Google refresh tokens.
+| Data | Source of truth |
+| --- | --- |
+| Users, sessions, projects, teams, tasks | MongoDB |
+| Annotation records and classification state | MongoDB |
+| Uploaded files | Server upload storage, optionally mirrored to Drive |
+| Google OAuth tokens | Server-side MongoDB collection |
+| Drive backup files and snapshots | Google Drive backup folder |
 
 ## Tech Stack
 
-### Frontend
-
-- React
-- React Router
-- Axios
-- Fabric.js
-- Cornerstone/DICOM tooling
-- NIfTI reader utilities
-- VTK.js
-- i18next
-- Lucide React icons
-- CSS modules/stylesheets under `client/src/styles`
-
-### Backend
-
-- Node.js
-- Express
-- MongoDB native driver
-- Multer for uploads
-- bcrypt for password hashing
-- JSON Web Tokens for authentication
-- Google Drive API integration through server-side OAuth calls
-
-### Database
-
-- MongoDB database: `annotationApp`
-- Key collections:
-  - `users`
-  - `projects`
-  - `tasks`
-  - `annotations`
-  - `teamsCollection`
-  - `task_timers`
-  - `google_drive_connections`
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, React Router, Axios, Fabric.js, Cornerstone/DICOM tooling, NIfTI reader utilities, VTK.js, i18next, Lucide React |
+| Backend | Node.js, Express, MongoDB native driver, Multer, bcrypt, JSON Web Tokens |
+| Storage | MongoDB, local upload folders, optional Google Drive backup |
+| Styling | CSS stylesheets under `client/src/styles`, shared enterprise medical design layer |
 
 ## Repository Structure
 
@@ -253,61 +186,53 @@ Medical-Image-Annotation-Web-App/
 
 ## Prerequisites
 
-Install the following before running the application:
-
-- Node.js 18 or newer recommended
+- Node.js 18 or newer
 - npm
 - MongoDB 4 or newer
 - Git
-- A modern browser such as Chrome, Edge, or Firefox
+- Chrome, Edge, Firefox, or another modern browser
 
 Optional for Google Drive backup:
 
 - Google Cloud project
 - OAuth consent screen
-- OAuth 2.0 client credentials
+- OAuth 2.0 web client credentials
 - Google Drive API enabled
 
 ## Quick Start
 
-Clone the repository:
+Run the setup helper from the repository root:
 
 ```bash
-git clone <repository-url>
-cd Medical-Image-Annotation-Web-App
+chmod +x setup.sh
+./setup.sh
 ```
 
-Install backend dependencies:
+Or install manually:
 
 ```bash
 cd server
 npm install
-```
 
-Install frontend dependencies:
-
-```bash
 cd ../client
 npm install --legacy-peer-deps
 ```
 
-Start MongoDB locally.
-
-Start the backend:
+Start MongoDB, then run the backend:
 
 ```bash
 cd server
 npm start
 ```
 
-Start the frontend in another terminal:
+In a second terminal, run the frontend:
 
 ```bash
 cd client
 npm start
 ```
 
-Open:
+Open the app:
 
 ```text
 http://localhost:3000
@@ -327,9 +252,9 @@ mongodb://localhost:27017
 
 ## Environment Configuration
 
-The current server has local defaults in `server/index.js` for development. For production, move secrets and environment-specific values into environment variables.
+The current development server includes local defaults. For production, move secrets and environment-specific values into environment variables.
 
-Recommended server environment variables:
+Recommended server variables:
 
 ```bash
 PORT=5000
@@ -342,21 +267,11 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=http://localhost:5000/api/integrations/google-drive/callback
 ```
 
-Important production note: do not use the development JWT secret in production.
+Do not use the development JWT secret in production.
 
-## Google Drive Backup Setup
+## Google Drive Setup
 
-Google Drive is optional. The app works without it.
-
-Google Drive backup is intended for:
-
-- Uploaded image/DICOM/NIfTI file backup
-- Annotation JSON snapshot backup
-- Project export JSON snapshots
-
-Google Drive is not used as the live database.
-
-### Google Cloud Setup
+Google Drive backup is optional. The platform works normally without it.
 
 1. Create or open a Google Cloud project.
 2. Enable the Google Drive API.
@@ -368,29 +283,13 @@ Google Drive is not used as the live database.
 http://localhost:5000/api/integrations/google-drive/callback
 ```
 
-6. Set these server environment variables:
-
-```bash
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:5000/api/integrations/google-drive/callback
-```
-
+6. Set the Google environment variables on the backend.
 7. Restart the backend.
 8. Open a project detail page.
-9. Use the Google Drive Backup panel to connect Drive.
+9. Connect Google Drive.
 10. Enable backup for the project.
 
-### Folder Behavior
-
-When enabling project backup, the user can:
-
-- Paste an existing Google Drive folder URL or ID.
-- Leave the field empty so the app creates a project backup folder.
-
-The folder should be shared manually with project participants if they need direct Drive access.
-
-The app creates subfolders for:
+When backup is enabled, the app can create or reuse a Drive folder and organize project backups into:
 
 ```text
 files/
@@ -398,48 +297,45 @@ annotations/
 exports/
 ```
 
-## Core Workflows
+Share the Drive folder manually with project participants if they need direct Drive access.
+
+## Workflow Guide
 
 ### Create a Project
 
 1. Go to Projects.
 2. Create a project.
-3. Add labels and attributes.
-4. Add additional owners by email if needed.
-5. Add owner teams if needed.
-6. Save and open the project.
+3. Configure labels and attributes.
+4. Add project owners by email or team.
+5. Open the project detail page to review configuration and tasks.
 
-### Create a Task
+### Create and Assign a Task
 
 1. Go to Tasks or open a project detail page.
-2. Create a task.
-3. Select a project.
-4. Add optional description, subset, priority, and assignees.
-5. Assign individual users or teams.
-6. Upload files now or later from the task detail page.
+2. Create a task under a project.
+3. Add description, priority, subset, and assignee details.
+4. Assign a user or a team.
+5. Upload files from the task workflow.
 
-### Annotate a Task
+### Annotate Medical Images
 
-1. Open a task.
-2. Upload or select a file.
+1. Open the assigned task.
+2. Select or upload a supported file.
 3. Open the annotation workspace.
-4. Navigate slices if the file is volumetric.
-5. Draw annotations and apply classifications.
-6. Save changes.
+4. Navigate slices for volumetric files.
+5. Draw annotations and add classifications.
+6. Save changes before leaving the page.
 
-### Enable Drive Backup
+### Sync to Google Drive
 
-1. Open a project detail page.
-2. Connect Google Drive.
-3. Enter an existing folder ID/URL or leave blank to create one.
-4. Enable backup.
-5. Use Sync Now to export existing files and annotations.
+1. Open the project detail page.
+2. Connect Google Drive if not already connected.
+3. Enable backup.
+4. Use Sync Now to mirror existing project files and snapshots.
 
 ## Annotation Data Format
 
 Saved annotation data uses one-based slice keys.
-
-Example:
 
 ```json
 {
@@ -456,95 +352,101 @@ Example:
 }
 ```
 
-The schema version is defined in:
+The client-side format helpers live in:
 
 ```text
 client/src/annotationFormat.js
 ```
 
-Google Drive annotation snapshots use a project/task/file wrapper around the saved slice map.
+Google Drive snapshots wrap the saved slice map with project, task, and file metadata.
 
-## API Overview
+## API Map
 
-### Authentication
+### Authentication and User
 
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `GET /api/auth/verify`
-- `POST /api/auth/logout`
-- `PUT /api/user/profile`
-- `PUT /api/user/password`
+| Method | Endpoint |
+| --- | --- |
+| `POST` | `/api/auth/signup` |
+| `POST` | `/api/auth/login` |
+| `GET` | `/api/auth/verify` |
+| `POST` | `/api/auth/logout` |
+| `PUT` | `/api/user/profile` |
+| `PUT` | `/api/user/password` |
 
 ### Projects
 
-- `POST /api/projects`
-- `GET /api/projects`
-- `GET /api/projects/:id`
-- `PUT /api/projects/:id`
-- `DELETE /api/projects/:id`
-- `POST /api/projects/:id/owners`
-- `DELETE /api/projects/:id/owners`
+| Method | Endpoint |
+| --- | --- |
+| `POST` | `/api/projects` |
+| `GET` | `/api/projects` |
+| `GET` | `/api/projects/:id` |
+| `PUT` | `/api/projects/:id` |
+| `DELETE` | `/api/projects/:id` |
+| `POST` | `/api/projects/:id/owners` |
+| `DELETE` | `/api/projects/:id/owners` |
 
-### Tasks
+### Tasks and Files
 
-- `GET /api/tasks`
-- `GET /api/projects/:projectId/tasks`
-- `GET /api/tasks/:taskId`
-- `POST /api/tasks`
-- `PUT /api/tasks/:taskId`
-- `PUT /api/tasks/:taskId/assign`
-- `PUT /api/tasks/:taskId/progress`
-- `DELETE /api/tasks/:taskId`
-
-### Task Files
-
-- `POST /api/tasks/:taskId/files`
-- `DELETE /api/tasks/:taskId/files/:fileId`
+| Method | Endpoint |
+| --- | --- |
+| `GET` | `/api/tasks` |
+| `GET` | `/api/projects/:projectId/tasks` |
+| `GET` | `/api/tasks/:taskId` |
+| `POST` | `/api/tasks` |
+| `PUT` | `/api/tasks/:taskId` |
+| `PUT` | `/api/tasks/:taskId/assign` |
+| `PUT` | `/api/tasks/:taskId/progress` |
+| `DELETE` | `/api/tasks/:taskId` |
+| `POST` | `/api/tasks/:taskId/files` |
+| `DELETE` | `/api/tasks/:taskId/files/:fileId` |
 
 ### Annotations
 
-- `POST /save-annotations`
-- `GET /annotations/:taskId`
-- `GET /annotation-events/:taskId`
+| Method | Endpoint |
+| --- | --- |
+| `POST` | `/save-annotations` |
+| `GET` | `/annotations/:taskId` |
+| `GET` | `/annotation-events/:taskId` |
 
 ### Teams
 
-- `GET /api/teams`
-- `POST /api/teams`
-- `PUT /api/teams/:id`
-- `DELETE /api/teams/:id`
+| Method | Endpoint |
+| --- | --- |
+| `GET` | `/api/teams` |
+| `POST` | `/api/teams` |
+| `PUT` | `/api/teams/:id` |
+| `DELETE` | `/api/teams/:id` |
+| `POST` | `/api/users/resolve` |
+| `POST` | `/api/verify-user` |
 
-### Google Drive Integration
+### Google Drive
 
-- `GET /api/integrations/google-drive/status`
-- `POST /api/integrations/google-drive/connect`
-- `GET /api/integrations/google-drive/callback`
-- `DELETE /api/integrations/google-drive/disconnect`
-- `POST /api/projects/:id/drive-backup/enable`
-- `POST /api/projects/:id/drive-backup/disable`
-- `POST /api/projects/:id/drive-backup/sync`
+| Method | Endpoint |
+| --- | --- |
+| `GET` | `/api/integrations/google-drive/status` |
+| `POST` | `/api/integrations/google-drive/connect` |
+| `GET` | `/api/integrations/google-drive/callback` |
+| `DELETE` | `/api/integrations/google-drive/disconnect` |
+| `POST` | `/api/projects/:id/drive-backup/enable` |
+| `POST` | `/api/projects/:id/drive-backup/disable` |
+| `POST` | `/api/projects/:id/drive-backup/sync` |
 
 ## Development Commands
-
-Backend:
-
-```bash
-cd server
-npm start
-```
 
 Frontend:
 
 ```bash
 cd client
 npm start
+npm run build
 ```
 
-Production frontend build:
+Backend:
 
 ```bash
-cd client
-npm run build
+cd server
+npm start
+npm run dev
 ```
 
 Server syntax check:
@@ -553,56 +455,59 @@ Server syntax check:
 node --check server/index.js
 ```
 
-## Production Notes
-
-Before deploying:
+## Production Checklist
 
 - Move secrets into environment variables.
-- Replace the development JWT secret.
-- Configure a production MongoDB instance.
-- Configure HTTPS.
-- Restrict CORS to trusted domains.
-- Set upload size and storage policies intentionally.
-- Decide retention policies for medical files and annotation exports.
+- Replace development JWT secrets.
+- Use HTTPS.
+- Restrict CORS to trusted origins.
+- Configure production MongoDB and backup policies.
+- Define upload size, retention, and storage policies.
+- Review access controls for projects, tasks, teams, and Drive folders.
 - Add structured logging and request tracing.
-- Add backup policies for MongoDB and uploaded files.
-- Validate Google Drive OAuth scopes and consent-screen requirements.
-- Review privacy, access-control, and compliance requirements for medical data.
+- Validate annotation export format against downstream AI or research requirements.
+- Confirm privacy, compliance, and institutional data-handling requirements before storing medical data.
 
 ## Troubleshooting
 
-### MongoDB Connection Fails
+### MongoDB connection fails
 
-Check that MongoDB is running:
+Check that MongoDB is installed and running:
 
 ```bash
 mongod --version
 ```
 
-Confirm the server is using the expected MongoDB URL.
+Confirm the server is using the expected `MONGO_URL`.
 
-### Frontend Cannot Reach Backend
+### Frontend cannot reach backend
 
-Confirm the backend is running:
+Confirm the backend is running at:
 
 ```text
 http://localhost:5000
 ```
 
-Confirm the frontend is using the correct API base URLs.
+Also check any hardcoded API base URLs in the frontend while the app is still in local-development mode.
 
-### File Upload Fails
+### Upload fails
 
-Check:
+Check that:
 
-- File type is supported.
-- File size is within server limits.
+- The file type is supported.
+- The task exists and the user has access.
 - `server/uploads/` exists and is writable.
-- The user has permission to access the task.
+- The file is inside the server upload limits.
 
-### Google Drive Shows Not Configured
+Supported upload extensions include:
 
-Set:
+```text
+.jpg, .jpeg, .png, .nii, .nii.gz, .dcm, .dicom
+```
+
+### Google Drive shows "not configured"
+
+Set these variables and restart the backend:
 
 ```bash
 GOOGLE_CLIENT_ID
@@ -610,29 +515,28 @@ GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI
 ```
 
-Restart the backend after setting them.
+### Google Drive backup fails
 
-### Google Drive Backup Fails
+Check that:
 
-Check:
+- The Google Drive API is enabled.
+- The OAuth redirect URI matches exactly.
+- The connected Google account can access the selected folder.
+- The folder URL or ID is valid.
+- The Drive folder has enough storage and permissions.
 
-- The connected Google account has access to the selected folder.
-- The folder ID or URL is valid.
-- The Google Drive API is enabled in Google Cloud.
-- OAuth redirect URI exactly matches the server route.
-- The app has the required Drive scope.
+## Contribution Notes
 
-## Contributing
-
-When changing the app:
+When changing this project:
 
 - Keep MongoDB as the live source of truth.
-- Treat Google Drive backup as optional and non-blocking.
-- Do not break existing annotation tools or file formats.
-- Keep saved annotation slices one-based.
-- Run a frontend build before submitting large UI changes.
-- Keep README images and GIFs under `docs/media/`.
+- Keep Google Drive optional and non-blocking.
+- Preserve existing annotation tools and file support.
+- Keep saved annotation slice keys one-based.
+- Keep DICOM series grouped as logical files in the annotation workflow.
+- Run `npm run build` from `client/` before large frontend changes.
+- Store README screenshots and GIFs under `docs/media/`.
 
 ## License
 
-Add your project license here.
+Add the project license here before public distribution.
