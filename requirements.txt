@@ -1,0 +1,146 @@
+# Medical Image Annotation Web App - Requirements
+# ===============================================
+
+# Runtime Requirements
+# --------------------
+# Node.js: 18.x or newer recommended
+# npm: 9.x or newer recommended
+# MongoDB: 4.x or newer
+# Git
+# Modern browser: Chrome, Edge, Firefox, or Safari
+
+# Why Node.js 18+
+# ---------------
+# The backend uses the built-in Fetch API for optional Google Drive backup/sync.
+# Node.js 18+ provides fetch without requiring an extra dependency.
+
+# Local Development Ports
+# -----------------------
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:5000
+# MongoDB:  mongodb://localhost:27017
+
+# Backend Dependencies
+# --------------------
+# Install from server/package.json:
+#   cd server
+#   npm install
+#
+# Core backend packages:
+#   express
+#   cors
+#   multer
+#   mongodb
+#   bcrypt
+#   jsonwebtoken
+#   i18next
+#   i18next-express-middleware
+#   i18next-fs-backend
+
+# Frontend Dependencies
+# ---------------------
+# Install from client/package.json:
+#   cd client
+#   npm install --legacy-peer-deps
+#
+# Core frontend packages:
+#   react
+#   react-dom
+#   react-router-dom
+#   react-scripts
+#   axios
+#   fabric
+#   lucide-react
+#   i18next
+#   react-i18next
+#   cornerstone-core
+#   cornerstone-tools
+#   cornerstone-wado-image-loader
+#   dicom-parser
+#   nifti-reader-js
+#   @kitware/vtk.js
+
+# Optional Google Drive Backup
+# ----------------------------
+# Google Drive is optional. MongoDB remains the live database.
+#
+# To enable Drive backup/export-sync, configure these backend environment variables:
+#   GOOGLE_CLIENT_ID=your-google-oauth-client-id
+#   GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+#   GOOGLE_REDIRECT_URI=http://localhost:5000/api/integrations/google-drive/callback
+#
+# In Google Cloud Console:
+#   1. Enable Google Drive API.
+#   2. Configure OAuth consent screen.
+#   3. Create OAuth 2.0 Web Application credentials.
+#   4. Add the redirect URI above.
+
+# Recommended Production Environment Variables
+# --------------------------------------------
+#   PORT=5000
+#   MONGO_URL=mongodb://localhost:27017
+#   MONGO_DB_NAME=annotationApp
+#   JWT_SECRET=replace-with-a-strong-secret
+#   GOOGLE_CLIENT_ID=
+#   GOOGLE_CLIENT_SECRET=
+#   GOOGLE_REDIRECT_URI=
+#
+# Note: the current development server has local defaults in server/index.js.
+# For production, move hardcoded secrets and connection strings into environment variables.
+
+# Documentation Media Folders
+# ---------------------------
+# README screenshots:
+#   docs/media/screenshots/
+#
+# README GIFs:
+#   docs/media/gifs/
+#
+# Existing demo GIFs:
+#   assets/
+
+# Setup Commands
+# --------------
+# Option A: setup script
+#   chmod +x setup.sh
+#   ./setup.sh
+#
+# Option B: manual install
+#   cd server
+#   npm install
+#   cd ../client
+#   npm install --legacy-peer-deps
+
+# Run Commands
+# ------------
+# Terminal 1:
+#   cd server
+#   npm start
+#
+# Terminal 2:
+#   cd client
+#   npm start
+
+# Build / Verification
+# --------------------
+# Frontend production build:
+#   cd client
+#   npm run build
+#
+# Backend syntax check:
+#   node --check server/index.js
+
+# Troubleshooting
+# ---------------
+# MongoDB is not running:
+#   Start MongoDB using your OS service manager or run mongod manually.
+#
+# npm install fails:
+#   npm cache clean --force
+#   delete node_modules
+#   delete package-lock.json only if you intentionally want to regenerate it
+#   rerun npm install
+#
+# Google Drive shows "not configured":
+#   Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI.
+#   Restart the backend.

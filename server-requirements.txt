@@ -1,0 +1,37 @@
+# Server Dependencies (Backend)
+# =============================
+# Run: cd server && npm install
+
+# Core Dependencies
+express@^5.1.0
+cors@^2.8.5
+multer@^2.0.2
+
+# Database
+mongodb@^6.20.0
+
+# Authentication & Security
+bcrypt@^6.0.0
+jsonwebtoken@^9.0.2
+
+# Internationalization
+i18next@^25.3.2
+i18next-express-middleware@^2.0.0
+i18next-fs-backend@^2.6.0
+
+# Development Dependencies (optional)
+nodemon@^3.0.0
+
+# Installation Commands
+# =====================
+# 1. Install all dependencies:
+#    cd server && npm install
+#
+# 2. If some dependencies fail, install manually:
+#    npm install mongodb bcrypt jsonwebtoken cors express multer i18next i18next-express-middleware i18next-fs-backend
+#
+# 3. Verify installation:
+#    npm list
+#
+# 4. Start server:
+#    npm start
