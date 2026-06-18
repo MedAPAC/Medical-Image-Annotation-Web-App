@@ -1,5 +1,13 @@
 // annotation/hooks/useAnnotationData.js
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+
+const clampSlice = (value, sliceCount) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+
+  const maxSlice = Math.max((Number(sliceCount) || 0) - 1, 0);
+  return Math.min(Math.max(Math.round(numeric), 0), maxSlice);
+};
 
 const useAnnotationData = () => {
   // --- Tool States ---
@@ -24,7 +32,19 @@ const useAnnotationData = () => {
   const [zoomRegion, setZoomRegion] = useState(null);
   const [rightPanelOpen, setRightPanelOpen] = useState(null);
   const [viewType, setViewType] = useState("axial");
-  const [currentSlice, setCurrentSlice] = useState(0);
+  const [currentSlice, setCurrentSliceRaw] = useState(0);
+
+  const setCurrentSlice = useCallback((nextSlice) => {
+    setCurrentSliceRaw((previousSlice) => {
+      const nextValue =
+        typeof nextSlice === "function" ? nextSlice(previousSlice) : nextSlice;
+      return clampSlice(nextValue, totalSlices);
+    });
+  }, [totalSlices]);
+
+  useEffect(() => {
+    setCurrentSliceRaw((previousSlice) => clampSlice(previousSlice, totalSlices));
+  }, [totalSlices]);
 
   // --- DATA STATES (The "Database" in Frontend Memory) ---
   // Key structure: { [fileName]: { [sliceIndex]: Data } }
@@ -51,7 +71,7 @@ const useAnnotationData = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedFileName, totalSlices]);
+  }, [selectedFileName, totalSlices, setCurrentSlice]);
 
   // --- Helpers ---
 
