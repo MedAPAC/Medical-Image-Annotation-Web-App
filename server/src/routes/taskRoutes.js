@@ -118,6 +118,68 @@ app.get('/api/projects/:projectId/tasks', authenticateToken, checkProjectAccess,
   }
 });
 
+// Get task statistics
+app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
+  if (!tasksCollection) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  try {
+    // Get projects where user is an owner
+    const userProjects = await projectsCollection.find({
+      $or: [
+        { userId: req.user.id },
+        { owners: req.user.id }
+      ]
+    }).toArray();
+
+    const projectIds = userProjects.map(project => project._id.toString());
+
+    // Get tasks where user is assigned or user owns the project
+    const stats = await tasksCollection.aggregate([
+      {
+        $match: {
+          $or: [
+            { assignedTo: req.user.id },
+            { projectId: { $in: projectIds } },
+            { createdBy: req.user.email }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalProgress: { $avg: '$progress' }
+        }
+      },
+      {
+        $project: {
+          status: '$_id',
+          count: 1,
+          averageProgress: { $round: ['$totalProgress', 2] },
+          _id: 0
+        }
+      }
+    ]).toArray();
+
+    const totalTasks = stats.reduce((sum, stat) => sum + stat.count, 0);
+
+    res.json({
+      totalTasks,
+      byStatus: stats,
+      summary: {
+        pending: stats.find(s => s.status === 'pending')?.count || 0,
+        inProgress: stats.find(s => s.status === 'in_progress')?.count || 0,
+        completed: stats.find(s => s.status === 'completed')?.count || 0
+      }
+    });
+  } catch (err) {
+    console.error('Failed to fetch task stats:', err);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
 // Get single task
 // Get single task
 app.get('/api/tasks/:taskId', authenticateToken, checkTaskAccess, async (req, res) => {
@@ -370,8 +432,6 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
       uploadedAt: new Date()
     }));
 
-    console.log('Files to be saved:', files.map(f => f.originalName));
-
     // Add files to task
     const result = await tasksCollection.updateOne(
       { _id: new ObjectId(req.params.taskId) },
@@ -463,7 +523,6 @@ app.delete('/api/tasks/:taskId/files/:fileId', authenticateToken, async (req, re
         if (fs.existsSync(filePath)) {
             try {
                 fs.unlinkSync(filePath);
-                console.log(`Deleted file from disk: ${filePath}`);
             } catch (unlinkErr) {
                 console.error("Error deleting file from disk:", unlinkErr);
                 // Continue to remove from DB even if disk delete fails
@@ -496,8 +555,6 @@ app.get('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
     const { taskId } = req.params;
     const userId = req.user.id;
 
-    console.log(`[Timer GET] Fetching for Task: ${taskId}, User: ${userId}`);
-
     // Try finding exact match first (String comparison)
     let timerRecord = await db.collection('taskTimersCollection').findOne({ 
       taskId: taskId, 
@@ -508,7 +565,6 @@ app.get('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
     // (Only strictly necessary if your DB mixes types, but safer to keep simple first)
     
     const seconds = timerRecord ? timerRecord.seconds : 0;
-    console.log(`[Timer GET] Found seconds: ${seconds}`);
     
     res.json({ seconds });
   } catch (err) {
@@ -525,8 +581,6 @@ app.post('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
     const { taskId } = req.params;
     const userId = req.user.id;
     const { seconds } = req.body;
-
-    console.log(`[Timer POST] Saving ${seconds}s for Task: ${taskId}`);
 
     // Validation
     if (seconds === undefined || seconds === null) {
@@ -733,8 +787,6 @@ app.delete('/api/tasks/:taskId', authenticateToken, async (req, res) => {
       }
     );
 
-    console.log(`Task count decremented for project ${task.projectId}`);
-
     res.json({ message: 'Task deleted successfully' });
   } catch (err) {
     console.error('Failed to delete task:', err);
@@ -742,65 +794,4 @@ app.delete('/api/tasks/:taskId', authenticateToken, async (req, res) => {
   }
 });
 
-// Get task statistics
-app.get('/api/tasks/stats', authenticateToken, async (req, res) => {
-  if (!tasksCollection) {
-    return res.status(500).json({ error: "Database not initialized" });
-  }
-
-  try {
-    // Get projects where user is an owner
-    const userProjects = await projectsCollection.find({
-      $or: [
-        { userId: req.user.id },
-        { owners: req.user.id }
-      ]
-    }).toArray();
-
-    const projectIds = userProjects.map(project => project._id.toString());
-
-    // Get tasks where user is assigned or user owns the project
-    const stats = await tasksCollection.aggregate([
-      {
-        $match: {
-          $or: [
-            { assignedTo: req.user.id },
-            { projectId: { $in: projectIds } },
-            { createdBy: req.user.email }
-          ]
-        }
-      },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalProgress: { $avg: '$progress' }
-        }
-      },
-      {
-        $project: {
-          status: '$_id',
-          count: 1,
-          averageProgress: { $round: ['$totalProgress', 2] },
-          _id: 0
-        }
-      }
-    ]).toArray();
-
-    const totalTasks = stats.reduce((sum, stat) => sum + stat.count, 0);
-
-    res.json({
-      totalTasks,
-      byStatus: stats,
-      summary: {
-        pending: stats.find(s => s.status === 'pending')?.count || 0,
-        inProgress: stats.find(s => s.status === 'in_progress')?.count || 0,
-        completed: stats.find(s => s.status === 'completed')?.count || 0
-      }
-    });
-  } catch (err) {
-    console.error('Failed to fetch task stats:', err);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
-  }
-});
 };

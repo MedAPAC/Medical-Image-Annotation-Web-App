@@ -64,7 +64,6 @@ const useTaskData = (taskId, isAuthenticated, token, language, navigate) => {
           };
         });
         
-        console.log("Processed files:", processedFiles);
         setUploadedFiles(processedFiles);
       } else {
         // Don't set error here if it's just a new task with no files yet

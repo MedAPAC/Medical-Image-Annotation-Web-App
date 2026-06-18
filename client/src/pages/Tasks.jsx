@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import Header from '../components/Header';
 import { 
@@ -9,52 +8,34 @@ import {
   Search, 
   Filter, 
   SortAsc, 
-  MoreHorizontal,
   Trash2,
   Eye,
-  EyeOff,
-  ChevronDown,
-  Circle,
-  RectangleHorizontal,
-  Shapes,
-  PenTool,
-  Box,
-  Brush,
   X,
-  Check,
   Calendar,
-  Users,
-  Settings,
-  Star,
   Clock,
   FolderOpen,
-  Tag,
-  Palette,
   Upload,
   User,
-  UserPlus,
-  Mail
+  UserPlus
 } from 'lucide-react';
 
 const Tasks = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
   // Redirect if not authenticated
   React.useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [authLoading, isAuthenticated, navigate]);
   
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("name");
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedTasks, setSelectedTasks] = useState([]);
   const [assigneeSearch, setAssigneeSearch] = useState("");
   
   // New task form state
@@ -70,7 +51,6 @@ const Tasks = () => {
   });
   
   // File upload state
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [dragActive, setDragActive] = useState(false);
   
@@ -78,9 +58,11 @@ const Tasks = () => {
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
   const [availableAssignees, setAvailableAssignees] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [selectedAssigneeTeamIds, setSelectedAssigneeTeamIds] = useState([]);
 
   // Load projects and tasks
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/projects');
       if (response.data.projects) {
@@ -89,9 +71,9 @@ const Tasks = () => {
     } catch (error) {
       console.error('Error loading projects:', error);
     }
-  };
+  }, []);
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/tasks');
       if (response.data.tasks) {
@@ -100,10 +82,20 @@ const Tasks = () => {
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
-  };
+  }, []);
+
+  const loadTeams = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/teams');
+      setTeams(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error loading teams:', error);
+      setTeams([]);
+    }
+  }, []);
 
   // Load available assignees (all users)
-  const loadAvailableAssignees = async () => {
+  const loadAvailableAssignees = useCallback(async () => {
     try {
       // In a real app, you'd have a /api/users endpoint
       // For now, we'll get users from the projects they're involved in
@@ -128,13 +120,15 @@ const Tasks = () => {
     } catch (error) {
       console.error('Error loading assignees:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated || !token) return;
     loadProjects();
     loadTasks();
     loadAvailableAssignees();
-  }, []);
+    loadTeams();
+  }, [authLoading, isAuthenticated, token, loadProjects, loadTasks, loadAvailableAssignees, loadTeams]);
 
   // File upload handlers
   const handleDrag = (e) => {
@@ -228,7 +222,7 @@ const Tasks = () => {
   // Check if user came from a project detail page and pre-select the project
   useEffect(() => {
     const state = location.state;
-    if (state?.projectId) {
+    if (state?.projectId || state?.openCreateModal) {
       const project = projects.find(p => p._id === state.projectId);
       if (project) {
         setNewTask(prev => ({
@@ -285,25 +279,21 @@ const Tasks = () => {
         subset: newTask.subset,
         description: newTask.description,
         assigneeEmail: newTask.assigneeEmail || null,
+        assigneeTeamIds: selectedAssigneeTeamIds,
         priority: newTask.priority
       };
 
-      console.log('Creating task with data:', taskData);
-      
       const taskResponse = await axios.post(
         'http://localhost:5000/api/tasks',
         taskData
       );
 
       const taskId = taskResponse.data.task.id;
-      console.log('Task created with ID:', taskId);
 
       // Upload files if any
-      let uploadedFilesData = [];
       if (newTask.files.length > 0) {
         try {
-          uploadedFilesData = await uploadTaskFiles(taskId);
-          console.log('Files uploaded successfully:', uploadedFilesData.length);
+          await uploadTaskFiles(taskId);
         } catch (uploadError) {
           console.error('File upload failed, but task was created:', uploadError);
           // Task was created successfully, just file upload failed
@@ -325,7 +315,7 @@ const Tasks = () => {
         priority: "medium",
         files: [] 
       });
-      setUploadedFiles([]);
+      setSelectedAssigneeTeamIds([]);
       setUploadProgress({});
       setShowCreateModal(false);
       
@@ -364,7 +354,7 @@ const Tasks = () => {
     }
 
     try {
-      const response = await axios.put(
+      await axios.put(
         `http://localhost:5000/api/tasks/${taskId}/assign`,
         { assigneeEmail: newAssigneeEmail.trim() || null }
       );
@@ -376,22 +366,6 @@ const Tasks = () => {
     } catch (error) {
       console.error('Error reassigning task:', error);
       alert(error.response?.data?.error || 'Failed to reassign task. Please try again.');
-    }
-  };
-
-  const handleSelectTask = (taskId) => {
-    setSelectedTasks(prev => 
-      prev.includes(taskId) 
-        ? prev.filter(id => id !== taskId)
-        : [...prev, taskId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedTasks.length === filteredTasks.length) {
-      setSelectedTasks([]);
-    } else {
-      setSelectedTasks(filteredTasks.map(t => t._id || t.id));
     }
   };
 
@@ -472,6 +446,43 @@ const Tasks = () => {
     assignee.name.toLowerCase().includes(newTask.assigneeEmail?.toLowerCase() || '')
   );
 
+  const ownedTeams = teams.filter(team =>
+    String(team.createdBy || '') === String(user?.id || '') ||
+    (team.createdByEmail && user?.email && team.createdByEmail.toLowerCase() === user.email.toLowerCase())
+  );
+
+  const handleAssigneeTeamToggle = (teamId) => {
+    setSelectedAssigneeTeamIds(prev =>
+      prev.includes(teamId)
+        ? prev.filter(id => id !== teamId)
+        : [...prev, teamId]
+    );
+  };
+
+  const closeCreateModal = () => {
+    setSelectedAssigneeTeamIds([]);
+    setShowCreateModal(false);
+    if (location.state?.projectId || location.state?.openCreateModal) {
+      navigate('/tasks', { replace: true });
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#475569',
+        fontSize: '15px',
+        fontWeight: 600
+      }}>
+        Checking session...
+      </div>
+    );
+  }
+
   // Don't render if not authenticated
   if (!isAuthenticated) {
     return null;
@@ -505,7 +516,7 @@ const Tasks = () => {
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
           <h2>Create a new task</h2>
           <button 
-            onClick={() => setShowCreateModal(false)}
+            onClick={closeCreateModal}
             style={{
               backgroundColor: 'transparent',
               border: 'none',
@@ -688,6 +699,56 @@ const Tasks = () => {
 
           <div style={{marginBottom: '15px'}}>
             <label style={{display: 'block', marginBottom: '5px', fontWeight: '500'}}>
+              Assignee Teams (Optional)
+            </label>
+            {ownedTeams.length > 0 ? (
+              <div style={{
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                padding: '10px',
+                maxHeight: '150px',
+                overflowY: 'auto',
+                backgroundColor: '#fff'
+              }}>
+                {ownedTeams.map(team => (
+                  <label
+                    key={team._id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      padding: '8px',
+                      borderBottom: '1px solid #f3f4f6',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <input
+                        type="checkbox"
+                        checked={selectedAssigneeTeamIds.includes(team._id)}
+                        onChange={() => handleAssigneeTeamToggle(team._id)}
+                      />
+                      <span style={{fontWeight: 500}}>{team.name}</span>
+                    </span>
+                    <span style={{fontSize: '12px', color: '#6b7280'}}>
+                      {(team.members || []).length} members
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p style={{fontSize: '12px', color: '#6b7280', margin: 0}}>
+                Create a team in the Teams page to assign all team members at once.
+              </p>
+            )}
+            <p style={{fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0'}}>
+              Only teams you created can be selected. Their current members will be added as task assignees.
+            </p>
+          </div>
+
+          <div style={{marginBottom: '15px'}}>
+            <label style={{display: 'block', marginBottom: '5px', fontWeight: '500'}}>
               Priority
             </label>
             <select 
@@ -851,7 +912,7 @@ const Tasks = () => {
 
         <div style={{display: 'flex', justifyContent: 'flex-end', gap: '12px'}}>
           <button 
-            onClick={() => setShowCreateModal(false)}
+            onClick={closeCreateModal}
             style={{
               padding: '10px 20px',
               backgroundColor: '#f3f4f6',
@@ -887,7 +948,7 @@ const Tasks = () => {
   );
 
   return (
-    <div style={{
+    <div className="tasks-page enterprise-page" style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
       display: 'flex',
