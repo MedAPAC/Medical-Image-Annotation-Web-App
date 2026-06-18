@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import Header from '../components/Header';
 import { 
@@ -9,47 +8,35 @@ import {
   Search, 
   Filter, 
   SortAsc, 
-  MoreHorizontal,
   Trash2,
   Eye,
-  EyeOff,
-  ChevronDown,
   Circle,
   RectangleHorizontal,
   Shapes,
   PenTool,
-  Box,
   Brush,
   X,
-  Check,
   Calendar,
-  Users,
-  Settings,
-  Star,
   Clock,
-  FolderOpen,
-  Tag,
-  Palette
+  FolderOpen
 } from 'lucide-react';
 
 const Projects = () => {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, user, token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   // Redirect if not authenticated
   React.useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [authLoading, isAuthenticated, navigate]);
   
   const [projects, setProjects] = useState([]);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("name");
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedProjects, setSelectedProjects] = useState([]);
   
   // State for editor mode (raw or constructor)
   const [editorMode, setEditorMode] = useState('constructor');
@@ -80,6 +67,8 @@ const Projects = () => {
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
   const [ownerEmails, setOwnerEmails] = useState('');
+  const [teams, setTeams] = useState([]);
+  const [selectedOwnerTeamIds, setSelectedOwnerTeamIds] = useState([]);
   const [description, setDescription] = useState('');
 
   const annotationTypes = [
@@ -97,16 +86,35 @@ const Projects = () => {
     { value: "select", label: "Select" }
   ];
 
-  const colors = [
-    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", 
-    "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
-    "#FF9F43", "#10AC84", "#5F27CD", "#00D2D3", "#FF9FF3"
-  ];
-
   // Handler for switching editor mode
   const handleEditorModeChange = (mode) => {
     setEditorMode(mode);
   };
+
+  const serializeProjectConfig = (nextLabels = labels, nextAttributes = attributes) => ({
+    labels: nextLabels.map(label => ({
+      id: label.id,
+      name: label.name,
+      type: label.type,
+      color: label.color
+    })),
+    attributes: nextAttributes.map(attr => ({
+      id: attr.id,
+      name: attr.name,
+      type: attr.type,
+      values: attr.values,
+      mutable: attr.mutable
+    }))
+  });
+
+  const syncRawJsonFromState = (nextLabels = labels, nextAttributes = attributes) => {
+    setRawJsonContent(JSON.stringify(serializeProjectConfig(nextLabels, nextAttributes), null, 2));
+    setIsManualEdit(false);
+  };
+
+  const parseOwnerEmails = () => ownerEmails
+    ? ownerEmails.split(',').map(email => email.trim()).filter(Boolean)
+    : [];
 
   // Handler for adding a new label
   const handleAddLabel = () => {
@@ -117,14 +125,14 @@ const Projects = () => {
         type: currentLabel.type,
         color: currentLabel.color
       };
-      setLabels([...labels, newLabel]);
+      const nextLabels = [...labels, newLabel];
+      setLabels(nextLabels);
       setCurrentLabel({
         name: '',
         type: 'rectangle',
         color: '#FF6B6B',
       });
-      // Generate JSON after adding label
-      setTimeout(() => generateJsonFromData(), 100);
+      syncRawJsonFromState(nextLabels, attributes);
     }
   };
 
@@ -138,15 +146,15 @@ const Projects = () => {
         values: currentAttribute.values,
         mutable: currentAttribute.mutable
       };
-      setAttributes([...attributes, newAttribute]);
+      const nextAttributes = [...attributes, newAttribute];
+      setAttributes(nextAttributes);
       setCurrentAttribute({
         name: '',
         type: 'text',
         values: '',
         mutable: false
       });
-      // Generate JSON after adding attribute
-      setTimeout(() => generateJsonFromData(), 100);
+      syncRawJsonFromState(labels, nextAttributes);
     }
   };
 
@@ -168,40 +176,21 @@ const Projects = () => {
 
   // Handler for removing a label
   const handleRemoveLabel = (labelId) => {
-    setLabels(labels.filter(label => label.id !== labelId));
-    setTimeout(() => generateJsonFromData(), 100);
+    const nextLabels = labels.filter(label => label.id !== labelId);
+    setLabels(nextLabels);
+    syncRawJsonFromState(nextLabels, attributes);
   };
 
   // Handler for removing an attribute
   const handleRemoveAttribute = (attributeId) => {
-    setAttributes(attributes.filter(attr => attr.id !== attributeId));
-    setTimeout(() => generateJsonFromData(), 100);
+    const nextAttributes = attributes.filter(attr => attr.id !== attributeId);
+    setAttributes(nextAttributes);
+    syncRawJsonFromState(labels, nextAttributes);
   };
 
   // Function to generate JSON from labels and attributes
   const generateJsonFromData = () => {
-    if (!projectName.trim()) {
-      setRawJsonContent('{"labels":[],"attributes":[]}');
-      return;
-    }
-
-    const jsonData = {
-      labels: labels.map(label => ({
-        id: label.id,
-        name: label.name,
-        type: label.type,
-        color: label.color
-      })),
-      attributes: attributes.map(attr => ({
-        id: attr.id,
-        name: attr.name,
-        type: attr.type,
-        values: attr.values,
-        mutable: attr.mutable
-      }))
-    };
-
-    setRawJsonContent(JSON.stringify(jsonData, null, 2));
+    syncRawJsonFromState(labels, attributes);
   };
 
   // Handler for Continue button
@@ -211,13 +200,9 @@ const Projects = () => {
       return;
     }
     
-    // Generate and save JSON to raw textarea
-    setTimeout(() => {
-      generateJsonFromData();
-      setIsManualEdit(false);
-      setEditorMode('raw');
-      alert('Data saved successfully! Check the Raw editor to see the JSON.');
-    }, 100);
+    generateJsonFromData();
+    setEditorMode('raw');
+    alert('Data saved successfully! Check the Raw editor to see the JSON.');
   };
 
   // Handler for manual editing in raw editor
@@ -250,7 +235,7 @@ const Projects = () => {
           id: Date.now() + 1000 + index,
           name: item.name || '',
           type: item.type || 'text',
-          values: item.values || '',
+          values: Array.isArray(item.values) ? item.values.join(', ') : (item.values || ''),
           mutable: item.mutable || false
         }));
         setAttributes(newAttributes);
@@ -273,58 +258,48 @@ const Projects = () => {
     setAttributes([]);
     setIsManualEdit(false);
   };
+
+  const closeCreateModal = () => {
+    setSelectedOwnerTeamIds([]);
+    setShowCreateModal(false);
+  };
   
   // Prepare project data for submission
   const prepareProjectData = () => {
-    try {
-      // Try to parse from raw JSON first
-      const parsedData = JSON.parse(rawJsonContent);
-      
-      // Process owners emails
-      const ownerEmailsArray = ownerEmails
-        ? ownerEmails.split(',').map(email => email.trim()).filter(email => email)
-        : [];
-      
-      return {
-        name: projectName,
-        description: description || '',
-        labels: parsedData.labels || labels.map(label => ({
-          name: label.name,
-          type: label.type,
-          color: label.color
-        })),
-        attributes: parsedData.attributes || attributes.map(attr => ({
-          name: attr.name,
-          type: attr.type,
-          values: attr.values,
-          mutable: attr.mutable
-        })),
-        ownerEmails: ownerEmailsArray
-      };
-    } catch (error) {
-      console.error('Error parsing JSON:', error);
-      // Fallback to current state
-      const ownerEmailsArray = ownerEmails
-        ? ownerEmails.split(',').map(email => email.trim()).filter(email => email)
-        : [];
-      
-      return {
-        name: projectName,
-        description: description || '',
-        labels: labels.map(label => ({
-          name: label.name,
-          type: label.type,
-          color: label.color
-        })),
-        attributes: attributes.map(attr => ({
-          name: attr.name,
-          type: attr.type,
-          values: attr.values,
-          mutable: attr.mutable
-        })),
-        ownerEmails: ownerEmailsArray
-      };
+    const baseProjectData = {
+      name: projectName,
+      description: description || '',
+      ownerEmails: parseOwnerEmails(),
+      ownerTeamIds: selectedOwnerTeamIds
+    };
+
+    if (editorMode === 'raw' && isManualEdit) {
+      try {
+        const parsedData = JSON.parse(rawJsonContent);
+        return {
+          ...baseProjectData,
+          labels: Array.isArray(parsedData.labels) ? parsedData.labels : [],
+          attributes: Array.isArray(parsedData.attributes) ? parsedData.attributes : []
+        };
+      } catch (error) {
+        throw new Error('Invalid raw JSON format. Apply or fix the JSON before creating the project.');
+      }
     }
+
+    return {
+      ...baseProjectData,
+      labels: labels.map(label => ({
+        name: label.name,
+        type: label.type,
+        color: label.color
+      })),
+      attributes: attributes.map(attr => ({
+        name: attr.name,
+        type: attr.type,
+        values: attr.values,
+        mutable: attr.mutable
+      }))
+    };
   };
   
   // Handler for Submit & Continue
@@ -341,7 +316,7 @@ const Projects = () => {
     try {
       const projectData = prepareProjectData();
 
-      const response = await axios.post(
+      await axios.post(
         'http://localhost:5000/api/projects',
         projectData,
         {
@@ -357,6 +332,7 @@ const Projects = () => {
       setProjectName('');
       setDescription('');
       setOwnerEmails('');
+      setSelectedOwnerTeamIds([]);
       setLabels([]);
       setAttributes([]);
       setCurrentLabel({
@@ -382,7 +358,7 @@ const Projects = () => {
       }, 3000);
     } catch (error) {
       console.error('Error creating project:', error);
-      setSubmitError(error.response?.data?.error || 'Failed to create project. Please try again.');
+      setSubmitError(error.response?.data?.error || error.message || 'Failed to create project. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -427,12 +403,12 @@ const Projects = () => {
       }
     } catch (error) {
       console.error('Error creating project:', error);
-      setSubmitError(error.response?.data?.error || 'Failed to create project. Please try again.');
+      setSubmitError(error.response?.data?.error || error.message || 'Failed to create project. Please try again.');
       setIsSubmitting(false);
     }
   };
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/projects', {
         headers: {
@@ -461,30 +437,30 @@ const Projects = () => {
     } catch (error) {
       console.error('Error loading projects:', error);
     }
-  };
+  }, [token]);
 
-  // Load existing projects on component mount
-  useEffect(() => {
-    if (token) {
-      loadProjects();
+  const loadTeams = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/teams', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      setTeams(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error loading teams:', error);
+      setTeams([]);
     }
   }, [token]);
 
-  const handleSelectProject = (projectId) => {
-    setSelectedProjects(prev => 
-      prev.includes(projectId) 
-        ? prev.filter(id => id !== projectId)
-        : [...prev, projectId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedProjects.length === filteredProjects.length) {
-      setSelectedProjects([]);
-    } else {
-      setSelectedProjects(filteredProjects.map(p => p.id));
+  // Load existing projects on component mount
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && token) {
+      loadProjects();
+      loadTeams();
     }
-  };
+  }, [authLoading, isAuthenticated, token, loadProjects, loadTeams]);
 
   const handleDeleteProject = async (projectId, projectName) => {
     const confirmed = window.confirm(
@@ -516,13 +492,17 @@ const Projects = () => {
     project.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'completed': return 'bg-blue-500';
-      case 'paused': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
-    }
+  const ownedTeams = teams.filter(team =>
+    String(team.createdBy || '') === String(user?.id || '') ||
+    (team.createdByEmail && user?.email && team.createdByEmail.toLowerCase() === user.email.toLowerCase())
+  );
+
+  const handleOwnerTeamToggle = (teamId) => {
+    setSelectedOwnerTeamIds(prev =>
+      prev.includes(teamId)
+        ? prev.filter(id => id !== teamId)
+        : [...prev, teamId]
+    );
   };
 
   const getStatusText = (status) => {
@@ -533,6 +513,22 @@ const Projects = () => {
       default: return 'Unknown';
     }
   };
+
+  if (authLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#475569',
+        fontSize: '15px',
+        fontWeight: 600
+      }}>
+        Checking session...
+      </div>
+    );
+  }
 
   // Don't render if not authenticated
   if (!isAuthenticated) {
@@ -567,7 +563,7 @@ const Projects = () => {
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
           <h2>Create a new project</h2>
           <button 
-            onClick={() => setShowCreateModal(false)}
+            onClick={closeCreateModal}
             style={{
               backgroundColor: 'transparent',
               border: 'none',
@@ -612,6 +608,52 @@ const Projects = () => {
               onChange={(e) => setOwnerEmails(e.target.value)}
             />
             <small style={{color: '#666'}}>Note: You will always be an owner of the project.</small>
+          </div>
+
+          <div style={{width: '100%'}}>
+            <p>Owner Teams (Optional)</p>
+            {ownedTeams.length > 0 ? (
+              <div style={{
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                padding: '10px',
+                maxHeight: '150px',
+                overflowY: 'auto',
+                backgroundColor: '#fff'
+              }}>
+                {ownedTeams.map(team => (
+                  <label
+                    key={team._id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      padding: '8px',
+                      borderBottom: '1px solid #f3f4f6',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <input
+                        type="checkbox"
+                        checked={selectedOwnerTeamIds.includes(team._id)}
+                        onChange={() => handleOwnerTeamToggle(team._id)}
+                      />
+                      <span style={{fontWeight: 500}}>{team.name}</span>
+                    </span>
+                    <span style={{fontSize: '12px', color: '#6b7280'}}>
+                      {(team.members || []).length} members
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <small style={{color: '#666'}}>Create a team in the Teams page to add all team members as owners.</small>
+            )}
+            <small style={{display: 'block', color: '#666', marginTop: '4px'}}>
+              Only teams you created can be selected. Their current members will be added as project owners.
+            </small>
           </div>
 
           <div>
@@ -893,7 +935,7 @@ const Projects = () => {
               Continue
             </button>
             <button 
-              onClick={() => setShowCreateModal(false)}
+              onClick={closeCreateModal}
               style={{backgroundColor:'red', width:'100px', padding:'10px', color:'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
             >
               Cancel
@@ -964,7 +1006,7 @@ const Projects = () => {
   );
 
   return (
-    <div style={{
+    <div className="projects-page enterprise-page" style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
       display: 'flex',
