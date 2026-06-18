@@ -1,14 +1,16 @@
 // pages/Annotation.jsx
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from '../AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { fabric } from "fabric";
 
 // Hooks
 import useTaskData from "../useTaskData";
 import useAnnotationData from "../useAnnotationData";
 import useFileHandling from "../useFileHandling";
+import useNavigationGuard from "../useNavigationGuard";
 
 // Components
 import TaskTimer from "../components/TaskTimer";
@@ -20,13 +22,173 @@ import LeftDrawer from "../components/LeftDrawer";
 import MainViewer from "../components/MainViewer";
 import ToolbarRight from "../components/ToolbarRight";
 import RightPanel from "../components/RightPanel";
+import UnsavedChangesModal from "../components/UnsavedChangesModal";
+import "../styles/Annotation.css";
+import {
+  ANNOTATION_SCHEMA_VERSION,
+  normalizeClassificationForSave,
+  toSavedSliceKey,
+  toSavedSliceNumber,
+} from "../annotationFormat";
 
 // Constants
 import { SHAPES, SECTION_ICONS, LEFT_BUTTONS, RIGHT_BUTTONS } from "../constants";
 
+const fileSelectionKey = (file) => file?.annotationKey || file?.originalName;
+
+const getDicomSeriesKey = (file) => {
+  const seriesId =
+    file.seriesInstanceUID ||
+    file.seriesId ||
+    file.seriesUID ||
+    file.studyInstanceUID ||
+    null;
+
+  return seriesId ? `dicom-series:${seriesId}` : "dicom-series:default";
+};
+
+const buildLogicalFileList = (files) => {
+  const logicalFiles = [];
+  const dicomGroups = new Map();
+
+  files.forEach((file) => {
+    if (file.type !== "dicom") {
+      logicalFiles.push({
+        ...file,
+        annotationKey: fileSelectionKey(file),
+        displayName: file.displayName || file.originalName,
+      });
+      return;
+    }
+
+    const groupKey = getDicomSeriesKey(file);
+    if (!dicomGroups.has(groupKey)) {
+      dicomGroups.set(groupKey, []);
+      logicalFiles.push({ __dicomGroupKey: groupKey });
+    }
+    dicomGroups.get(groupKey).push(file);
+  });
+
+  return logicalFiles.map((entry) => {
+    if (!entry.__dicomGroupKey) return entry;
+
+    const seriesFiles = dicomGroups.get(entry.__dicomGroupKey) || [];
+    const firstFile = seriesFiles[0] || {};
+    const seriesId = String(entry.__dicomGroupKey).split(":").pop();
+    const seriesLabel =
+      entry.__dicomGroupKey === "dicom-series:default"
+        ? "DICOM series"
+        : `DICOM series ${seriesId.slice(-8)}`;
+
+    return {
+      ...firstFile,
+      type: "dicom",
+      files: seriesFiles,
+      isDicomSeries: true,
+      sliceCount: seriesFiles.length,
+      annotationKey: entry.__dicomGroupKey,
+      originalName: entry.__dicomGroupKey,
+      displayName: `${seriesLabel} (${seriesFiles.length} slice${seriesFiles.length === 1 ? "" : "s"})`,
+    };
+  });
+};
+
+const roundCoordinate = (value) => Number(Number(value || 0).toFixed(3));
+
+const getBoundsFromPoints = (points) => {
+  if (!Array.isArray(points) || points.length === 0) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  const right = Math.max(...xs);
+  const bottom = Math.max(...ys);
+
+  return {
+    x: roundCoordinate(left),
+    y: roundCoordinate(top),
+    width: roundCoordinate(right - left),
+    height: roundCoordinate(bottom - top),
+  };
+};
+
+const getSerializedWorldPoints = (obj) => {
+  const type = obj.customType || obj.type;
+
+  if ((type === "polygon" || type === "polyline") && Array.isArray(obj.points)) {
+    const pathOffset = obj.pathOffset || { x: 0, y: 0 };
+    const matrix = fabric.util.composeMatrix({
+      translateX: obj.left || 0,
+      translateY: obj.top || 0,
+      angle: obj.angle || 0,
+      scaleX: (obj.scaleX ?? 1) * (obj.flipX ? -1 : 1),
+      scaleY: (obj.scaleY ?? 1) * (obj.flipY ? -1 : 1),
+      skewX: obj.skewX || 0,
+      skewY: obj.skewY || 0,
+    });
+
+    return obj.points.map((point) => {
+      const transformed = fabric.util.transformPoint(
+        new fabric.Point(
+          point.x - pathOffset.x,
+          point.y - pathOffset.y
+        ),
+        matrix
+      );
+      return [roundCoordinate(transformed.x), roundCoordinate(transformed.y)];
+    });
+  }
+
+  if (type === "rect" || type === "rectangle") {
+    const x = obj.left || 0;
+    const y = obj.top || 0;
+    const w = (obj.width || 0) * (obj.scaleX ?? 1);
+    const h = (obj.height || 0) * (obj.scaleY ?? 1);
+    return [
+      [roundCoordinate(x), roundCoordinate(y)],
+      [roundCoordinate(x + w), roundCoordinate(y)],
+      [roundCoordinate(x + w), roundCoordinate(y + h)],
+      [roundCoordinate(x), roundCoordinate(y + h)],
+    ];
+  }
+
+  return [];
+};
+
+const extractStandardData = (fabricObjects) => {
+  if (!fabricObjects || !Array.isArray(fabricObjects)) return [];
+
+  return fabricObjects
+    .filter((obj) => {
+      const type = obj.customType || obj.type;
+      return ["polygon", "polyline", "rect", "rectangle"].includes(type);
+    })
+    .map((obj, index) => {
+      const standardGeometry = obj.standardGeometry || {};
+      const type = standardGeometry.type || obj.customType || obj.type;
+      const points = Array.isArray(standardGeometry.points) && standardGeometry.points.length > 0
+        ? standardGeometry.points
+        : getSerializedWorldPoints(obj);
+      const bbox = standardGeometry.bbox || getBoundsFromPoints(points);
+
+      return {
+        id: `annotation-${index + 1}`,
+        schemaVersion: ANNOTATION_SCHEMA_VERSION,
+        label: standardGeometry.label || obj.label || "Unlabeled",
+        type,
+        coordinateSystem: "image-pixel",
+        points,
+        bbox,
+      };
+    });
+};
+
 function Annotation() {
   const { t, i18n } = useTranslation();
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, loading: authLoading, token } = useAuth();
   const navigate = useNavigate();
   const { taskId } = useParams();
 
@@ -63,37 +225,209 @@ function Annotation() {
     annotationRefs
   } = useAnnotationData();
 
+  const collaborationClientIdRef = useRef(
+    `annotation-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  );
+  const selectedFileNameRef = useRef(selectedFileName);
+  const isDirtyRef = useRef(false);
+  const [remoteAnnotationReload, setRemoteAnnotationReload] = useState(null);
+
+  const alertTimerRef = useRef(null);
+  const [pageAlert, setPageAlert] = useState(null);
+
+  const showPageAlert = useCallback((type, message) => {
+    if (alertTimerRef.current) {
+      window.clearTimeout(alertTimerRef.current);
+    }
+
+    setPageAlert({ type, message });
+    alertTimerRef.current = window.setTimeout(() => {
+      setPageAlert(null);
+      alertTimerRef.current = null;
+    }, 4200);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (alertTimerRef.current) {
+        window.clearTimeout(alertTimerRef.current);
+      }
+    };
+  }, []);
+
   // 3. File Handling Hook
   const {
     files, uploadProgress, uploadMode, setUploadMode,
     handleDrop, handleFileChange, handleUpload, uploadedFiles: newlyUploadedFiles
-  } = useFileHandling(taskId, token, setSelectedFileName);
+  } = useFileHandling(taskId, token, setSelectedFileName, showPageAlert);
 
-  const allUploadedFiles = useMemo(() => [...taskUploadedFiles, ...newlyUploadedFiles], [taskUploadedFiles, newlyUploadedFiles]);
+  const rawUploadedFiles = useMemo(() => {
+    const seen = new Set();
+    return [...taskUploadedFiles, ...newlyUploadedFiles].filter((file) => {
+      const key = file.filename || file.url || file.originalName;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [taskUploadedFiles, newlyUploadedFiles]);
 
-  // --- Auth & Init ---
+  const allUploadedFiles = useMemo(
+    () => buildLogicalFileList(rawUploadedFiles),
+    [rawUploadedFiles]
+  );
+
+  // -----------------------------------------------------------------------
+  // UNSAVED CHANGES TRACKING
+  //
+  // isDirty becomes true when the user actually changes annotations,
+  // classifications, or attribute inputs — NOT on the first load.
+  //
+  // Two refs gate the effect:
+  //   isInitialLoadRef      — skips the very first fire (component mount)
+  //   skipNextDirtyCheckRef — skips the fire that follows a save or a fresh
+  //                           data load, where state updates are not user edits
+  // -----------------------------------------------------------------------
+  const [isDirty, setIsDirtyLocal] = useState(false);
+
   useEffect(() => {
-    if (!isAuthenticated) navigate('/login');
-    else if (taskId) fetchTask();
-  }, [isAuthenticated, token, taskId, fetchTask, navigate]);
+    selectedFileNameRef.current = selectedFileName;
+  }, [selectedFileName]);
 
   useEffect(() => {
-    if (allUploadedFiles.length > 0 && !selectedFileName) {
-      setSelectedFileName(allUploadedFiles[0].originalName);
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
+
+  const markDirty = useCallback(() => {
+    setIsDirtyLocal(true);
+  }, []);
+
+  const handleMarkClean = useCallback(() => {
+    setIsDirtyLocal(false);
+  }, []);
+
+  const setDirtyClassificationByFileAndSlice = useCallback((updater) => {
+    markDirty();
+    setClassificationByFileAndSlice(updater);
+  }, [markDirty, setClassificationByFileAndSlice]);
+
+  const setDirtyInputsByFileAndSlice = useCallback((updater) => {
+    markDirty();
+    setInputsByFileAndSlice(updater);
+  }, [markDirty, setInputsByFileAndSlice]);
+
+  // ── Navigation guard ──────────────────────────────────────────────
+  const {
+    markClean,
+    showUnsavedModal,
+    handleConfirmLeave,
+    handleCancelLeave,
+    guardedNavigate,
+  } = useNavigationGuard({
+    isDirtyExternal: isDirty,
+    onMarkClean: handleMarkClean,
+  });
+
+  // -----------------------------------------------------------------------
+  // AUTH & INIT
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      navigate('/login');
+    } else if (taskId) {
+      fetchTask();
+    }
+  }, [authLoading, isAuthenticated, token, taskId, fetchTask, navigate]);
+
+  useEffect(() => {
+    if (!taskId || !token || typeof EventSource === "undefined") return;
+
+    const params = new URLSearchParams({
+      token,
+      clientId: collaborationClientIdRef.current,
+    });
+    const source = new EventSource(
+      `http://localhost:5000/annotation-events/${taskId}?${params.toString()}`
+    );
+
+    const handleAnnotationUpdate = (event) => {
+      try {
+        const update = JSON.parse(event.data);
+        if (!update?.filename || update.clientId === collaborationClientIdRef.current) {
+          return;
+        }
+
+        const activeFile = selectedFileNameRef.current;
+        const collaborator = update.updatedBy || t("Another collaborator");
+
+        if (update.filename === activeFile) {
+          if (isDirtyRef.current) {
+            showPageAlert(
+              "warning",
+              t("{{collaborator}} saved updates for this file. Save your work before reloading to avoid overwriting local changes.", { collaborator })
+            );
+            return;
+          }
+
+          setRemoteAnnotationReload({
+            filename: update.filename,
+            version: Date.now(),
+          });
+          showPageAlert(
+            "info",
+            t("{{collaborator}} saved updates. The current file has been refreshed.", { collaborator })
+          );
+          return;
+        }
+
+        setRemoteAnnotationReload({
+          filename: update.filename,
+          version: Date.now(),
+        });
+        showPageAlert(
+          "info",
+          t("{{collaborator}} saved updates to another file in this task.", { collaborator })
+        );
+      } catch (err) {
+        console.warn("Failed to process annotation update event", err);
+      }
+    };
+
+    source.addEventListener("annotation-updated", handleAnnotationUpdate);
+    source.onerror = () => {
+      // EventSource reconnects automatically; keep this quiet unless parsing fails.
+    };
+
+    return () => {
+      source.removeEventListener("annotation-updated", handleAnnotationUpdate);
+      source.close();
+    };
+  }, [taskId, token, showPageAlert, t]);
+
+  useEffect(() => {
+    if (allUploadedFiles.length === 0) return;
+    const selectedExists = allUploadedFiles.some(
+      (file) => fileSelectionKey(file) === selectedFileName
+    );
+    if (!selectedFileName || !selectedExists) {
+      setSelectedFileName(fileSelectionKey(allUploadedFiles[0]));
     }
   }, [allUploadedFiles, selectedFileName, setSelectedFileName]);
 
-  // --- Labels Logic ---
+  // ── Labels ────────────────────────────────────────────────────────
   const [allProjectLabels, setAllProjectLabels] = useState([]);
   useEffect(() => {
-    if (taskData && taskData.labels) {
-      const formatted = taskData.labels.map(l => ({ value: l.name, label: l.name, color: l.color, type: l.type }));
-      setAllProjectLabels(formatted);
+    if (taskData?.labels) {
+      setAllProjectLabels(
+        taskData.labels.map(l => ({ value: l.name, label: l.name, color: l.color, type: l.type }))
+      );
     }
   }, [taskData]);
 
   useEffect(() => {
-    const relevant = allProjectLabels.filter(l => !selectedShape || l.type === selectedShape || !l.type);
+    const relevant = allProjectLabels.filter(
+      l => !selectedShape || l.type === selectedShape || !l.type
+    );
     setLabelOptions(relevant);
     if (relevant.length > 0 && !relevant.find(l => l.value === selectedLabel)) {
       setSelectedLabel(relevant[0].value);
@@ -106,12 +440,14 @@ function Annotation() {
   }, [selectedLabel, labelOptions, setBrushColor]);
 
   const allowedShapeIds = useMemo(() => {
-    return (taskData?.labels?.length) ? Array.from(new Set(taskData.labels.map(l => l.type))) : SHAPES.map(s => s.id);
+    return taskData?.labels?.length
+      ? Array.from(new Set(taskData.labels.map(l => l.type)))
+      : SHAPES.map(s => s.id);
   }, [taskData]);
 
   const projectAttributes = useMemo(() => taskData?.attributes || [], [taskData]);
 
-  // --- File Switch Logic ---
+  // ── File switch ───────────────────────────────────────────────────
   const handleFileSwitch = useCallback((newFileName) => {
     if (newFileName === selectedFileName) return;
     if (selectedFileName && annotationRefs.current[selectedFileName]?.current) {
@@ -124,96 +460,134 @@ function Annotation() {
     setTotalSlices(0);
     setCurrentSlice(0);
     setSelectedFileName(newFileName);
-  }, [selectedFileName, currentSlice, annotationRefs, saveSliceAnnotationToState, setTotalSlices, setCurrentSlice, setSelectedFileName]);
+  }, [
+    selectedFileName, currentSlice, annotationRefs,
+    saveSliceAnnotationToState, setTotalSlices, setCurrentSlice, setSelectedFileName,
+  ]);
 
-  // -----------------------------------------------------------------------
-  // STANDARDIZED SAVING LOGIC
-  // -----------------------------------------------------------------------
-  const extractStandardData = (fabricObjects) => {
-    if (!fabricObjects || !Array.isArray(fabricObjects)) return [];
-    return fabricObjects.map(obj => {
-      let points = [];
-      let type = obj.customType || obj.type;
-      if (type === 'polygon' || type === 'polyline') {
-        points = (obj.points || []).map(p => {
-          return [p.x + (obj.pathOffset?.x || 0) + obj.left, p.y + (obj.pathOffset?.y || 0) + obj.top];
-        });
-      } else if (type === 'rect' || type === 'rectangle') {
-        type = "rectangle";
-        const x = obj.left;
-        const y = obj.top;
-        const w = obj.width * obj.scaleX;
-        const h = obj.height * obj.scaleY;
-        points = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
-      }
-      return {
-        label: obj.label || "Unlabeled",
-        type: type,
-        points: points,
-        bbox: obj.getBoundingRect ? obj.getBoundingRect() : null
-      };
-    });
-  };
-
+  // ── Save ──────────────────────────────────────────────────────────
   const handleSaveAll = useCallback(async () => {
-    if (!selectedFileName) return;
+    if (!selectedFileName) {
+      markClean();
+      return true;
+    }
     try {
       let currentCanvasJson = null;
+      const annotationsSnapshot = { ...annotationsByFileAndSlice };
       if (annotationRefs.current[selectedFileName]?.current) {
-        currentCanvasJson = annotationRefs.current[selectedFileName].current.exportAnnotations();
+        currentCanvasJson =
+          annotationRefs.current[selectedFileName].current.exportAnnotations();
         saveSliceAnnotationToState(selectedFileName, currentSlice, currentCanvasJson);
-      }
-      const fileAnnotations = annotationsByFileAndSlice[selectedFileName] || {};
-      const fileClassifications = classificationByFileAndSlice[selectedFileName] || {};
-      const fileInputs = inputsByFileAndSlice[selectedFileName] || {};
-      const allActiveSlices = new Set([
-        ...Object.keys(fileAnnotations),
-        ...Object.keys(fileClassifications),
-        ...Object.keys(fileInputs),
-        currentSlice.toString()
-      ]);
-      const slicesPayload = {};
-      allActiveSlices.forEach(idx => {
-        const editorState = (parseInt(idx) === currentSlice && currentCanvasJson)
-          ? currentCanvasJson
-          : fileAnnotations[idx];
-        const standardData = (editorState && editorState.objects)
-          ? extractStandardData(editorState.objects)
-          : [];
-        slicesPayload[idx] = {
-          editorState: editorState,
-          standardData: standardData,
-          classification: fileClassifications[idx] || null,
-          attributes: fileInputs[idx] || {}
+        annotationsSnapshot[selectedFileName] = {
+          ...(annotationsSnapshot[selectedFileName] || {}),
+          [currentSlice]: currentCanvasJson,
         };
+      }
+
+      const fileNamesToSave = new Set([
+        selectedFileName,
+        ...Object.keys(annotationsSnapshot),
+        ...Object.keys(classificationByFileAndSlice),
+        ...Object.keys(inputsByFileAndSlice),
+      ]);
+
+      const saveRequests = Array.from(fileNamesToSave).map((fileName) => {
+        const fileAnnotations = annotationsSnapshot[fileName] || {};
+        const fileClassifications = classificationByFileAndSlice[fileName] || {};
+        const fileInputs = inputsByFileAndSlice[fileName] || {};
+
+        const allActiveSlices = new Set([
+          ...Object.keys(fileAnnotations),
+          ...Object.keys(fileClassifications),
+          ...Object.keys(fileInputs),
+        ]);
+
+        if (fileName === selectedFileName) {
+          allActiveSlices.add(currentSlice.toString());
+        }
+
+        const slicesPayload = {};
+        allActiveSlices.forEach(idx => {
+          const internalSliceIndex = Number(idx);
+          if (!Number.isFinite(internalSliceIndex)) return;
+
+          const sliceNumber = toSavedSliceNumber(internalSliceIndex);
+          const savedSliceKey = toSavedSliceKey(internalSliceIndex);
+          const editorState = fileAnnotations[idx];
+          const standardData =
+            editorState?.objects ? extractStandardData(editorState.objects) : [];
+
+          slicesPayload[savedSliceKey] = {
+            schemaVersion: ANNOTATION_SCHEMA_VERSION,
+            sliceNumber,
+            sliceIndexBase: 1,
+            coordinateSystem: "image-pixel",
+            editorState,
+            annotations: standardData,
+            standardData,
+            classification: normalizeClassificationForSave(fileClassifications[idx]),
+            attributes: fileInputs[idx] || {},
+          };
+        });
+
+        return axios.post(
+          "http://localhost:5000/save-annotations",
+          {
+            taskId,
+            filename: fileName,
+            sliceData: slicesPayload,
+            clientId: collaborationClientIdRef.current,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       });
-      await axios.post('http://localhost:5000/save-annotations', {
-        taskId,
-        filename: selectedFileName,
-        sliceData: slicesPayload
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert(t("Changes Saved Successfully!"));
+
+      await Promise.all(saveRequests);
+
+      markClean();
+      showPageAlert("success", t("Changes Saved Successfully!"));
+      return true;
     } catch (err) {
       console.error("Save failed", err);
-      alert(t("Failed to save annotations."));
+      showPageAlert("error", t("Failed to save annotations."));
+      return false;
     }
-  }, [selectedFileName, currentSlice, annotationRefs, annotationsByFileAndSlice, classificationByFileAndSlice, inputsByFileAndSlice, taskId, token, saveSliceAnnotationToState, t]);
+  }, [
+    selectedFileName, currentSlice, annotationRefs,
+    annotationsByFileAndSlice, classificationByFileAndSlice, inputsByFileAndSlice,
+    taskId, token, saveSliceAnnotationToState, markClean, showPageAlert, t,
+  ]);
 
-  if (isLoading) return <div className="flex h-screen items-center justify-center">Loading Task...</div>;
+  // ── Render guards ─────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        {t("Checking session...")}
+      </div>
+    );
+  }
+  if (!isAuthenticated) return null;
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        {t("Loading Task...")}
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #f8fafc, #fff)", display: "flex", flexDirection: "column" }}>
-      <Header page="tasks" />
+    <div className="annotation-page">
+      <Header page="tasks" guardedNavigate={guardedNavigate} />
 
-      {/* Task Info Bar & Timer Container */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderBottom: "1px solid #f1f5f9" }}>
-        <div style={{ flex: 1 }}>
-          <TaskInfoBar taskData={taskData} files={allUploadedFiles} selectedFileName={selectedFileName} onFileSelect={handleFileSwitch} />
+      <div className="annotation-task-strip">
+        <div className="annotation-task-strip-main">
+          <TaskInfoBar
+            taskData={taskData} files={allUploadedFiles}
+            selectedFileName={selectedFileName} onFileSelect={handleFileSwitch}
+          />
         </div>
         {taskId && (
-          <div style={{ paddingRight: "16px", flexShrink: 0 }}>
+          <div className="annotation-task-timer">
             <TaskTimer taskId={taskId} token={token} />
           </div>
         )}
@@ -221,15 +595,20 @@ function Annotation() {
 
       {allUploadedFiles.length === 0 ? (
         <FileUploadSection
-          files={files} uploadProgress={uploadProgress} uploadMode={uploadMode} setUploadMode={setUploadMode}
+          files={files} uploadProgress={uploadProgress}
+          uploadMode={uploadMode} setUploadMode={setUploadMode}
           handleDrop={handleDrop} handleFileChange={handleFileChange}
           handleUpload={() => handleUpload().then(() => fetchTask())}
         />
       ) : (
         <>
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "250px 1fr 250px", gap: "16px", padding: "16px", height: "100%" }}>
-            <div style={{ flexBasis: "48px", flexShrink: 0 }}> </div>
-
+          <main
+            className={[
+              "annotation-workspace",
+              openSection ? "has-left-drawer" : "",
+              rightPanelOpen ? "has-right-panel" : "",
+            ].filter(Boolean).join(" ")}
+          >
             <ToolbarLeft
               shapes={SHAPES} allowedShapeIds={allowedShapeIds}
               selectedShape={selectedShape} setSelectedShape={setSelectedShape}
@@ -238,66 +617,98 @@ function Annotation() {
             />
 
             <LeftDrawer
-              openSection={openSection} windowCenter={windowCenter} windowWidth={windowWidth}
+              openSection={openSection}
+              windowCenter={windowCenter} windowWidth={windowWidth}
               setWindowCenter={setWindowCenter} setWindowWidth={setWindowWidth}
               annotationOpacity={annotationOpacity} setAnnotationOpacity={setAnnotationOpacity}
-              selectedShape={selectedShape} brushColor={brushColor} setBrushColor={setBrushColor}
+              selectedShape={selectedShape}
+              brushColor={brushColor} setBrushColor={setBrushColor}
               brushSize={brushSize} setBrushSize={setBrushSize}
               selectedLabel={selectedLabel} setSelectedLabel={setSelectedLabel}
               labelOptions={labelOptions} t={t}
             />
 
-            <MainViewer
-              uploadedFiles={allUploadedFiles} selectedFileName={selectedFileName}
-              windowCenter={windowCenter} windowWidth={windowWidth}
-              currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
-              setTotalSlices={setTotalSlices} zoomLevel={zoomLevel} zoomRegion={zoomRegion}
-              isZoomMode={isZoomMode} viewType={viewType}
-              selectedShape={selectedShape} selectedLabel={selectedLabel}
-              brushColor={brushColor} brushSize={brushSize} toolChangeId={toolChangeId}
-              annotationOpacity={annotationOpacity}
-              classificationByFileAndSlice={classificationByFileAndSlice}
-              annotationsByFileAndSlice={annotationsByFileAndSlice}
-              saveSliceAnnotationToState={saveSliceAnnotationToState}
-              setInputsByFileAndSlice={setInputsByFileAndSlice}
-              setClassificationByFileAndSlice={setClassificationByFileAndSlice}
-              setAnnotationsByFileAndSlice={setAnnotationsByFileAndSlice}
-              annotationRefs={annotationRefs}
-              totalSlices={totalSlices}
-              taskId={taskId}
-              setZoomLevel={setZoomLevel}
-              setZoomRegion={setZoomRegion}
-              setIsZoomMode={setIsZoomMode}
+            <section className="annotation-stage" aria-label="Medical image annotation viewer">
+              <MainViewer
+                uploadedFiles={allUploadedFiles} selectedFileName={selectedFileName}
+                windowCenter={windowCenter} windowWidth={windowWidth}
+                currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
+                setTotalSlices={setTotalSlices}
+                zoomLevel={zoomLevel} zoomRegion={zoomRegion}
+                isZoomMode={isZoomMode} viewType={viewType}
+                selectedShape={selectedShape} selectedLabel={selectedLabel}
+                brushColor={brushColor} brushSize={brushSize}
+                toolChangeId={toolChangeId} annotationOpacity={annotationOpacity}
+                classificationByFileAndSlice={classificationByFileAndSlice}
+                annotationsByFileAndSlice={annotationsByFileAndSlice}
+                saveSliceAnnotationToState={saveSliceAnnotationToState}
+                setInputsByFileAndSlice={setInputsByFileAndSlice}
+                setClassificationByFileAndSlice={setClassificationByFileAndSlice}
+                setAnnotationsByFileAndSlice={setAnnotationsByFileAndSlice}
+                onAnnotationChange={markDirty}
+                annotationRefs={annotationRefs}
+                totalSlices={totalSlices}
+                taskId={taskId}
+                remoteAnnotationReload={remoteAnnotationReload}
+                setZoomLevel={setZoomLevel}
+                setZoomRegion={setZoomRegion}
+                setIsZoomMode={setIsZoomMode}
+              />
+            </section>
+
+            <ToolbarRight
+              buttons_right={RIGHT_BUTTONS} buttons={LEFT_BUTTONS}
+              selectedFileName={selectedFileName} annotationRefs={annotationRefs}
+              rightPanelOpen={rightPanelOpen} setRightPanelOpen={setRightPanelOpen}
+              onSave={handleSaveAll}
             />
-          </div>
 
-          <ToolbarRight
-            buttons_right={RIGHT_BUTTONS}
-            buttons={LEFT_BUTTONS}
-            selectedFileName={selectedFileName}
-            annotationRefs={annotationRefs}
-            rightPanelOpen={rightPanelOpen}
-            setRightPanelOpen={setRightPanelOpen}
-            onSave={handleSaveAll}
-          />
-
-          <RightPanel
-            rightPanelOpen={rightPanelOpen} t={t}
-            viewType={viewType} setViewType={setViewType}
-            selectedFileName={selectedFileName}
-            currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
-            classificationByFileAndSlice={classificationByFileAndSlice}
-            setClassificationByFileAndSlice={setClassificationByFileAndSlice}
-            inputsByFileAndSlice={inputsByFileAndSlice}
-            setInputsByFileAndSlice={setInputsByFileAndSlice}
-            totalSlices={totalSlices} isZoomMode={isZoomMode} setIsZoomMode={setIsZoomMode}
-            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
-            zoomRegion={zoomRegion}
-            setZoomRegion={setZoomRegion}
-            projectAttributes={projectAttributes}
-          />
+            <RightPanel
+              rightPanelOpen={rightPanelOpen} t={t}
+              viewType={viewType} setViewType={setViewType}
+              selectedFileName={selectedFileName}
+              currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
+              classificationByFileAndSlice={classificationByFileAndSlice}
+              setClassificationByFileAndSlice={setDirtyClassificationByFileAndSlice}
+              inputsByFileAndSlice={inputsByFileAndSlice}
+              setInputsByFileAndSlice={setDirtyInputsByFileAndSlice}
+              totalSlices={totalSlices}
+              isZoomMode={isZoomMode} setIsZoomMode={setIsZoomMode}
+              zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+              zoomRegion={zoomRegion} setZoomRegion={setZoomRegion}
+              projectAttributes={projectAttributes}
+            />
+          </main>
         </>
       )}
+
+      {pageAlert && (
+        <div className={`annotation-alert ${pageAlert.type}`} role="status" aria-live="polite">
+          <div className="annotation-alert-content">
+            <strong>{pageAlert.type === "success" ? t("Saved") : t("Attention needed")}</strong>
+            <span>{pageAlert.message}</span>
+          </div>
+          <button
+            type="button"
+            className="annotation-alert-close"
+            onClick={() => setPageAlert(null)}
+            aria-label={t("Dismiss notification")}
+          >
+            x
+          </button>
+        </div>
+      )}
+
+      <UnsavedChangesModal
+        open={showUnsavedModal}
+        t={t}
+        onSaveAndLeave={async () => {
+          const saved = await handleSaveAll();
+          if (saved) handleConfirmLeave();
+        }}
+        onLeaveWithoutSaving={handleConfirmLeave}
+        onCancel={handleCancelLeave}
+      />
     </div>
   );
 }
