@@ -1,7 +1,27 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
+const AUTH_HEADER = 'Authorization';
+
+const readStoredUser = () => {
+  try {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch (error) {
+    console.error('Failed to read stored user:', error);
+    localStorage.removeItem('user');
+    return null;
+  }
+};
+
+const setAxiosToken = (nextToken) => {
+  if (nextToken) {
+    axios.defaults.headers.common[AUTH_HEADER] = `Bearer ${nextToken}`;
+  } else {
+    delete axios.defaults.headers.common[AUTH_HEADER];
+  }
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -12,108 +32,143 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(readStoredUser);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(() => {
+    const storedToken = localStorage.getItem('token');
+    setAxiosToken(storedToken);
+    return storedToken;
+  });
 
-  // Set up axios defaults
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setAxiosToken(null);
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  const applySession = useCallback((nextToken, nextUser) => {
+    if (nextToken) {
+      localStorage.setItem('token', nextToken);
+      setAxiosToken(nextToken);
+      setToken(nextToken);
     }
-  }, [token]);
 
-  // Verify token on app load
+    if (nextUser) {
+      localStorage.setItem('user', JSON.stringify(nextUser));
+      setUser(nextUser);
+    }
+  }, []);
+
+  const updateUser = useCallback((nextUser, nextToken) => {
+    if (nextToken) {
+      localStorage.setItem('token', nextToken);
+      setAxiosToken(nextToken);
+      setToken(nextToken);
+    }
+
+    if (!nextUser) return;
+
+    setUser((currentUser) => {
+      const mergedUser = {
+        ...(currentUser || {}),
+        ...nextUser,
+      };
+      localStorage.setItem('user', JSON.stringify(mergedUser));
+      return mergedUser;
+    });
+  }, []);
+
   useEffect(() => {
+    let cancelled = false;
+
     const verifyToken = async () => {
       if (!token) {
-        setLoading(false);
+        setAxiosToken(null);
+        setUser(null);
+        if (!cancelled) setLoading(false);
         return;
       }
 
+      setAxiosToken(token);
+      setLoading(true);
+
       try {
         const response = await axios.get('http://localhost:5000/api/auth/verify');
-        setUser(response.data.user);
+        if (!cancelled) {
+          updateUser(response.data.user);
+        }
       } catch (error) {
         console.error('Token verification failed:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setToken(null);
-        setUser(null);
+        if (!cancelled) {
+          clearSession();
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     verifyToken();
-  }, [token]);
 
-  const login = async (email, password) => {
+    return () => {
+      cancelled = true;
+    };
+  }, [token, clearSession, updateUser]);
+
+  const login = useCallback(async (email, password) => {
     try {
       const response = await axios.post('http://localhost:5000/api/auth/login', {
         email,
         password
       });
-      
+
       const { token: newToken, user: userData } = response.data;
-      
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setToken(newToken);
-      setUser(userData);
-      
+      applySession(newToken, userData);
+
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Login failed' 
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Login failed'
       };
     }
-  };
+  }, [applySession]);
 
-  const signup = async (name, email, password) => {
+  const signup = useCallback(async (name, email, password) => {
     try {
       const response = await axios.post('http://localhost:5000/api/auth/signup', {
         name,
         email,
         password
       });
-      
+
       const { token: newToken, user: userData } = response.data;
-      
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setToken(newToken);
-      setUser(userData);
-      
+      applySession(newToken, userData);
+
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Signup failed' 
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Signup failed'
       };
     }
-  };
+  }, [applySession]);
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-    delete axios.defaults.headers.common['Authorization'];
-  };
+  const logout = useCallback(() => {
+    clearSession();
+  }, [clearSession]);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     token,
     loading,
     login,
     signup,
     logout,
-    isAuthenticated: !!user
-  };
+    updateUser,
+    isAuthenticated: Boolean(token && user)
+  }), [user, token, loading, login, signup, logout, updateUser]);
 
   return (
     <AuthContext.Provider value={value}>
