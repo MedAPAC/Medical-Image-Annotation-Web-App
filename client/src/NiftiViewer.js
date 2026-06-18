@@ -107,10 +107,29 @@ function NiftiViewer({
   // for full explanation — same fix applied here).
   const lastNotifiedRef = useRef(undefined);
   useEffect(() => {
+    if (typeof externalSlice === "number" && Number.isFinite(externalSlice) && niftiHeader) {
+      const dims = niftiHeader.dims;
+      let total = 1;
+      if (viewType === "axial") total = dims[3] || 1;
+      if (viewType === "coronal") total = dims[2] || 1;
+      if (viewType === "sagittal") total = dims[1] || 1;
+
+      const clampedExternal = Math.min(
+        Math.max(externalSlice, 0),
+        Math.max(total - 1, 0)
+      );
+
+      if (clampedExternal !== currentSlice) return;
+    }
+
+    if (externalSlice === currentSlice) {
+      lastNotifiedRef.current = currentSlice;
+      return;
+    }
     if (lastNotifiedRef.current === currentSlice) return;
     lastNotifiedRef.current = currentSlice;
     if (onSliceChange) onSliceChange(currentSlice);
-  }, [currentSlice, onSliceChange]);
+  }, [currentSlice, externalSlice, onSliceChange, niftiHeader, viewType]);
 
   // Load NIfTI file once (and reset state when the file changes)
   useEffect(() => {

@@ -274,10 +274,28 @@ function DicomViewer({
   // the app ("Maximum update depth exceeded") when navigating slices.
   const lastNotifiedRef = useRef(undefined);
   useEffect(() => {
+    if (volume && typeof currentSlice === "number" && Number.isFinite(currentSlice)) {
+      let total = 1;
+      if (viewType === "axial") total = volume.numSlices;
+      else if (viewType === "coronal") total = volume.rows;
+      else if (viewType === "sagittal") total = volume.cols;
+
+      const clampedExternal = Math.min(
+        Math.max(currentSlice, 0),
+        Math.max(total - 1, 0)
+      );
+
+      if (clampedExternal !== currentIndex) return;
+    }
+
+    if (currentSlice === currentIndex) {
+      lastNotifiedRef.current = currentIndex;
+      return;
+    }
     if (lastNotifiedRef.current === currentIndex) return;
     lastNotifiedRef.current = currentIndex;
     if (onSliceChange) onSliceChange(currentIndex);
-  }, [currentIndex, onSliceChange]);
+  }, [currentIndex, currentSlice, onSliceChange, volume, viewType]);
 
   // -------------------------------------------------------------------
   // 5. Render the current slice (for any view type) to the canvas.
