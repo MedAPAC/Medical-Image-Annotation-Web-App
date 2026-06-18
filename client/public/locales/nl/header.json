@@ -1,0 +1,12 @@
+{
+  "header": {
+    "home": "Home",
+    "projects": "Projecten",
+    "tasks": "Taken",
+    "teams": "Teams",
+    "login": "Inloggen",
+    "signup": "Registreren",
+    "logout": "Uitloggen",
+    "brand_subtitle": "Klinische beeldvormingswerkruimte"
+  }
+}

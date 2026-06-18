@@ -1,0 +1,12 @@
+{
+  "header": {
+    "home": "Startseite",
+    "projects": "Projekte",
+    "tasks": "Aufgaben",
+    "teams": "Teams",
+    "login": "Anmelden",
+    "signup": "Registrieren",
+    "logout": "Abmelden",
+    "brand_subtitle": "Klinischer Bildgebungsarbeitsbereich"
+  }
+}

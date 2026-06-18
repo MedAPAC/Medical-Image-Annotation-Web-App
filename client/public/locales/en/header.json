@@ -1,0 +1,12 @@
+{
+  "header": {
+    "home": "Home",
+    "projects": "Projects",
+    "tasks": "To-Do",
+    "teams": "Teams",
+    "login": "Login",
+    "signup": "Sign Up",
+    "logout": "Logout",
+    "brand_subtitle": "Clinical Imaging Workspace"
+  }
+}
