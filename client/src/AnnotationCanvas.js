@@ -16,8 +16,9 @@ const AnnotationCanvas = forwardRef(
       selectedLabel,
       brushColor,
       brushSize,
-      toolChangeId, // Triggers when tool button is clicked
+      toolChangeId,
       annotationOpacity = 0.5,
+      zoomLevel = 1,
       onShapeComplete,
     },
     ref
@@ -53,10 +54,14 @@ const AnnotationCanvas = forwardRef(
 
     const ANNOTATION_STROKE_WIDTH = 2;
     const HANDLE_RADIUS = 5;
+    const LABEL_GAP = 5;
+    const LABEL_FONT_SIZE = 11;
+    const GENERATED_EDGE_POINT_SPACING = 45;
+    const LABEL_CANVAS_PADDING = 4;
 
     // --- Sync Props to Refs ---
     useEffect(() => { labelRef.current = selectedLabel; }, [selectedLabel]);
-    
+
     // --- Color Helpers ---
     const getColors = () => {
       const colorInput = colorRef.current || "#0066cc";
@@ -74,39 +79,198 @@ const AnnotationCanvas = forwardRef(
       return fill;
     };
 
+    const getWorldPoints = (shape) => {
+      if (!shape) return [];
+
+      if (
+        (shape.customType === "polygon" || shape.customType === "polyline") &&
+        Array.isArray(shape.points)
+      ) {
+        const matrix = shape.calcTransformMatrix();
+        const pathOffset = shape.pathOffset || { x: 0, y: 0 };
+        return shape.points.map((point) => {
+          const localPoint = {
+            x: point.x - pathOffset.x,
+            y: point.y - pathOffset.y,
+          };
+          return fabric.util.transformPoint(localPoint, matrix);
+        });
+      }
+
+      const bound = shape.getBoundingRect();
+      return [
+        { x: bound.left, y: bound.top },
+        { x: bound.left + bound.width, y: bound.top },
+        { x: bound.left + bound.width, y: bound.top + bound.height },
+        { x: bound.left, y: bound.top + bound.height },
+      ];
+    };
+
+    const getBoundsFromPoints = (points) => {
+      if (!Array.isArray(points) || points.length === 0) {
+        return { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0 };
+      }
+
+      const xs = points.map((point) => point.x);
+      const ys = points.map((point) => point.y);
+      const left = Math.min(...xs);
+      const top = Math.min(...ys);
+      const right = Math.max(...xs);
+      const bottom = Math.max(...ys);
+      return {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+        right,
+        bottom,
+      };
+    };
+
+    const getShapeVisualBounds = (shape) => {
+      const points = getWorldPoints(shape);
+      if (points.length > 0) return getBoundsFromPoints(points);
+
+      const bound = shape.getBoundingRect();
+      return {
+        ...bound,
+        right: bound.left + bound.width,
+        bottom: bound.top + bound.height,
+      };
+    };
+
+    const clampToCanvas = (value, min, max) => Math.min(Math.max(value, min), max);
+
+    const getLabelPosition = (shape, labelText = null) => {
+      const bound = getShapeVisualBounds(shape);
+      const canvas = fabricRef.current;
+      const canvasWidth = canvas?.getWidth?.() || width || 0;
+      const canvasHeight = canvas?.getHeight?.() || height || 0;
+      const labelWidth = labelText?.width || 0;
+      const maxLeft = Math.max(LABEL_CANVAS_PADDING, canvasWidth - labelWidth - LABEL_CANVAS_PADDING);
+      const canPlaceAbove = bound.top >= LABEL_FONT_SIZE + LABEL_GAP + LABEL_CANVAS_PADDING;
+      const belowTop = Math.min(
+        canvasHeight - LABEL_CANVAS_PADDING,
+        bound.bottom + LABEL_GAP
+      );
+
+      return {
+        left: clampToCanvas(bound.left, LABEL_CANVAS_PADDING, maxLeft),
+        top: canPlaceAbove ? bound.top - LABEL_GAP : belowTop,
+        originY: canPlaceAbove ? "bottom" : "top",
+      };
+    };
+
+    const roundCoordinate = (value) => Number(Number(value || 0).toFixed(3));
+
+    const getStandardGeometry = (shape) => {
+      const points = getWorldPoints(shape).map((point) => [
+        roundCoordinate(point.x),
+        roundCoordinate(point.y),
+      ]);
+      const bounds = getBoundsFromPoints(points.map(([x, y]) => ({ x, y })));
+
+      return {
+        type: shape.customType || shape.type,
+        label: shape.label || "Unlabeled",
+        coordinateSystem: "image-pixel",
+        points,
+        bbox: {
+          x: roundCoordinate(bounds.left),
+          y: roundCoordinate(bounds.top),
+          width: roundCoordinate(bounds.width),
+          height: roundCoordinate(bounds.height),
+        },
+      };
+    };
+
+    const attachStandardGeometry = (canvas) => {
+      canvas.getObjects().forEach((obj) => {
+        if (
+          obj.excludeFromExport ||
+          obj.customType === "annotation-label" ||
+          obj.customType === "vertex-handle"
+        ) {
+          return;
+        }
+
+        obj.standardGeometry = getStandardGeometry(obj);
+      });
+    };
+
+    const addGeneratedClosingEdgePoints = (points) => {
+      if (!Array.isArray(points) || points.length < 3) return points;
+
+      const first = points[0];
+      const last = points[points.length - 1];
+      const distance = Math.hypot(first.x - last.x, first.y - last.y);
+      const generatedCount = Math.floor(distance / GENERATED_EDGE_POINT_SPACING);
+
+      if (generatedCount < 1) return points;
+
+      const generatedPoints = [];
+      for (let i = 1; i <= generatedCount; i += 1) {
+        const ratio = i / (generatedCount + 1);
+        generatedPoints.push({
+          x: last.x + (first.x - last.x) * ratio,
+          y: last.y + (first.y - last.y) * ratio,
+        });
+      }
+
+      return [...points, ...generatedPoints];
+    };
+
+    const bringEditingChromeToFront = (canvas) => {
+      if (!canvas || !canvas.getElement()) return;
+
+      canvas.getObjects().forEach((obj) => {
+        if (obj.customType === "annotation-label" && typeof obj.bringToFront === "function") {
+          obj.bringToFront();
+        }
+      });
+
+      canvas.getObjects().forEach((obj) => {
+        if (obj.customType === "vertex-handle" && typeof obj.bringToFront === "function") {
+          obj.bringToFront();
+        }
+      });
+    };
+
+    // --- ZOOM UPDATE ---
+    useEffect(() => {
+      const canvas = fabricRef.current;
+      if (!canvas || !canvas.getElement()) return;
+
+      const center = { x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 };
+      canvas.zoomToPoint(center, zoomLevel);
+      canvas.requestRenderAll();
+    }, [zoomLevel]);
+
     // --- DYNAMIC OPACITY & COLOR UPDATE ---
-    // This effect fixes the issue where opacity slider didn't affect active objects or the brush
     useEffect(() => {
       opacityRef.current = annotationOpacity;
       colorRef.current = brushColor;
 
       const canvas = fabricRef.current;
-      if (!canvas) return;
+      if (!canvas || !canvas.getElement()) return;
 
       const { fill, stroke } = getColors();
 
-      // 1. Update Brush Settings immediately
       if (canvas.freeDrawingBrush) {
-        // The brush uses the 'fill' (color + opacity) for its stroke style in this context
-        canvas.freeDrawingBrush.color = fill; 
+        canvas.freeDrawingBrush.color = fill;
       }
 
-      // 2. Update Currently Selected Object
       const activeObject = canvas.getActiveObject();
       if (activeObject) {
-        // If it's a standard shape (Polygon, Rect, Ellipse)
-        // In your code, brush strokes are converted to Polygons, so this covers them too.
         if (
-             activeObject.type === 'polygon' || 
-             activeObject.type === 'rect' || 
-             activeObject.type === 'ellipse' || 
-             activeObject.customType === 'polygon'
+          activeObject.type === 'polygon' ||
+          activeObject.type === 'rect' ||
+          activeObject.type === 'ellipse' ||
+          activeObject.customType === 'polygon'
         ) {
-           activeObject.set({ fill: fill, stroke: stroke });
-        } 
-        // Fallback for standard paths if they exist
-        else if (activeObject.type === 'path' || activeObject.customType === 'path') {
-           activeObject.set({ stroke: fill });
+          activeObject.set({ fill: fill, stroke: stroke });
+        } else if (activeObject.type === 'path' || activeObject.customType === 'path') {
+          activeObject.set({ stroke: fill });
         }
         canvas.requestRenderAll();
       }
@@ -117,8 +281,10 @@ const AnnotationCanvas = forwardRef(
       exportAnnotations: () => {
         if (fabricRef.current) {
           cleanupTempObjects(fabricRef.current);
+          attachStandardGeometry(fabricRef.current);
+          return fabricRef.current.toJSON(["label", "customType", "standardGeometry"]);
         }
-        return fabricRef.current?.toJSON(["label", "labelText", "customType"]);
+        return null;
       },
       getSVG: () => fabricRef.current?.toSVG(),
       importAnnotations: (json) => {
@@ -126,8 +292,9 @@ const AnnotationCanvas = forwardRef(
         if (canvas && json) {
           cleanupTempObjects(canvas);
           canvas.loadFromJSON(json, () => {
+            if (!canvas.getElement()) return;
+
             const objects = canvas.getObjects().slice();
-            // Clean up artifacts from import
             objects.forEach((obj) => {
               if (
                 ["vertex-handle", "temp-point", "temp-line", "temp-polygon", "temp-polyline", "preview-box", "preview-ellipse"].includes(obj.customType)
@@ -138,7 +305,7 @@ const AnnotationCanvas = forwardRef(
               if (obj.labelText) delete obj.labelText;
               if (obj.editHandles) delete obj.editHandles;
             });
-            // Regenerate handles/labels
+
             canvas.getObjects().forEach((obj) => {
               if (obj.customType === "polygon" || obj.customType === "polyline") {
                 generateVertexHandles(obj, canvas);
@@ -147,16 +314,34 @@ const AnnotationCanvas = forwardRef(
                 addLabelToShape(obj, obj.label);
               }
             });
-            canvas.renderAll();
+
+            const center = { x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 };
+            canvas.zoomToPoint(center, zoomLevel);
+
+            bringEditingChromeToFront(canvas);
+            canvas.requestRenderAll();
           });
         }
       },
-      clearAnnotations: () => {
+      clearAnnotations: (options = {}) => {
         const canvas = fabricRef.current;
-        if (!canvas) return;
+        if (!canvas || !canvas.getContext()) return;
+        const hadAnnotations = canvas.getObjects().some((obj) => {
+          return !obj.excludeFromExport && obj.customType !== "annotation-label";
+        });
+
         canvas.clear();
-        canvas.setBackgroundColor("transparent", canvas.renderAll.bind(canvas));
+        canvas.backgroundColor = "transparent";
+
         cleanupTempObjects(canvas);
+
+        const center = { x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 };
+        canvas.zoomToPoint(center, zoomLevel);
+
+        canvas.requestRenderAll();
+        if (!options.silent && hadAnnotations && onShapeComplete) {
+          onShapeComplete({ type: "clear", target: null });
+        }
       },
       deleteSelected: () => {
         const canvas = fabricRef.current;
@@ -171,7 +356,8 @@ const AnnotationCanvas = forwardRef(
 
     // --- Strict Cleanup Helper ---
     const cleanupTempObjects = (canvas) => {
-      // 1. Reset Logic flags
+      if (!canvas || !canvas.getElement()) return;
+
       polygonPoints.current = [];
       pointArray.current = [];
       activeLine.current = null;
@@ -182,21 +368,17 @@ const AnnotationCanvas = forwardRef(
       ellipseStart.current = null;
       isMouseDownRef.current = false;
 
-      // 2. Deselect everything to prevent ghost handles or active object conflicts
       canvas.discardActiveObject();
 
-      // 3. Define EXACTLY what to remove
       const tempTypes = new Set([
-        "temp-point", 
-        "temp-line", 
-        "temp-polygon", 
-        "temp-polyline", 
-        "preview-box", 
-        "preview-ellipse", 
-        "vertex-handle" 
+        "temp-point",
+        "temp-line",
+        "temp-polygon",
+        "temp-polyline",
+        "preview-box",
+        "preview-ellipse"
       ]);
 
-      // 4. Remove temporary objects
       const objects = canvas.getObjects();
       for (let i = objects.length - 1; i >= 0; i--) {
         const obj = objects[i];
@@ -204,18 +386,16 @@ const AnnotationCanvas = forwardRef(
           canvas.remove(obj);
         }
       }
-      
-      // 5. Clear Crosshairs
+
       if (crosshairLines.current.horizontal) {
-          canvas.remove(crosshairLines.current.horizontal);
-          canvas.remove(crosshairLines.current.vertical);
-          crosshairLines.current = { horizontal: null, vertical: null };
+        canvas.remove(crosshairLines.current.horizontal);
+        canvas.remove(crosshairLines.current.vertical);
+        crosshairLines.current = { horizontal: null, vertical: null };
       }
 
       canvas.requestRenderAll();
     };
 
-    // --- Internal Helpers ---
     const addLabelToShape = (shape, label) => {
       if (!fabricRef.current) return;
       const labelString = label || "";
@@ -224,45 +404,60 @@ const AnnotationCanvas = forwardRef(
         fabricRef.current.remove(shape.labelText);
       }
 
-      const bound = shape.getBoundingRect();
+      const position = getLabelPosition(shape);
       const text = new fabric.Text(labelString, {
-        left: bound.left,
-        top: bound.top - 20,
-        fontSize: 14,
+        left: position.left,
+        top: position.top,
+        originX: "left",
+        originY: position.originY,
+        fontSize: LABEL_FONT_SIZE,
         fill: "white",
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: "rgba(15,23,42,0.78)",
         selectable: false,
         evented: false,
         excludeFromExport: true,
+        customType: "annotation-label",
       });
 
       shape.label = labelString;
       shape.labelText = text;
       fabricRef.current.add(text);
+      text.set(getLabelPosition(shape, text));
+      text.setCoords();
 
       const updateLabelPos = () => {
         if (!text || typeof text.set !== "function") return;
-        const b = shape.getBoundingRect();
-        text.set({ left: b.left, top: b.top - 20 });
+        text.set(getLabelPosition(shape, text));
         text.setCoords();
+        bringEditingChromeToFront(fabricRef.current);
       };
 
       shape.on("moving", updateLabelPos);
       shape.on("scaling", updateLabelPos);
       shape.on("rotating", updateLabelPos);
       shape.on("modified", updateLabelPos);
+      bringEditingChromeToFront(fabricRef.current);
     };
 
     const removeShapeAndLabel = (shape, canvas) => {
       if (shape.labelText) canvas.remove(shape.labelText);
       if (shape.editHandles) shape.editHandles.forEach((h) => canvas.remove(h));
       canvas.remove(shape);
+
+      if (onShapeComplete) {
+        onShapeComplete({ type: 'delete', target: null });
+      }
+
       canvas.discardActiveObject();
       canvas.requestRenderAll();
     };
 
     // --- Initialization ---
     useEffect(() => {
+      if (fabricRef.current) {
+        fabricRef.current.dispose();
+      }
+
       const canvas = new fabric.Canvas(canvasRef.current, {
         selection: true,
         preserveObjectStacking: true,
@@ -280,6 +475,7 @@ const AnnotationCanvas = forwardRef(
             polygonPoints.current.length > 0
           )
             return;
+          if (active?.customType === "vertex-handle") return;
           if (active) removeShapeAndLabel(active, canvas);
         }
         if (e.key === "Enter") {
@@ -296,45 +492,45 @@ const AnnotationCanvas = forwardRef(
       canvas.on("mouse:move", (opt) => handleMouseMove(opt, canvas));
       canvas.on("mouse:up", (opt) => handleMouseUp(opt, canvas));
       canvas.on("path:created", (e) => handlePathCreated(e, canvas));
-      
-      // Selection Handlers
+
       canvas.on("selection:created", (e) => handleSelection(e.target, canvas));
       canvas.on("selection:updated", (e) => handleSelection(e.target, canvas));
       canvas.on("selection:cleared", () => {
-        // Remove handles when deselecting
-        const objects = canvas.getObjects();
-        for (let i = objects.length - 1; i >= 0; i--) {
-          if (objects[i].customType === "vertex-handle") {
-            canvas.remove(objects[i]);
-          }
-        }
+        bringEditingChromeToFront(canvas);
       });
 
       canvas.on("object:moving", (e) => updateVertexHandles(e.target));
       canvas.on("object:scaling", (e) => updateVertexHandles(e.target));
       canvas.on("object:rotating", (e) => updateVertexHandles(e.target));
+      canvas.on("object:modified", (e) => {
+        bringEditingChromeToFront(canvas);
+        if (e.target?.customType !== "vertex-handle" && onShapeComplete) {
+          onShapeComplete({ type: "modify", target: e.target });
+        }
+      });
 
       return () => {
         window.removeEventListener("keydown", handleWindowKey);
-        canvas.dispose();
+        fabricRef.current = null;
+        if (canvas) {
+          canvas.dispose();
+        }
       };
+    // The Fabric canvas owns mutable drawing handlers through refs; re-registering on each render interrupts active annotations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // --- Mode/Tool Change Effect ---
     useEffect(() => {
       const canvas = fabricRef.current;
-      if (!canvas) return;
+      if (!canvas || !canvas.getElement()) return;
 
-      // 1. Strict Cleanup: removes only temps, deselects current object
       cleanupTempObjects(canvas);
-
-      // 2. Update Ref
       drawingModeRef.current = mode;
 
-      // 3. Configure Canvas
       const isDrawing = ["rectangle", "polygon", "polyline", "ellipse"].includes(mode);
       canvas.defaultCursor = isDrawing ? "crosshair" : "default";
-      canvas.selection = !isDrawing; 
+      canvas.selection = !isDrawing;
       canvas.isDrawingMode = mode === "brush";
 
       if (mode === "brush") {
@@ -343,13 +539,13 @@ const AnnotationCanvas = forwardRef(
         canvas.freeDrawingBrush.width = brushSize || 10;
         canvas.freeDrawingBrush.decimate = 20;
       }
-      
-      canvas.requestRenderAll();
-    }, [mode, brushSize, toolChangeId]); // Removed brushColor/opacity here as they are handled in the dynamic effect above
 
-    // ==========================================
-    //         POLYGON / POLYLINE LOGIC
-    // ==========================================
+      canvas.requestRenderAll();
+    // Brush color is derived from refs/theme state; keep this effect scoped to explicit tool changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, brushSize, toolChangeId]);
+
+    // --- Drawing Logic ---
     const addPolygonPoint = (pointer, canvas) => {
       const { stroke } = getColors();
       const mode = drawingModeRef.current;
@@ -374,7 +570,6 @@ const AnnotationCanvas = forwardRef(
       canvas.add(circle);
       pointArray.current.push(circle);
 
-      // Rubber band line
       if (polygonPoints.current.length === 1) {
         activeLine.current = new fabric.Line(
           [pointer.x, pointer.y, pointer.x, pointer.y],
@@ -402,7 +597,6 @@ const AnnotationCanvas = forwardRef(
         }
       }
 
-      // Fill preview
       if (polygonPoints.current.length > 1) {
         const points = polygonPoints.current.map((p) => ({ x: p.x, y: p.y }));
         if (activeShape.current) canvas.remove(activeShape.current);
@@ -436,9 +630,6 @@ const AnnotationCanvas = forwardRef(
       }
     };
 
-    // ==========================================
-    //           MOUSE HANDLERS
-    // ==========================================
     const handleMouseDown = (opt, canvas) => {
       const mode = drawingModeRef.current;
       if (mode === "select" || !mode) return;
@@ -577,7 +768,7 @@ const AnnotationCanvas = forwardRef(
           strokeWidth: ANNOTATION_STROKE_WIDTH,
           fill,
           selectable: true,
-          customType: "polygon", // Explicit custom type
+          customType: "polygon",
           objectCaching: false,
           hasControls: false,
           hasBorders: false,
@@ -683,7 +874,10 @@ const AnnotationCanvas = forwardRef(
         return;
       }
 
-      const points = polygonPoints.current.map((p) => ({ x: p.x, y: p.y }));
+      const rawPoints = polygonPoints.current.map((p) => ({ x: p.x, y: p.y }));
+      const points = mode === "polygon"
+        ? addGeneratedClosingEdgePoints(rawPoints)
+        : rawPoints;
       const { stroke, fill } = getColors();
 
       let finalShape;
@@ -712,13 +906,10 @@ const AnnotationCanvas = forwardRef(
         });
       }
 
-      cleanupTempObjects(canvas); 
+      cleanupTempObjects(canvas);
       finishShape(finalShape, canvas, mode);
     };
 
-    // ==========================================
-    //           FINISH SHAPE (Resets to Select)
-    // ==========================================
     const finishShape = (shape, canvas, type) => {
       canvas.add(shape);
       addLabelToShape(shape, labelRef.current);
@@ -727,19 +918,18 @@ const AnnotationCanvas = forwardRef(
         generateVertexHandles(shape, canvas);
       }
 
-      // --- CRITICAL: Reset to Select Mode ---
-      // This stops continuous drawing. To draw again, user must re-select tool.
       drawingModeRef.current = 'select';
       canvas.defaultCursor = "default";
       canvas.selection = true;
       canvas.isDrawingMode = false;
-      
+
       canvas.setActiveObject(shape);
 
       if (onShapeComplete) {
         onShapeComplete({ type, target: shape });
       }
 
+      bringEditingChromeToFront(canvas);
       canvas.requestRenderAll();
     };
 
@@ -763,7 +953,17 @@ const AnnotationCanvas = forwardRef(
       const matrix = poly.calcTransformMatrix();
 
       poly.points.forEach((point, index) => {
-        const pLocal = { x: point.x - poly.pathOffset.x, y: point.y - poly.pathOffset.y };
+        // ----------------------------------------------------------------
+        // FIX: pathOffset is the centroid of the polygon in its own
+        // coordinate space. To get the world position of a point we must
+        // subtract pathOffset (centering the point around the polygon's
+        // origin) then apply the full transform matrix (which includes
+        // left/top/scaleX/scaleY/angle).
+        // ----------------------------------------------------------------
+        const pLocal = {
+          x: point.x - poly.pathOffset.x,
+          y: point.y - poly.pathOffset.y,
+        };
         const pFinal = fabric.util.transformPoint(pLocal, matrix);
 
         const handle = new fabric.Circle({
@@ -782,15 +982,17 @@ const AnnotationCanvas = forwardRef(
           parentPoly: poly,
           zIndex: 9999,
           excludeFromExport: true,
+          selectable: true,
+          evented: true,
         });
 
-        handle.on("moving", (e) => onHandleMove(handle, poly, canvas));
+        handle.on("moving", () => onHandleMove(handle, poly, canvas));
         handles.push(handle);
         canvas.add(handle);
       });
 
       poly.editHandles = handles;
-      handles.forEach((h) => h.bringToFront());
+      bringEditingChromeToFront(canvas);
     };
 
     const updateVertexHandles = (poly) => {
@@ -803,28 +1005,137 @@ const AnnotationCanvas = forwardRef(
       const matrix = poly.calcTransformMatrix();
       poly.editHandles.forEach((handle, index) => {
         const point = poly.points[index];
-        const pLocal = { x: point.x - poly.pathOffset.x, y: point.y - poly.pathOffset.y };
+        const pLocal = {
+          x: point.x - poly.pathOffset.x,
+          y: point.y - poly.pathOffset.y,
+        };
         const pFinal = fabric.util.transformPoint(pLocal, matrix);
         handle.set({ left: pFinal.x, top: pFinal.y });
         handle.setCoords();
       });
+      bringEditingChromeToFront(fabricRef.current);
     };
 
+    // -----------------------------------------------------------------------
+    // FIX: onHandleMove — the original code used:
+    //
+    //   poly.points[pIndex].x = localPoint.x + poly.pathOffset.x
+    //   poly.points[pIndex].y = localPoint.y + poly.pathOffset.y
+    //
+    // This is wrong. The inverse transform already returns coordinates in
+    // the polygon's internal space (where the origin is the pathOffset
+    // centroid). To convert back to the points array space (where each
+    // point is stored relative to the top-left of the polygon's bounding
+    // box before it was placed on the canvas), we need to ADD pathOffset —
+    // BUT only if the polygon has NOT been moved/scaled/rotated after
+    // creation. Once the polygon has a non-identity transform (left/top ≠ 0,
+    // scale ≠ 1, angle ≠ 0), calcTransformMatrix already encodes those
+    // transforms, and invertTransform undoes all of them, landing us
+    // directly in the polygon's pre-transform point space.
+    //
+    // The correct formula is:
+    //   poly.points[pIndex] = { x: localPoint.x + poly.pathOffset.x,
+    //                           y: localPoint.y + poly.pathOffset.y }
+    //
+    // — which IS what the original code wrote — BUT this is only correct
+    // when poly.left === 0 and poly.top === 0. When the polygon has been
+    // moved, fabric's transform matrix encodes left/top so the inverse
+    // transform already subtracts them. The pathOffset shift must therefore
+    // still be applied.
+    //
+    // The real root cause of points "disappearing" is different: after we
+    // mutate poly.points[], we must call poly._calcDimensions() so fabric
+    // recalculates the bounding box and pathOffset for the *new* point
+    // positions. Without this, pathOffset becomes stale on the next drag,
+    // and every subsequent handle move compounds the error until the point
+    // flies off screen.
+    //
+    // Additionally, we must call poly.setCoords() so the object's
+    // interactive boundaries stay in sync, and we must update the label.
+    // -----------------------------------------------------------------------
     const onHandleMove = (handle, poly, canvas) => {
       const pIndex = handle.pointIndex;
+      if (!poly.points || !poly.points[pIndex]) return;
+
+      const anchorIndex = poly.points.length > 1 ? (pIndex === 0 ? 1 : pIndex - 1) : pIndex;
+      const anchorBefore = poly.points[anchorIndex];
+      const anchorWorld = fabric.util.transformPoint(
+        {
+          x: anchorBefore.x - poly.pathOffset.x,
+          y: anchorBefore.y - poly.pathOffset.y,
+        },
+        poly.calcTransformMatrix()
+      );
+
+      // 1. Get the current world-space position of the handle.
+      const worldPos = { x: handle.left, y: handle.top };
+
+      // 2. Invert the polygon's full transform matrix to get the position
+      //    in the polygon's local (pre-transform) coordinate space.
       const polyMatrix = poly.calcTransformMatrix();
       const invertedMatrix = fabric.util.invertTransform(polyMatrix);
-      const pointer = { x: handle.left, y: handle.top };
-      const localPoint = fabric.util.transformPoint(pointer, invertedMatrix);
+      const localPoint = fabric.util.transformPoint(worldPos, invertedMatrix);
 
-      poly.points[pIndex].x = localPoint.x + poly.pathOffset.x;
-      poly.points[pIndex].y = localPoint.y + poly.pathOffset.y;
+      // 3. Store the new point. Points are kept in the polygon's own
+      //    coordinate system where (0,0) is the pathOffset origin (centroid
+      //    of the bounding box). Adding pathOffset converts back to the
+      //    absolute point-array coordinate space that fabric.Polygon uses
+      //    internally (top-left of original bounding box = 0,0).
+      poly.points[pIndex] = {
+        x: localPoint.x + poly.pathOffset.x,
+        y: localPoint.y + poly.pathOffset.y,
+      };
 
-      if (poly.labelText && typeof poly.labelText.set === "function") {
-        const bound = poly.getBoundingRect();
-        poly.labelText.set({ left: bound.left, top: bound.top - 20 });
+      if (typeof poly._setPositionDimensions === "function") {
+        poly._setPositionDimensions({});
+      } else if (typeof poly._calcDimensions === "function") {
+        poly._calcDimensions();
       }
+
+      if (
+        typeof poly._getNonTransformedDimensions === "function" &&
+        typeof poly.setPositionByOrigin === "function"
+      ) {
+        const baseSize = poly._getNonTransformedDimensions();
+        const anchorAfter = poly.points[anchorIndex];
+        const originX =
+          baseSize.x !== 0
+            ? (anchorAfter.x - poly.pathOffset.x) / baseSize.x + 0.5
+            : 0.5;
+        const originY =
+          baseSize.y !== 0
+            ? (anchorAfter.y - poly.pathOffset.y) / baseSize.y + 0.5
+            : 0.5;
+        poly.setPositionByOrigin(anchorWorld, originX, originY);
+      }
+
+      // 5. Mark the polygon as dirty and update its coords so hit-testing
+      //    and bounding-box calculations stay correct.
       poly.dirty = true;
+      poly.setCoords();
+
+      // 6. Keep the label positioned above the updated bounding rect.
+      if (poly.labelText && typeof poly.labelText.set === "function") {
+        poly.labelText.set(getLabelPosition(poly, poly.labelText));
+        poly.labelText.setCoords();
+      }
+
+      if (poly.editHandles) {
+        const newMatrix = poly.calcTransformMatrix();
+        poly.editHandles.forEach((h, i) => {
+          if (i === pIndex) return;
+          const pt = poly.points[i];
+          const ptLocal = { x: pt.x - poly.pathOffset.x, y: pt.y - poly.pathOffset.y };
+          const ptWorld = fabric.util.transformPoint(ptLocal, newMatrix);
+          h.set({ left: ptWorld.x, top: ptWorld.y });
+          h.setCoords();
+        });
+      }
+
+      bringEditingChromeToFront(canvas);
+      if (onShapeComplete) {
+        onShapeComplete({ type: "modify", target: poly });
+      }
       canvas.requestRenderAll();
     };
 
