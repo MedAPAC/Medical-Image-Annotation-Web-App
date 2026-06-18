@@ -2,11 +2,19 @@
 import { useState } from "react";
 import axios from "axios";
 
-const useFileHandling = (taskId, token, setSelectedFileName) => {
+const useFileHandling = (taskId, token, setSelectedFileName, notify) => {
   const [files, setFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadMode, setUploadMode] = useState("nifti");
+
+  const showAlert = (type, message) => {
+    if (notify) {
+      notify(type, message);
+      return;
+    }
+    console.warn(message);
+  };
 
   const addFiles = (newFiles) => {
     const validFiles = newFiles.filter((file) => {
@@ -37,7 +45,7 @@ const useFileHandling = (taskId, token, setSelectedFileName) => {
 
   const handleUpload = async () => {
     if (!token) {
-      alert("Please login to upload files");
+      showAlert("error", "Please login to upload files");
       return;
     }
 
@@ -49,7 +57,7 @@ const useFileHandling = (taskId, token, setSelectedFileName) => {
       if (alreadyUploaded) continue;
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("files", file);
 
       try {
         const res = await axios.post(`http://localhost:5000/api/tasks/${taskId}/files`, formData, {
@@ -82,7 +90,6 @@ const useFileHandling = (taskId, token, setSelectedFileName) => {
         };
         
         newUploadedFiles.push(uploadedFile);
-        console.log("Uploaded file:", uploadedFile);
         
         // Clear upload progress
         setUploadProgress((prev) => {
@@ -93,7 +100,7 @@ const useFileHandling = (taskId, token, setSelectedFileName) => {
       } catch (err) {
         console.error("Upload error:", err);
         setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
-        alert(`Failed to upload ${file.name}: ${err.response?.data?.error || err.message}`);
+        showAlert("error", `Failed to upload ${file.name}: ${err.response?.data?.error || err.message}`);
       }
     }
 
