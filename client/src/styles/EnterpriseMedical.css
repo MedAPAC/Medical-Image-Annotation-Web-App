@@ -1,0 +1,736 @@
+/* Enterprise Medical Design System
+   Scope: global healthcare UI polish without changing page behavior.
+*/
+
+:root {
+  --med-blue-900: #0f2f5f;
+  --med-blue-800: #16437e;
+  --med-blue-700: #1d5fa7;
+  --med-blue-600: #256fb8;
+  --med-blue-500: #2f80d0;
+  --med-blue-100: #dbeafe;
+  --med-blue-50: #eff6ff;
+  --med-slate-950: #0f172a;
+  --med-slate-900: #111827;
+  --med-slate-800: #1f2937;
+  --med-slate-700: #334155;
+  --med-slate-600: #475569;
+  --med-slate-500: #64748b;
+  --med-slate-400: #94a3b8;
+  --med-slate-300: #cbd5e1;
+  --med-slate-200: #e2e8f0;
+  --med-slate-100: #f1f5f9;
+  --med-slate-50: #f8fafc;
+  --med-success: #15803d;
+  --med-success-soft: #dcfce7;
+  --med-warning: #b45309;
+  --med-warning-soft: #fef3c7;
+  --med-error: #b91c1c;
+  --med-error-soft: #fee2e2;
+  --med-surface: #ffffff;
+  --med-surface-muted: #f8fafc;
+  --med-border: #dbe3ef;
+  --med-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --med-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --med-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.14);
+  --med-radius-sm: 6px;
+  --med-radius: 8px;
+  --med-radius-lg: 12px;
+  --med-radius-xl: 16px;
+  --med-page-max: 1440px;
+  --med-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--med-slate-50);
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(180deg, rgba(239, 246, 255, 0.86), rgba(248, 250, 252, 0.96) 340px),
+    var(--med-slate-50);
+  color: var(--med-slate-800);
+  font-family: var(--med-font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--med-font);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border-radius: var(--med-radius);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(47, 128, 208, 0.25);
+  outline-offset: 2px;
+}
+
+input,
+select,
+textarea {
+  min-height: 40px;
+  border: 1px solid var(--med-border) !important;
+  border-radius: var(--med-radius) !important;
+  background: #ffffff;
+  color: var(--med-slate-800);
+  box-shadow: var(--med-shadow-sm);
+}
+
+textarea {
+  line-height: 1.55;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--med-slate-400);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--med-blue-500) !important;
+  box-shadow: 0 0 0 3px rgba(47, 128, 208, 0.14) !important;
+  outline: none;
+}
+
+.enterprise-page,
+.home-container,
+.login-container,
+.signup-container,
+.team-page-container,
+.project-detail-container,
+.task-detail-container,
+.annotation-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(248, 250, 252, 0.98) 360px),
+    var(--med-slate-50) !important;
+  color: var(--med-slate-800);
+}
+
+.projects-page > div:nth-child(2),
+.tasks-page > div:nth-child(2),
+.upload-page > div:nth-child(2),
+.team-content,
+.project-detail-main,
+.task-detail-content {
+  width: min(var(--med-page-max), calc(100vw - 48px)) !important;
+  max-width: var(--med-page-max) !important;
+  margin: 0 auto !important;
+  padding: 32px 0 48px !important;
+}
+
+.projects-page > div:nth-child(2) > div:first-child,
+.tasks-page > div:nth-child(2) > div:first-child,
+.page-header,
+.tasks-header,
+.config-header,
+.section-header {
+  gap: 16px;
+}
+
+.projects-page h1,
+.tasks-page h1,
+.page-header h1,
+.project-title,
+.task-title-display h1,
+.login-title,
+.signup-title,
+.hero-title {
+  color: var(--med-slate-950) !important;
+  letter-spacing: 0 !important;
+  -webkit-text-fill-color: currentColor !important;
+  background: none !important;
+}
+
+.projects-page h1,
+.tasks-page h1,
+.page-header h1,
+.project-title,
+.task-title-display h1 {
+  font-size: clamp(28px, 2.4vw, 40px) !important;
+  line-height: 1.1 !important;
+  font-weight: 780 !important;
+}
+
+.projects-page p,
+.tasks-page p,
+.section-description,
+.project-meta,
+.task-meta,
+.page-subtitle {
+  color: var(--med-slate-500);
+}
+
+/* Header */
+.header-container {
+  height: 72px !important;
+  padding: 0 28px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-bottom: 1px solid rgba(219, 227, 239, 0.95) !important;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06) !important;
+  backdrop-filter: blur(18px);
+}
+
+.brand-name {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px;
+  color: var(--med-blue-800) !important;
+  -webkit-text-fill-color: var(--med-blue-800) !important;
+  background: none !important;
+  letter-spacing: 0 !important;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--med-blue-700), var(--med-blue-500));
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 111, 184, 0.24);
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.brand-title {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.brand-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--med-slate-500);
+  line-height: 1;
+  -webkit-text-fill-color: var(--med-slate-500);
+}
+
+.brand-name::after {
+  display: none !important;
+}
+
+.header-nav {
+  background: var(--med-slate-100);
+  border: 1px solid var(--med-border);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 2px !important;
+}
+
+.nav-button {
+  min-height: 38px;
+  border-radius: 999px !important;
+  color: var(--med-slate-600) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 8px 14px !important;
+}
+
+.nav-button.active,
+.nav-button:hover {
+  background: #ffffff !important;
+  color: var(--med-blue-800) !important;
+  box-shadow: var(--med-shadow-sm) !important;
+}
+
+.language-selector,
+.user-info,
+.auth-button {
+  border-radius: 999px !important;
+}
+
+.user-info {
+  border-color: var(--med-border) !important;
+  background: #ffffff !important;
+}
+
+.user-avatar {
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, var(--med-blue-700), var(--med-blue-500)) !important;
+}
+
+/* Shared surfaces */
+.project-header-card,
+.configuration-section,
+.description-section,
+.tasks-section,
+.detail-section,
+.task-header,
+.task-statistics .stat-item,
+.stat-card,
+.team-card,
+.login-form,
+.signup-form,
+.feature-card,
+.quick-actions-container,
+.action-button,
+.modal-content,
+.modal,
+.raw-json-editor,
+.constructor-view,
+.projects-page > div:nth-child(2) > div:nth-child(2),
+.tasks-page > div:nth-child(2) > div:nth-child(2),
+.upload-page > div:nth-child(2) > div {
+  border: 1px solid var(--med-border) !important;
+  border-radius: var(--med-radius-xl) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: var(--med-shadow) !important;
+}
+
+.project-header-card,
+.configuration-section,
+.description-section,
+.tasks-section,
+.detail-section,
+.task-header,
+.team-card,
+.login-form,
+.signup-form {
+  overflow: hidden;
+}
+
+.project-header-card,
+.task-header {
+  border-top: 4px solid var(--med-blue-600) !important;
+}
+
+.section-title,
+.config-section-title,
+.tasks-title,
+.card-title {
+  color: var(--med-slate-900) !important;
+  font-weight: 750 !important;
+  letter-spacing: 0 !important;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after,
+.features-section::before {
+  display: none !important;
+}
+
+/* Buttons */
+.hero-button-primary,
+.login-submit-button,
+.submit-button,
+.btn-primary,
+.add-task-btn,
+.empty-action-btn,
+.open-task-btn,
+.primary-button,
+.json-btn.done-btn,
+.projects-page button[style*="rgb(59, 130, 246)"],
+.tasks-page button[style*="rgb(59, 130, 246)"] {
+  background: linear-gradient(135deg, var(--med-blue-700), var(--med-blue-500)) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(37, 111, 184, 0.2) !important;
+  box-shadow: 0 8px 20px rgba(37, 111, 184, 0.2) !important;
+}
+
+.hero-button-secondary,
+.secondary-button,
+.outline-button,
+.btn-ghost,
+.json-btn.reset-btn,
+.edit-text-btn,
+.edit-button,
+.projects-page button,
+.tasks-page button {
+  border: 1px solid var(--med-border) !important;
+}
+
+.hero-button-primary:hover,
+.login-submit-button:hover,
+.submit-button:hover,
+.btn-primary:hover,
+.add-task-btn:hover,
+.open-task-btn:hover,
+.primary-button:hover,
+.json-btn.done-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(37, 111, 184, 0.24) !important;
+}
+
+.delete-btn,
+.delete-button,
+.icon-btn.danger,
+.btn-remove {
+  color: var(--med-error) !important;
+  background: var(--med-error-soft) !important;
+  border-color: #fecaca !important;
+}
+
+/* Status and badges */
+.project-status-badge,
+.status-badge,
+.badge,
+.attribute-mutable-badge,
+.task-card .with-icon {
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+.badge-owner,
+.attribute-mutable-badge.mutable,
+.project-status-badge.active {
+  color: var(--med-success) !important;
+  background: var(--med-success-soft) !important;
+}
+
+.attribute-mutable-badge.immutable {
+  color: var(--med-warning) !important;
+  background: var(--med-warning-soft) !important;
+}
+
+/* Tables, lists, and cards */
+.projects-page [style*="grid-template-columns"],
+.tasks-page [style*="grid-template-columns"],
+.teams-grid,
+.features-grid,
+.quick-actions-grid {
+  gap: 20px !important;
+}
+
+.task-card,
+.file-item,
+.member-row,
+.owner-chip,
+.label-chip,
+.attribute-card {
+  border: 1px solid var(--med-border) !important;
+  border-radius: var(--med-radius-lg) !important;
+  background: #ffffff !important;
+  box-shadow: var(--med-shadow-sm) !important;
+}
+
+.task-card:hover,
+.team-card:hover,
+.feature-card:hover,
+.action-button:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(47, 128, 208, 0.38) !important;
+  box-shadow: var(--med-shadow-lg) !important;
+}
+
+.progress-track,
+.progress-bar,
+.progress-bar-container {
+  background: var(--med-slate-100) !important;
+  border-radius: 999px !important;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, var(--med-blue-700), var(--med-success)) !important;
+}
+
+/* Auth pages */
+.login-container,
+.signup-container {
+  background:
+    radial-gradient(circle at top left, rgba(47, 128, 208, 0.12), transparent 32vw),
+    linear-gradient(180deg, #f8fafc, #eef6ff) !important;
+}
+
+.login-main,
+.signup-main {
+  padding: 56px 20px !important;
+}
+
+.login-form,
+.signup-form {
+  width: min(100%, 480px) !important;
+  padding: 36px !important;
+}
+
+.login-icon-container,
+.signup-icon-container,
+.card-icon-wrap,
+.stat-icon,
+.feature-icon-container,
+.action-icon-container {
+  background: var(--med-blue-50) !important;
+  color: var(--med-blue-700) !important;
+  border: 1px solid var(--med-blue-100) !important;
+}
+
+.login-subtitle,
+.signup-subtitle {
+  color: var(--med-slate-500) !important;
+}
+
+.login-error,
+.error-message,
+.field-error {
+  background: var(--med-error-soft) !important;
+  color: var(--med-error) !important;
+  border: 1px solid #fecaca !important;
+  border-radius: var(--med-radius) !important;
+}
+
+/* Home */
+.hero-section {
+  min-height: 620px !important;
+  padding: 88px 24px !important;
+  border-bottom: 1px solid var(--med-border);
+}
+
+.hero-overlay {
+  background:
+    linear-gradient(90deg, rgba(15, 47, 95, 0.92), rgba(15, 47, 95, 0.68)),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.35)) !important;
+}
+
+.hero-title {
+  max-width: 920px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  font-size: clamp(42px, 5vw, 72px) !important;
+  color: #ffffff !important;
+}
+
+.hero-subtitle {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.medical-badge {
+  top: 88px !important;
+  right: 24px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: var(--med-blue-800) !important;
+  border: 1px solid rgba(219, 227, 239, 0.94) !important;
+}
+
+.features-section,
+.quick-actions-section {
+  padding: 72px 24px !important;
+}
+
+.feature-card {
+  padding: 32px !important;
+  text-align: left !important;
+}
+
+.feature-card::before {
+  display: none !important;
+}
+
+/* Upload */
+.upload-page > div:nth-child(2) {
+  padding-top: 32px !important;
+}
+
+.upload-page > div:nth-child(2) > div {
+  overflow: hidden;
+}
+
+.upload-page h1 {
+  color: #ffffff !important;
+}
+
+/* Annotation */
+.annotation-page {
+  background: #eef3f8 !important;
+}
+
+.annotation-task-strip,
+.annotation-shell,
+.annotation-stage,
+.annotation-side-panel,
+.annotation-tool-panel,
+.annotation-alert {
+  border-color: var(--med-border) !important;
+  box-shadow: var(--med-shadow-sm) !important;
+}
+
+.annotation-stage {
+  background: #ffffff !important;
+}
+
+/* Modals and toasts */
+.modal-overlay {
+  background: rgba(15, 23, 42, 0.52) !important;
+  backdrop-filter: blur(4px);
+}
+
+.toast {
+  border-radius: var(--med-radius-lg) !important;
+  box-shadow: var(--med-shadow) !important;
+}
+
+.toast-success {
+  background: var(--med-success-soft) !important;
+  color: var(--med-success) !important;
+}
+
+.toast-error {
+  background: var(--med-error-soft) !important;
+  color: var(--med-error) !important;
+}
+
+/* Empty, loading, and error states */
+.empty-state,
+.state-message,
+.loading-container,
+.task-detail-loading,
+.task-detail-error,
+.error-container,
+.no-files-message,
+.no-config-message {
+  color: var(--med-slate-500) !important;
+}
+
+.empty-state,
+.task-detail-error,
+.error-container {
+  border: 1px solid var(--med-border) !important;
+  border-radius: var(--med-radius-xl) !important;
+  background: #ffffff !important;
+  box-shadow: var(--med-shadow) !important;
+}
+
+.loading-spinner {
+  border-color: var(--med-blue-100) !important;
+  border-top-color: var(--med-blue-600) !important;
+}
+
+/* Optional dark mode support for future theme toggles */
+[data-theme="dark"] {
+  --med-surface: #111827;
+  --med-surface-muted: #0f172a;
+  --med-border: #263244;
+  --med-slate-950: #f8fafc;
+  --med-slate-900: #f1f5f9;
+  --med-slate-800: #e2e8f0;
+  --med-slate-700: #cbd5e1;
+  --med-slate-600: #94a3b8;
+  --med-slate-500: #94a3b8;
+  --med-slate-100: #1e293b;
+  --med-slate-50: #0f172a;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .enterprise-page,
+[data-theme="dark"] .home-container,
+[data-theme="dark"] .login-container,
+[data-theme="dark"] .signup-container,
+[data-theme="dark"] .team-page-container,
+[data-theme="dark"] .project-detail-container,
+[data-theme="dark"] .task-detail-container {
+  background: #0f172a !important;
+  color: var(--med-slate-800);
+}
+
+[data-theme="dark"] .project-header-card,
+[data-theme="dark"] .configuration-section,
+[data-theme="dark"] .description-section,
+[data-theme="dark"] .tasks-section,
+[data-theme="dark"] .detail-section,
+[data-theme="dark"] .task-header,
+[data-theme="dark"] .team-card,
+[data-theme="dark"] .login-form,
+[data-theme="dark"] .signup-form,
+[data-theme="dark"] .modal-content {
+  background: #111827 !important;
+}
+
+@media (max-width: 960px) {
+  .header-container {
+    height: auto !important;
+    min-height: 72px;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 16px !important;
+  }
+
+  .header-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .projects-page > div:nth-child(2),
+  .tasks-page > div:nth-child(2),
+  .upload-page > div:nth-child(2),
+  .team-content,
+  .project-detail-main,
+  .task-detail-content {
+    width: min(100%, calc(100vw - 24px)) !important;
+    padding: 20px 0 32px !important;
+  }
+
+  .projects-page > div:nth-child(2) > div:first-child,
+  .tasks-page > div:nth-child(2) > div:first-child,
+  .page-header,
+  .tasks-header,
+  .header-content {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  .hero-section {
+    min-height: 560px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-form,
+  .signup-form {
+    padding: 24px !important;
+  }
+
+  .hero-buttons,
+  .tasks-header-actions,
+  .header-actions,
+  .config-actions {
+    width: 100%;
+  }
+
+  .hero-button,
+  .add-task-btn,
+  .btn-primary {
+    width: 100%;
+  }
+}
