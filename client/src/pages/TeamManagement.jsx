@@ -48,13 +48,7 @@ const TeamManagement = () => {
 
   const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  useEffect(() => {
-    if (authLoading) return;   
-    if (!token || !user) return; 
-    fetchTeams();
-  }, [authLoading]);         
-
-  const resolveNames = async (teams) => {
+  const resolveNames = useCallback(async (teams) => {
     const allEmails = [...new Set(teams.flatMap(t => t.members || []))];
     if (allEmails.length === 0) return;
     try {
@@ -65,9 +59,9 @@ const TeamManagement = () => {
       setNameMap(prev => ({ ...prev, ...res.data.nameMap }));
     } catch {
     }
-  };
+  }, [token]);
 
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axios.get('http://localhost:5000/api/teams', {
@@ -88,7 +82,13 @@ const TeamManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast, resolveNames, token, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!token || !user) return;
+    fetchTeams();
+  }, [authLoading, fetchTeams, token, user]);
 
   const getDisplayName = (email) =>
     nameMap[email?.toLowerCase()] || email?.split('@')[0] || email;
