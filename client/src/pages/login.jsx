@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Header from '../components/Header';
-import { User, Shield, Lock } from 'lucide-react';
+import { User } from 'lucide-react';
 import '../styles/Login.css';
 
 const LoginPage = () => {

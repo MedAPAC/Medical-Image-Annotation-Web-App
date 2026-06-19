@@ -11,15 +11,7 @@ const ToolbarRight = ({
 }) => {
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "104px", right: 0, bottom: 0, width: "56px",
-        display: "flex", flexDirection: "column", alignItems: "center",
-        gap: "12px", padding: "12px 0",
-        backgroundColor: "#f9fafb", borderLeft: "1px solid #e5e7eb", zIndex: 50,
-      }}
-    >
+    <div className="annotation-right-toolbar" aria-label="Annotation actions and panels">
       {buttons_right.map(({ id, color, icon, onClick }) => (
         <button
           key={id}
@@ -30,17 +22,15 @@ const ToolbarRight = ({
               onClick(selectedFileName, annotationRefs);
             }
           }}
-          style={{
-            width: "40px", height: "40px", borderRadius: "8px", border: "none",
-            backgroundColor: color, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
+          className={`annotation-action-button ${id}`}
+          style={{ "--action-color": color }}
+          title={id === "save" ? "Save annotations" : id === "clearAll" ? "Clear all annotations" : "Delete selected annotation"}
         >
-          {icon && <img src={icon} alt={id} style={{ width: "18px", height: "18px" }} />}
+          {icon && <img src={icon} alt={id} className="annotation-action-icon" />}
         </button>
       ))}
 
-      <div style={{ flexGrow: 1 }} />
+      <div className="annotation-toolbar-spacer" />
 
       {buttons.map(({ id, icon, isImage }) => {
         // GUARD: if isImage is false but `icon` is not a valid React
@@ -56,14 +46,11 @@ const ToolbarRight = ({
           <button
             key={id}
             onClick={() => setRightPanelOpen(rightPanelOpen === id ? null : id)}
-            style={{
-              width: "40px", height: "40px", borderRadius: "8px", border: "none",
-              backgroundColor: rightPanelOpen === id ? "#e0f2fe" : "transparent",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            }}
+            className={`annotation-panel-button ${rightPanelOpen === id ? "active" : ""}`}
+            title={`Open ${id}`}
           >
             {isImage && icon ? (
-              <img src={icon} alt={id} style={{ width: 20, height: 20 }} />
+              <img src={icon} alt={id} className="annotation-panel-icon" />
             ) : canRenderAsComponent ? (
               <IconComponent size={20} />
             ) : null}
