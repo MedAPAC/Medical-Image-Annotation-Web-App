@@ -1,31 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import Header from '../components/Header';
 import { 
   Upload as UploadIcon, 
   File, 
   CheckCircle, 
-  AlertCircle,
   ArrowRight,
-  FolderOpen,
-  X,
-  Circle,
-  Sun,
-  RectangleHorizontal,
-  Contrast,
-  PenTool,
-  Box,
-  Shapes,
-  Brush
+  X
 } from 'lucide-react';
 
 const UploadPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
   
   const [uploadMode, setUploadMode] = useState("nifti");
   const [files, setFiles] = useState([]);
@@ -36,10 +24,11 @@ const UploadPage = () => {
 
   // Redirect if not authenticated
   React.useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [authLoading, isAuthenticated, navigate]);
 
   const addFiles = (newFiles) => {
     const validFiles = newFiles.filter((file) => {
@@ -106,6 +95,9 @@ const UploadPage = () => {
 
       try {
         const res = await axios.post("http://localhost:5000/upload", formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           onUploadProgress: (progressEvent) => {
             const percent = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
@@ -151,12 +143,28 @@ const UploadPage = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  if (authLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#475569',
+        fontSize: '15px',
+        fontWeight: 600
+      }}>
+        Checking session...
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return null; // Will redirect
   }
 
   return (
-    <div style={{
+    <div className="upload-page enterprise-page" style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
       display: 'flex',
@@ -262,7 +270,8 @@ const UploadPage = () => {
 
           <div
             onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
             onClick={() => document.getElementById("fileInput").click()}
             style={{
               border: `2px dashed ${dragActive ? '#3b82f6' : '#d1d5db'}`,
@@ -363,7 +372,7 @@ const UploadPage = () => {
                           color: '#374151',
                           flex: 1
                         }}>
-                          {file.name}
+                          {file.name} ({formatFileSize(file.size)})
                         </span>
                         {progress > 0 && (
                           <span style={{

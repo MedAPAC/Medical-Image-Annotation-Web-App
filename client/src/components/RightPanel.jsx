@@ -47,44 +47,9 @@ const RightPanel = ({
 
   return (
     <div
-      className="right-panel"
-      style={{
-        position: "fixed",
-        top: "104px",
-        right: rightPanelOpen ? "56px" : "-320px",
-        bottom: 0,
-        width: "300px",
-        backgroundColor: "#ffffff",
-        borderLeft: "1px solid #e2e8f0",
-        boxShadow: "-4px 0 16px rgba(0, 0, 0, 0.08)",
-        overflowY: "auto",
-        transition: "right 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        zIndex: 40,
-        padding: "24px 20px",
-        scrollbarWidth: "thin",
-        scrollbarColor: "#cbd5e0 #f7fafc",
-      }}
+      className={`right-panel ${rightPanelOpen ? "open" : "closed"}`}
+      aria-hidden={!rightPanelOpen}
     >
-      {/* Custom scrollbar styling for Webkit browsers */}
-      <style>
-        {`
-          .right-panel::-webkit-scrollbar {
-            width: 6px;
-          }
-          .right-panel::-webkit-scrollbar-track {
-            background: #f7fafc;
-            border-radius: 3px;
-          }
-          .right-panel::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
-            border-radius: 3px;
-          }
-          .right-panel::-webkit-scrollbar-thumb:hover {
-            background: #a0aec0;
-          }
-        `}
-      </style>
-
       {rightPanelOpen === "classification" && (
         <div className="panel-section">
           <div className="panel-header">
@@ -177,83 +142,6 @@ const RightPanel = ({
           </div>
         </div>
       )}
-
-      {/* Inline styles for panel components */}
-      <style>
-        {`
-          .panel-section {
-            margin-bottom: 32px;
-            animation: fadeIn 0.2s ease-out;
-          }
-          
-          .panel-header {
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #edf2f7;
-          }
-          
-          .panel-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2d3748;
-            margin: 0 0 4px 0;
-            letter-spacing: -0.01em;
-          }
-          
-          .panel-subtitle {
-            font-size: 13px;
-            color: #718096;
-            margin: 0;
-            font-weight: 400;
-          }
-          
-          .panel-content {
-            position: relative;
-          }
-          
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateX(8px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-          
-          /* Improve hover states and interactions */
-          .right-panel input[type="text"],
-          .right-panel input[type="number"],
-          .right-panel select,
-          .right-panel textarea {
-            transition: all 0.15s ease;
-            border: 1px solid #e2e8f0;
-          }
-          
-          .right-panel input[type="text"]:focus,
-          .right-panel input[type="number"]:focus,
-          .right-panel select:focus,
-          .right-panel textarea:focus {
-            border-color: #4299e1;
-            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
-            outline: none;
-          }
-          
-          /* Smooth transitions for all interactive elements */
-          .right-panel button {
-            transition: all 0.15s ease;
-          }
-          
-          .right-panel button:hover {
-            transform: translateY(-1px);
-          }
-          
-          .right-panel button:active {
-            transform: translateY(0);
-          }
-        `}
-      </style>
     </div>
   );
 };

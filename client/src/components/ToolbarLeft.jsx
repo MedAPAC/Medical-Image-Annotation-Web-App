@@ -12,26 +12,9 @@ const ToolbarLeft = ({
   setOpenSection
 }) => {
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "104px",
-        left: 0,
-        bottom: 0,
-        width: "56px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        backgroundColor: "#f8fafc",
-        borderRight: "1px solid #e2e8f0",
-        padding: "16px 0",
-        boxShadow: "0 0 8px rgba(0,0,0,0.1)",
-        zIndex: 50,
-        gap: "16px",
-      }}
-    >
+    <div className="annotation-left-toolbar" aria-label="Annotation tools">
       {/* Annotation Tools Section */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
+      <div className="annotation-tool-group">
         {shapes.map(({ name, icon }) => {
           // Check if this specific tool is allowed
           const isAllowed = allowedShapeIds.includes(name);
@@ -64,39 +47,16 @@ const ToolbarLeft = ({
                 }
               }}
               title={isAllowed ? (isSelected ? `Deselect ${name}` : name) : "Tool disabled for this project"}
-              style={{
-                width: "48px",
-                height: "48px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "12px",
-                // Conditional Border
-                border: isSelected 
-                  ? "2px solid #2563eb" 
-                  : "1px solid #cbd5e1",
-                // Conditional Background
-                background: isSelected 
-                  ? "#eff6ff" 
-                  : isAllowed ? "#fff" : "#f1f5f9", 
-                // Conditional Opacity & Cursor
-                opacity: isAllowed ? 1 : 0.5,
-                cursor: isAllowed ? "pointer" : "not-allowed",
-                transition: "all 0.2s",
-                pointerEvents: isAllowed ? "auto" : "none",
-              }}
+              className={[
+                "annotation-tool-button",
+                isSelected ? "active" : "",
+                !isAllowed ? "disabled" : "",
+              ].filter(Boolean).join(" ")}
             >
               <img
                 src={icon}
                 alt={name}
-                style={{
-                  width: 24,
-                  height: 24,
-                  // Logic: Selected = Blue, Disabled = Grayscale, Standard = None
-                  filter: isSelected 
-                    ? "invert(34%) sepia(87%) saturate(3390%) hue-rotate(212deg) brightness(95%) contrast(95%)" 
-                    : (!isAllowed ? "grayscale(100%)" : "none"),
-                }}
+                className="annotation-tool-icon"
               />
             </button>
           );
@@ -117,34 +77,16 @@ const ToolbarLeft = ({
             disabled={isDisabled} 
             onClick={() => !isDisabled && setOpenSection(openSection === id ? null : id)}
             title={isDisabled ? "Select Brush tool to edit settings" : ""}
-            style={{
-              width: "48px",
-              height: "48px",
-              border: "none",
-              borderRadius: "12px",
-              // Visual feedback: Blue if open, Transparent if closed
-              background: openSection === id ? "#e0f2fe" : "transparent",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              // Cursor and Opacity feedback for disabled state
-              cursor: isDisabled ? "not-allowed" : "pointer",
-              opacity: isDisabled ? 0.3 : 1,
-              transition: "all 0.2s",
-              padding: 0,
-            }}
+            className={[
+              "annotation-section-button",
+              openSection === id ? "active" : "",
+              isDisabled ? "disabled" : "",
+            ].filter(Boolean).join(" ")}
           >
             <img
               src={icon}
               alt={id}
-              style={{
-                width: 24,
-                height: 24,
-                // Logic: Active = Blue, Disabled = Grayscale, Standard = Black/Grey
-                filter: openSection === id 
-                  ? "invert(34%) sepia(87%) saturate(3390%) hue-rotate(212deg) brightness(95%) contrast(95%)" 
-                  : (isDisabled ? "grayscale(100%)" : "none"),
-              }}
+              className="annotation-tool-icon"
             />
           </button>
         );

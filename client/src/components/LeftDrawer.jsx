@@ -283,7 +283,7 @@ const LeftDrawer = ({
       <style jsx>{`
         .left-drawer {
           position: fixed;
-          top: 104px;
+          top: var(--annotation-top-offset, 112px);
           left: ${openSection ? "56px" : "-320px"}; /* Adjusted to 56px to match Toolbar width */
           bottom: 0;
           width: 320px;

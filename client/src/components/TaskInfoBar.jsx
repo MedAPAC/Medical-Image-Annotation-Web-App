@@ -1,6 +1,6 @@
 // annotation/components/TaskInfoBar.jsx
 import React from "react";
-import { FileText, ChevronDown } from "lucide-react"; // Assuming you have lucide-react, otherwise remove icons
+import { FileText, ChevronDown } from "lucide-react";
 
 const TaskInfoBar = ({ taskData, files, selectedFileName, onFileSelect }) => {
   const getStatusColor = (status) => {
@@ -12,66 +12,55 @@ const TaskInfoBar = ({ taskData, files, selectedFileName, onFileSelect }) => {
   };
 
   return (
-    <div style={{
-      padding: "8px 16px",
-      backgroundColor: "#f1f5f9",
-      borderBottom: "1px solid #e2e8f0",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: "16px"
-    }}>
+    <div className="task-info-bar">
       {/* LEFT: Task Info */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <div>
-            <strong>Task:</strong> {taskData.name} 
+      <div className="task-info-meta">
+        <div className="task-info-name">
+          <span className="task-info-label">Task</span>
+          <strong>{taskData.name}</strong>
         </div>
-        <div style={{ borderLeft: "1px solid #cbd5e1", height: "16px" }}></div>
-        <div>
-            <strong>Status:</strong> 
-            <span style={{ color: getStatusColor(taskData.status), marginLeft: "4px", fontWeight: "bold" }}>
+        <div className="task-info-divider" />
+        <div className="task-info-status-wrap">
+          <span className="task-info-label">Status</span>
+          <span
+            className="task-info-status"
+            style={{ color: getStatusColor(taskData.status) }}
+          >
             {taskData.status}
-            </span>
+          </span>
         </div>
       </div>
 
       {/* CENTER: File Selector */}
       {files && files.length > 0 && (
-        <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <span style={{ marginRight: "8px", fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
-                    Current File:
-                </span>
+        <div className="task-file-selector">
+            <FileText size={16} />
+            <span className="task-info-label">Current file</span>
+            <div className="task-file-select-wrap">
                 <select
                     value={selectedFileName || ""}
                     onChange={(e) => onFileSelect(e.target.value)}
-                    style={{
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        border: "1px solid #cbd5e1",
-                        backgroundColor: "#fff",
-                        color: "#334155",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                        cursor: "pointer",
-                        outline: "none",
-                        minWidth: "200px"
-                    }}
+                    className="task-file-select"
                 >
                     {files.map((file, index) => (
-                        <option key={`${file.filename}-${index}`} value={file.originalName}>
-                            {file.originalName}
+                        <option
+                            key={`${file.annotationKey || file.filename || file.originalName}-${index}`}
+                            value={file.annotationKey || file.originalName}
+                        >
+                            {file.displayName || file.originalName}
                         </option>
                     ))}
                 </select>
+                <ChevronDown size={15} className="task-file-chevron" />
             </div>
         </div>
       )}
 
       {/* RIGHT: Progress */}
-      <div>
-        <strong>Progress:</strong> {taskData.progress || 0}% 
-        <span style={{ color: "#64748b", marginLeft: "4px" }}>
+      <div className="task-info-progress">
+        <span className="task-info-label">Progress</span>
+        <strong>{taskData.progress || 0}%</strong>
+        <span>
             ({taskData.completedItems || 0}/{taskData.totalItems || 0})
         </span>
       </div>

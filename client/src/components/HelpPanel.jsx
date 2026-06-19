@@ -2,17 +2,50 @@
 import React from "react";
 
 const HelpPanel = ({ t }) => {
+  const guidance = [
+    {
+      title: t("Drawing"),
+      body: t("Choose a tool, select the correct label, then draw directly on the image. Finish polygon and polyline annotations with Enter."),
+    },
+    {
+      title: t("Editing"),
+      body: t("Use Select mode to reveal vertex handles. Drag a handle to refine the shape, or press Delete/Backspace to remove the selected annotation."),
+    },
+    {
+      title: t("Labels"),
+      body: t("The active project label is applied to each new annotation. Labels stay attached to the annotation edge so they do not cover the image unnecessarily."),
+    },
+    {
+      title: t("Files and slices"),
+      body: t("Use the file selector for separate NIfTI files. DICOM slices from one upload are treated as one series. Current annotations are kept when you change files or slices."),
+    },
+    {
+      title: t("Collaboration"),
+      body: t("When another user saves this task, your page receives the update live. If you have unsaved local edits, the app warns you instead of replacing your work."),
+    },
+    {
+      title: t("Zoom"),
+      body: t("Use region zoom for fine detail. While zoom-region mode is active, drawing pauses until the region is selected or zoom is reset."),
+    },
+    {
+      title: t("Windowing"),
+      body: t("Adjust window center and width to improve contrast for DICOM or NIfTI images. Reset returns the viewer to automatic display settings."),
+    },
+    {
+      title: t("Saving"),
+      body: t("Save before leaving the task. Saving stores annotations, slice classifications, and attribute values for the active file, then notifies other open viewers."),
+    },
+  ];
+
   return (
-    <>
-      <div><b>{t("classification")}:</b> {t("Assign classification to a slice")}</div>
-      <div><b>{t("Slices Settings")}:</b> {t("Navigate and jump between slices")}</div>
-      <div><b>{t("Zoom")}:</b> {t("Zoom into selected region, use mouse wheel to zoom in/out, or reset zoom")}</div>
-      <div><b>{t("Window Settings")}:</b> {t("Adjust window center and width for better contrast visualization")}</div>
-      <div><b>{t("Labels")}:</b> {t("Select or assign labels for structures or findings")}</div>
-      <div><b>{t("Annotation Tools")}:</b> {t("Draw shapes (circle, rectangle, etc.) to highlight regions of interest")}</div>
-      <div><b>{t("Opacity Settings")}:</b> {t("Adjust annotation transparency for better image clarity")}</div>
-      <div><b>{t("Brush Settings")}:</b> {t("Use brush tool to annotate regions, adjust size and color")}</div>
-    </>
+    <div className="help-guide">
+      {guidance.map((item) => (
+        <div className="help-card" key={item.title}>
+          <h4>{item.title}</h4>
+          <p>{item.body}</p>
+        </div>
+      ))}
+    </div>
   );
 };
 
