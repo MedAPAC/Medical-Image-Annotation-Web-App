@@ -20,7 +20,6 @@ const TaskTimer = ({ taskId, token }) => {
         
         if (isMounted) {
           const savedTime = response.data.seconds || 0;
-          console.log(`[Timer] Loaded from DB: ${savedTime}s`);
           setSeconds(savedTime);
           secondsRef.current = savedTime;
           setStatus("active"); // Only NOW do we allow counting/saving
@@ -83,7 +82,6 @@ const TaskTimer = ({ taskId, token }) => {
             headers: { Authorization: `Bearer ${token}` }
           });
         }
-        console.log(`[Timer] Saved: ${currentTime}s`);
       } catch (error) {
         console.error("[Timer] Save failed:", error);
       }
