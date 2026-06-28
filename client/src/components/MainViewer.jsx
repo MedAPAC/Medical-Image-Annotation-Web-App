@@ -67,10 +67,10 @@ const MainViewer = ({
     const updateScale = (width, height) => {
       if (width < 120 || height < 120) return;
       const availableScale = Math.min(
-        (width - 16) / VIEWER_FRAME_WIDTH,
-        (height - 16) / VIEWER_FRAME_HEIGHT
+        (width - 4) / VIEWER_FRAME_WIDTH,
+        (height - 4) / VIEWER_FRAME_HEIGHT
       );
-      const nextScale = Math.min(1.4, Math.max(availableScale, 0.55));
+      const nextScale = Math.min(1.55, Math.max(availableScale, 0.58));
       setFitScale((previous) => (
         Math.abs(previous - nextScale) < 0.01 ? previous : nextScale
       ));
