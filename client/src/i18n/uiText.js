@@ -1,5 +1,7 @@
 import i18n from "../i18n";
 
+import { UI_COVERAGE_TRANSLATIONS } from './uiCoverageTranslations';
+
 export const LANGUAGE_OPTIONS = [
   { code: "en", flag: "\uD83C\uDDEC\uD83C\uDDE7", label: "English" },
   { code: "fa", flag: "\uD83C\uDDEE\uD83C\uDDF7", label: "\u0641\u0627\u0631\u0633\u06cc" },
@@ -12,6 +14,8 @@ const languageCode = (language) => String(language || "en").split("-")[0];
 
 const translateExact = (value, language) => {
   const lang = languageCode(language);
+  const coverageTranslation = UI_COVERAGE_TRANSLATIONS[lang]?.[value];
+  if (coverageTranslation) return coverageTranslation;
   if (lang === "en") return value;
   const translator = i18n.getFixedT(lang, "ui");
   return translator(value, { defaultValue: value });
