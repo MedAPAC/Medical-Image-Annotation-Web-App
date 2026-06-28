@@ -1,49 +1,63 @@
-// annotation/components/Panels/HelpPanel.jsx
-import React from "react";
+import React from 'react';
+import { Edit3, Files, MousePointer2, Save, ScanLine, Users, ZoomIn } from 'lucide-react';
 
 const HelpPanel = ({ t }) => {
   const guidance = [
     {
-      title: t("Drawing"),
-      body: t("Choose a tool, select the correct label, then draw directly on the image. Finish polygon and polyline annotations with Enter."),
+      title: 'Draw an annotation',
+      icon: Edit3,
+      body: 'Choose a geometry, confirm the active label, and draw on the image. Press Enter to finish polygons and polylines.',
+      keys: ['Enter'],
     },
     {
-      title: t("Editing"),
-      body: t("Use Select mode to reveal vertex handles. Drag a handle to refine the shape, or press Delete/Backspace to remove the selected annotation."),
+      title: 'Refine geometry',
+      icon: MousePointer2,
+      body: 'Deselect the drawing tool to enter selection mode. Drag vertex handles to refine a polygon or polyline.',
+      keys: ['Delete', 'Backspace'],
     },
     {
-      title: t("Labels"),
-      body: t("The active project label is applied to each new annotation. Labels stay attached to the annotation edge so they do not cover the image unnecessarily."),
+      title: 'Move through a volume',
+      icon: ScanLine,
+      body: 'Use the slice panel, range control, or keyboard arrows. The current canvas is retained when the slice changes.',
+      keys: ['Left arrow', 'Right arrow'],
     },
     {
-      title: t("Files and slices"),
-      body: t("Use the file selector for separate NIfTI files. DICOM slices from one upload are treated as one series. Current annotations are kept when you change files or slices."),
+      title: 'Change files safely',
+      icon: Files,
+      body: 'Use the study selector in the task strip. DICOM instances are grouped as one series; NIfTI volumes remain separate.',
     },
     {
-      title: t("Collaboration"),
-      body: t("When another user saves this task, your page receives the update live. If you have unsaved local edits, the app warns you instead of replacing your work."),
+      title: 'Inspect fine detail',
+      icon: ZoomIn,
+      body: 'Open Zoom, select region mode, and drag over the anatomy. Drawing pauses until the zoom region is complete.',
     },
     {
-      title: t("Zoom"),
-      body: t("Use region zoom for fine detail. While zoom-region mode is active, drawing pauses until the region is selected or zoom is reset."),
+      title: 'Save and collaborate',
+      icon: Save,
+      body: 'Save commits geometry, classification, and attributes. Unsaved changes are protected before navigation or reload.',
     },
     {
-      title: t("Windowing"),
-      body: t("Adjust window center and width to improve contrast for DICOM or NIfTI images. Reset returns the viewer to automatic display settings."),
-    },
-    {
-      title: t("Saving"),
-      body: t("Save before leaving the task. Saving stores annotations, slice classifications, and attribute values for the active file, then notifies other open viewers."),
+      title: 'Concurrent review',
+      icon: Users,
+      body: 'Remote saves refresh clean files automatically. Local unsaved work is never silently replaced by a collaborator update.',
     },
   ];
 
   return (
-    <div className="help-guide">
-      {guidance.map((item) => (
-        <div className="help-card" key={item.title}>
-          <h4>{item.title}</h4>
-          <p>{item.body}</p>
-        </div>
+    <div className='help-guide'>
+      {guidance.map(({ title, icon: Icon, body, keys }) => (
+        <article className='help-card' key={title}>
+          <span className='help-card-icon'><Icon size={17} /></span>
+          <div>
+            <h4>{t(title)}</h4>
+            <p>{t(body)}</p>
+            {keys?.length > 0 && (
+              <div className='help-shortcuts'>
+                {keys.map((key) => <kbd key={key}>{t(key)}</kbd>)}
+              </div>
+            )}
+          </div>
+        </article>
       ))}
     </div>
   );

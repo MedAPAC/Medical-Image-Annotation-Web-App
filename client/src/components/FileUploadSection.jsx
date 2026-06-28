@@ -1,5 +1,5 @@
-// annotation/components/FileUploadSection.jsx
-import React from "react";
+import React from 'react';
+import { CheckCircle2, File, FolderUp, UploadCloud } from 'lucide-react';
 
 const FileUploadSection = ({
   files,
@@ -8,111 +8,89 @@ const FileUploadSection = ({
   setUploadMode,
   handleDrop,
   handleFileChange,
-  handleUpload
-}) => {
-  return (
-    <div style={{
-      padding: "40px 20px",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: "20px",
-      maxWidth: "600px",
-      margin: "40px auto",
-      backgroundColor: "white",
-      borderRadius: "12px",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
-    }}>
-      <h3>No files found in this task</h3>
-      <p>Upload files to get started with annotation</p>
-      
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        style={{
-          border: "2px dashed #cbd5e1",
-          borderRadius: "8px",
-          padding: "40px",
-          textAlign: "center",
-          width: "100%",
-          cursor: "pointer"
-        }}
-      >
-        <p>Drag & drop files here or</p>
-        <input
-          type="file"
-          id="file-upload"
-          multiple
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-        <label htmlFor="file-upload">
-          <button style={{
-            padding: "10px 20px",
-            backgroundColor: "#3b82f6",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer"
-          }}>
-            Browse Files
-          </button>
-        </label>
-        
-        <div style={{ marginTop: "20px" }}>
-          <select
-            value={uploadMode}
-            onChange={(e) => setUploadMode(e.target.value)}
-            style={{
-              padding: "8px",
-              borderRadius: "6px",
-              border: "1px solid #cbd5e1"
-            }}
-          >
-            <option value="nifti">NIfTI Files (.nii, .nii.gz)</option>
-            <option value="dicom">DICOM Files (.dcm)</option>
-          </select>
+  handleUpload,
+}) => (
+  <main className='annotation-empty-workspace'>
+    <section className='annotation-upload-panel'>
+      <div className='annotation-upload-heading'>
+        <span className='annotation-upload-icon' aria-hidden='true'>
+          <FolderUp size={24} />
+        </span>
+        <div>
+          <h1>Add imaging data</h1>
+          <p>This task has no studies yet. Upload a DICOM series or NIfTI volume to begin.</p>
         </div>
       </div>
 
-      {files.length > 0 && (
-        <div style={{ width: "100%" }}>
-          <h4>Selected Files:</h4>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {files.map((file, index) => (
-              <li key={index} style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "8px",
-                borderBottom: "1px solid #e2e8f0"
-              }}>
-                <span>{file.name}</span>
-                <span>{uploadProgress[file.name] ? `${uploadProgress[file.name]}%` : "Ready"}</span>
-              </li>
-            ))}
-          </ul>
-          
+      <div className='annotation-upload-mode' role='group' aria-label='Medical image format'>
+        {[
+          { value: 'nifti', label: 'NIfTI volume', detail: '.nii, .nii.gz' },
+          { value: 'dicom', label: 'DICOM series', detail: '.dcm files' },
+        ].map((option) => (
           <button
-            onClick={handleUpload}
-            disabled={files.length === 0}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: files.length > 0 ? "#10b981" : "#cbd5e1",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: files.length > 0 ? "pointer" : "not-allowed",
-              width: "100%",
-              marginTop: "20px"
-            }}
+            key={option.value}
+            type='button'
+            className={uploadMode === option.value ? 'active' : ''}
+            onClick={() => setUploadMode(option.value)}
+            aria-pressed={uploadMode === option.value}
           >
-            Upload Files
+            <strong>{option.label}</strong>
+            <span>{option.detail}</span>
+          </button>
+        ))}
+      </div>
+
+      <label
+        className='annotation-drop-zone'
+        onDrop={handleDrop}
+        onDragOver={(event) => event.preventDefault()}
+        htmlFor='annotation-file-upload'
+      >
+        <UploadCloud size={32} aria-hidden='true' />
+        <strong>Drop medical images here</strong>
+        <span>or select files from this workstation</span>
+        <span className='annotation-browse-button'>Browse files</span>
+        <input
+          type='file'
+          id='annotation-file-upload'
+          multiple
+          onChange={handleFileChange}
+        />
+      </label>
+
+      {files.length > 0 && (
+        <div className='annotation-upload-queue'>
+          <div className='annotation-upload-queue-header'>
+            <strong>Upload queue</strong>
+            <span>{files.length} file{files.length === 1 ? '' : 's'}</span>
+          </div>
+          <ul>
+            {files.map((file, index) => {
+              const progress = uploadProgress[file.name];
+              return (
+                <li key={`${file.name}-${index}`}>
+                  <File size={17} aria-hidden='true' />
+                  <span className='annotation-upload-file-name'>{file.name}</span>
+                  <span className='annotation-upload-file-state'>
+                    {progress === 100 ? <CheckCircle2 size={16} /> : null}
+                    {progress ? `${progress}%` : 'Ready'}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <button
+            type='button'
+            className='annotation-upload-submit'
+            onClick={handleUpload}
+          >
+            <UploadCloud size={17} />
+            Upload and open viewer
           </button>
         </div>
       )}
-    </div>
-  );
-};
+    </section>
+  </main>
+);
 
 export default FileUploadSection;

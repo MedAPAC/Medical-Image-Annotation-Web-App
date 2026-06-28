@@ -1,9 +1,14 @@
-// annotation/components/Panels/ClassificationPanel.jsx
-import React from "react";
+import React from 'react';
+import { CheckCircle2, CircleOff, XCircle } from 'lucide-react';
 
-const splitAttributeOptions = (values) => (
-  values ? values.split(/[\n,]/).map((option) => option.trim()).filter(Boolean) : []
-);
+const splitAttributeOptions = (values) => {
+  if (Array.isArray(values)) {
+    return values.map((option) => String(option).trim()).filter(Boolean);
+  }
+  return values
+    ? String(values).split(/[\n,]/).map((option) => option.trim()).filter(Boolean)
+    : [];
+};
 
 const ClassificationPanel = ({
   t,
@@ -15,140 +20,157 @@ const ClassificationPanel = ({
   setClassificationByFileAndSlice,
   getInputsForCurrent,
   updateInputsForCurrent,
-  projectAttributes = []
+  projectAttributes = [],
 }) => {
   const inputs = getInputsForCurrent() || {};
-  const currentClassification = classificationByFileAndSlice[selectedFileName]?.[currentSlice] || null;
+  const currentClassification = (
+    classificationByFileAndSlice[selectedFileName]?.[currentSlice] || null
+  );
 
   const setClassification = (classification) => {
-    if (classification === "clear") {
-      setClassificationByFileAndSlice((prev) => {
-        const updated = { ...(prev[selectedFileName] || {}) };
+    if (classification === 'clear') {
+      setClassificationByFileAndSlice((previous) => {
+        const updated = { ...(previous[selectedFileName] || {}) };
         delete updated[currentSlice];
-        return { ...prev, [selectedFileName]: updated };
+        return { ...previous, [selectedFileName]: updated };
       });
       return;
     }
 
-    setClassificationByFileAndSlice((prev) => ({
-      ...prev,
+    setClassificationByFileAndSlice((previous) => ({
+      ...previous,
       [selectedFileName]: {
-        ...(prev[selectedFileName] || {}),
+        ...(previous[selectedFileName] || {}),
         [currentSlice]: classification,
       },
     }));
   };
 
-  const renderAttribute = (attr) => {
-    const val = inputs[attr.name];
-    const options = splitAttributeOptions(attr.values);
+  const renderAttribute = (attribute) => {
+    const value = inputs[attribute.name];
+    const options = splitAttributeOptions(attribute.values);
+    const key = attribute.id || attribute.name;
 
-    if (attr.type === "checkbox") {
+    if (attribute.type === 'checkbox') {
       if (options.length > 0) {
-        const currentSelection = Array.isArray(val) ? val : [];
-
+        const selection = Array.isArray(value) ? value : [];
         return (
-          <div key={attr.id || attr.name} className="annotation-attribute-field">
-            <span className="annotation-attribute-label">{attr.name}</span>
-            <div className="annotation-option-grid">
-              {options.map((opt) => (
-                <label key={opt} className="annotation-option">
+          <fieldset key={key} className='annotation-attribute-field'>
+            <legend className='annotation-attribute-label'>{attribute.name}</legend>
+            <div className='annotation-option-grid'>
+              {options.map((option) => (
+                <label key={option} className='annotation-option'>
                   <input
-                    type="checkbox"
-                    checked={currentSelection.includes(opt)}
-                    onChange={(e) => {
-                      const nextSelection = e.target.checked
-                        ? [...currentSelection, opt]
-                        : currentSelection.filter((item) => item !== opt);
-                      updateInputsForCurrent({ [attr.name]: nextSelection });
+                    type='checkbox'
+                    checked={selection.includes(option)}
+                    onChange={(event) => {
+                      const nextSelection = event.target.checked
+                        ? [...selection, option]
+                        : selection.filter((item) => item !== option);
+                      updateInputsForCurrent({ [attribute.name]: nextSelection });
                     }}
                   />
-                  <span>{opt}</span>
+                  <span>{option}</span>
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
         );
       }
 
       return (
-        <label key={attr.id || attr.name} className="annotation-option annotation-option-boolean">
+        <label key={key} className='annotation-option annotation-option-boolean'>
           <input
-            type="checkbox"
-            checked={!!val}
-            onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.checked })}
+            type='checkbox'
+            checked={Boolean(value)}
+            onChange={(event) => updateInputsForCurrent({
+              [attribute.name]: event.target.checked,
+            })}
           />
-          <span>{attr.name}</span>
+          <span>{attribute.name}</span>
         </label>
       );
     }
 
-    if (attr.type === "select") {
+    if (attribute.type === 'select') {
       return (
-        <label key={attr.id || attr.name} className="annotation-attribute-field">
-          <span className="annotation-attribute-label">{attr.name}</span>
+        <label key={key} className='annotation-attribute-field'>
+          <span className='annotation-attribute-label'>{attribute.name}</span>
           <select
-            value={val || ""}
-            onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
-            className="annotation-panel-input"
+            value={value ?? ''}
+            onChange={(event) => updateInputsForCurrent({
+              [attribute.name]: event.target.value,
+            })}
+            className='annotation-panel-input'
           >
-            <option value="">{t("Choose...")}</option>
-            {options.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+            <option value=''>{t('Choose...')}</option>
+            {options.map((option) => (
+              <option key={option} value={option}>{option}</option>
             ))}
           </select>
         </label>
       );
     }
 
-    if (attr.type === "radio") {
+    if (attribute.type === 'radio') {
       return (
-        <div key={attr.id || attr.name} className="annotation-attribute-field">
-          <span className="annotation-attribute-label">{attr.name}</span>
-          <div className="annotation-option-grid">
-            {options.map((opt) => (
-              <label key={opt} className="annotation-option">
+        <fieldset key={key} className='annotation-attribute-field'>
+          <legend className='annotation-attribute-label'>{attribute.name}</legend>
+          <div className='annotation-option-grid'>
+            {options.map((option) => (
+              <label key={option} className='annotation-option'>
                 <input
-                  type="radio"
-                  name={`radio-group-${attr.id || attr.name}`}
-                  value={opt}
-                  checked={val === opt}
-                  onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
+                  type='radio'
+                  name={`radio-group-${key}`}
+                  value={option}
+                  checked={value === option}
+                  onChange={(event) => updateInputsForCurrent({
+                    [attribute.name]: event.target.value,
+                  })}
                 />
-                <span>{opt}</span>
+                <span>{option}</span>
               </label>
             ))}
           </div>
-        </div>
+        </fieldset>
       );
     }
 
     return (
-      <label key={attr.id || attr.name} className="annotation-attribute-field">
-        <span className="annotation-attribute-label">{attr.name}</span>
+      <label key={key} className='annotation-attribute-field'>
+        <span className='annotation-attribute-label'>{attribute.name}</span>
         <input
-          type={attr.type === "number" ? "number" : "text"}
-          value={val || ""}
-          onChange={(e) => updateInputsForCurrent({ [attr.name]: e.target.value })}
-          className="annotation-panel-input"
+          type={attribute.type === 'number' ? 'number' : 'text'}
+          value={value ?? ''}
+          onChange={(event) => updateInputsForCurrent({
+            [attribute.name]: event.target.value,
+          })}
+          className='annotation-panel-input'
         />
       </label>
     );
   };
 
+  const classifications = [
+    { id: 'positive', label: 'Positive', icon: CheckCircle2 },
+    { id: 'negative', label: 'Negative', icon: XCircle },
+    { id: 'clear', label: 'Unclassified', icon: CircleOff },
+  ];
+
   return (
-    <div className="classification-panel">
-      <section className="annotation-panel-card">
-        <div className="annotation-panel-card-header">
-          <h4>{t("View Type")}</h4>
+    <div className='classification-panel'>
+      <section className='annotation-panel-card'>
+        <div className='annotation-panel-card-header'>
+          <h4>{t('View plane')}</h4>
         </div>
-        <div className="annotation-segmented-control" role="group" aria-label={t("View Type")}>
-          {["axial", "coronal", "sagittal"].map((view) => (
+        <div className='annotation-segmented-control' role='group' aria-label={t('View plane')}>
+          {['axial', 'coronal', 'sagittal'].map((view) => (
             <button
               key={view}
-              type="button"
+              type='button'
               onClick={() => setViewType(view)}
-              className={viewType === view ? "active" : ""}
+              className={viewType === view ? 'active' : ''}
+              aria-pressed={viewType === view}
             >
               {t(view.charAt(0).toUpperCase() + view.slice(1))}
             </button>
@@ -156,40 +178,42 @@ const ClassificationPanel = ({
         </div>
       </section>
 
-      <section className="annotation-panel-card">
-        <div className="annotation-panel-card-header">
-          <h4>{t("Classification")}</h4>
-          <span>{t("Slice")} {currentSlice + 1}</span>
+      <section className='annotation-panel-card'>
+        <div className='annotation-panel-card-header'>
+          <h4>{t('Slice classification')}</h4>
+          <span>{t('Slice')} {currentSlice + 1}</span>
         </div>
-        <div className="classification-actions">
-          {["positive", "negative", "clear"].map((classification) => (
+        <div className='classification-actions'>
+          {classifications.map(({ id, label, icon: Icon }) => (
             <button
-              key={classification}
-              type="button"
-              onClick={() => setClassification(classification)}
+              key={id}
+              type='button'
+              onClick={() => setClassification(id)}
               className={[
-                "classification-action",
-                classification,
-                currentClassification === classification ? "active" : "",
-              ].filter(Boolean).join(" ")}
+                'classification-action',
+                id,
+                currentClassification === id || (id === 'clear' && !currentClassification)
+                  ? 'active'
+                  : '',
+              ].filter(Boolean).join(' ')}
+              aria-pressed={currentClassification === id || (id === 'clear' && !currentClassification)}
             >
-              {t(classification)}
+              <Icon size={16} />
+              {t(label)}
             </button>
           ))}
         </div>
       </section>
 
-      <section className="annotation-panel-card">
-        <div className="annotation-panel-card-header">
-          <h4>{t("Attributes")}</h4>
+      <section className='annotation-panel-card'>
+        <div className='annotation-panel-card-header'>
+          <h4>{t('Structured attributes')}</h4>
           <span>{projectAttributes.length}</span>
         </div>
-        <div className="annotation-attribute-list">
-          {projectAttributes.length === 0 ? (
-            <p className="annotation-empty-note">{t("No attributes configured")}</p>
-          ) : (
-            projectAttributes.map(renderAttribute)
-          )}
+        <div className='annotation-attribute-list'>
+          {projectAttributes.length === 0
+            ? <p className='annotation-empty-note'>{t('No attributes configured')}</p>
+            : projectAttributes.map(renderAttribute)}
         </div>
       </section>
     </div>

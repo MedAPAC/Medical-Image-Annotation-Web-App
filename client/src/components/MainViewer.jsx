@@ -1,14 +1,18 @@
-// annotation/components/MainViewer.jsx
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import axios from "axios";
-import NiftiViewer from "../NiftiViewer";
-import DicomViewer from "../DicomViewer";
-import AnnotationCanvas from "../AnnotationCanvas";
-import { useAuth } from "../AuthContext";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
+import { Layers3, ScanLine, ZoomIn } from 'lucide-react';
+import NiftiViewer from '../NiftiViewer';
+import DicomViewer from '../DicomViewer';
+import AnnotationCanvas from '../AnnotationCanvas';
+import { useAuth } from '../AuthContext';
 import {
   normalizeClassificationForState,
   toInternalSliceKey,
-} from "../annotationFormat";
+} from '../annotationFormat';
+
+const VIEWER_SIZE = 500;
+const VIEWER_FRAME_WIDTH = 526;
+const VIEWER_FRAME_HEIGHT = 564;
 
 const fileSelectionKey = (file) => file?.annotationKey || file?.originalName;
 
@@ -30,120 +34,84 @@ const MainViewer = ({
   brushSize,
   toolChangeId,
   annotationOpacity,
-
-  // Data State
   classificationByFileAndSlice,
   annotationsByFileAndSlice,
   saveSliceAnnotationToState,
   setInputsByFileAndSlice,
   setClassificationByFileAndSlice,
   setAnnotationsByFileAndSlice,
-
   annotationRefs,
   totalSlices,
   taskId,
   remoteAnnotationReload,
-
-  // Zoom callbacks — passed through so the viewer can report back selections
   setZoomLevel,
   setZoomRegion,
   setIsZoomMode,
   onAnnotationChange,
 }) => {
   const { token } = useAuth();
-
   const prevSliceRef = useRef(currentSlice);
   const prevFileRef = useRef(selectedFileName);
   const prevDataRef = useRef(null);
   const loadedAnnotationFilesRef = useRef(new Set());
-
-  // -----------------------------------------------------------------------
-  // CSS-TRANSFORM ZOOM
-  // We own zoom entirely here with a CSS transform on the viewer wrapper.
-  // isZoomMode=true enters "draw a region" mode using our own overlay.
-  // We NEVER pass isZoomMode / zoomRegion / zoomLevel to DicomViewer or
-  // NiftiViewer — their internal zoom mechanisms are bypassed completely,
-  // which prevents the blank-image bug.
-  // -----------------------------------------------------------------------
+  const viewerWrapperRef = useRef(null);
+  const mainViewerRef = useRef(null);
+  const [fitScale, setFitScale] = useState(1);
   const [dragStart, setDragStart] = useState(null);
   const [dragRect, setDragRect] = useState(null);
-  const viewerWrapperRef = useRef(null);
 
-  // Build the CSS transform from zoomLevel + zoomRegion
-  const getZoomTransform = () => {
-    if (!zoomRegion || zoomLevel <= 1) return { transform: "none", transformOrigin: "top left" };
-    // zoomRegion is { x, y, width, height } in percentage (0-100) of the viewer
-    const originX = zoomRegion.x + zoomRegion.width / 2;
-    const originY = zoomRegion.y + zoomRegion.height / 2;
-    return {
-      transform: `scale(${zoomLevel})`,
-      transformOrigin: `${originX}% ${originY}%`,
-      transition: "transform 0.2s ease",
+  useEffect(() => {
+    const root = mainViewerRef.current;
+    if (!root) return undefined;
+
+    const updateScale = (width, height) => {
+      if (width < 120 || height < 120) return;
+      const availableScale = Math.min(
+        (width - 16) / VIEWER_FRAME_WIDTH,
+        (height - 16) / VIEWER_FRAME_HEIGHT
+      );
+      const nextScale = Math.min(1.4, Math.max(availableScale, 0.55));
+      setFitScale((previous) => (
+        Math.abs(previous - nextScale) < 0.01 ? previous : nextScale
+      ));
     };
-  };
 
-  // Mouse handlers for drawing a zoom region
-  const handleZoomMouseDown = useCallback((e) => {
-    if (!isZoomMode) return;
-    e.preventDefault();
-    const rect = viewerWrapperRef.current.getBoundingClientRect();
-    setDragStart({
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
-    });
-    setDragRect(null);
-  }, [isZoomMode]);
-
-  const handleZoomMouseMove = useCallback((e) => {
-    if (!isZoomMode || !dragStart) return;
-    e.preventDefault();
-    const rect = viewerWrapperRef.current.getBoundingClientRect();
-    const curX = ((e.clientX - rect.left) / rect.width) * 100;
-    const curY = ((e.clientY - rect.top) / rect.height) * 100;
-    setDragRect({
-      x: Math.min(dragStart.x, curX),
-      y: Math.min(dragStart.y, curY),
-      width: Math.abs(curX - dragStart.x),
-      height: Math.abs(curY - dragStart.y),
-    });
-  }, [isZoomMode, dragStart]);
-
-  const handleZoomMouseUp = useCallback((e) => {
-    if (!isZoomMode || !dragStart || !dragRect) return;
-    e.preventDefault();
-    // Only apply if region is large enough to be intentional
-    if (dragRect.width > 2 && dragRect.height > 2) {
-      // Calculate zoom level so the selected region fills the viewer
-      const scaleX = 100 / dragRect.width;
-      const scaleY = 100 / dragRect.height;
-      const newZoom = Math.min(scaleX, scaleY, 8); // cap at 8×
-      if (setZoomRegion) setZoomRegion(dragRect);
-      if (setZoomLevel) setZoomLevel(parseFloat(newZoom.toFixed(2)));
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(([entry]) => {
+        if (entry) updateScale(entry.contentRect.width, entry.contentRect.height);
+      });
+      observer.observe(root);
+      return () => observer.disconnect();
     }
-    setDragStart(null);
-    setDragRect(null);
-    if (setIsZoomMode) setIsZoomMode(false);
-  }, [isZoomMode, dragStart, dragRect, setZoomRegion, setZoomLevel, setIsZoomMode]);
+
+    const handleResize = () => updateScale(root.clientWidth, root.clientHeight);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const file = useMemo(
-    () => uploadedFiles.find((f) => fileSelectionKey(f) === selectedFileName),
+    () => uploadedFiles.find((item) => fileSelectionKey(item) === selectedFileName),
     [uploadedFiles, selectedFileName]
   );
 
   if (file && selectedFileName && !annotationRefs.current[selectedFileName]) {
     annotationRefs.current[selectedFileName] = React.createRef();
   }
-  const currentCanvasRef = file && selectedFileName ? annotationRefs.current[selectedFileName] : null;
 
-  // --- 1. LOAD DATA FROM BACKEND ---
+  const currentCanvasRef = file && selectedFileName
+    ? annotationRefs.current[selectedFileName]
+    : null;
+
   useEffect(() => {
-    if (!selectedFileName || !token || !taskId) return;
-    const forceReload =
+    if (!selectedFileName || !token || !taskId) return undefined;
+    const forceReload = (
       remoteAnnotationReload?.filename === selectedFileName &&
-      remoteAnnotationReload?.version;
+      remoteAnnotationReload?.version
+    );
 
     if (!forceReload && loadedAnnotationFilesRef.current.has(selectedFileName)) {
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -154,29 +122,40 @@ const MainViewer = ({
           headers: { Authorization: `Bearer ${token}` },
         });
         if (cancelled) return;
+
         const sliceDataMap = response.data || {};
         const newAnnotations = {};
         const newInputs = {};
         const newClassifications = {};
-        Object.keys(sliceDataMap).forEach((savedSliceKey) => {
-          const sData = sliceDataMap[savedSliceKey] || {};
-          const internalSliceKey = toInternalSliceKey(savedSliceKey, sData);
-          const classification = normalizeClassificationForState(sData.classification);
 
-          if (sData.editorState) newAnnotations[internalSliceKey] = sData.editorState;
-          if (sData.attributes) newInputs[internalSliceKey] = sData.attributes;
+        Object.keys(sliceDataMap).forEach((savedSliceKey) => {
+          const sliceData = sliceDataMap[savedSliceKey] || {};
+          const internalSliceKey = toInternalSliceKey(savedSliceKey, sliceData);
+          const classification = normalizeClassificationForState(sliceData.classification);
+
+          if (sliceData.editorState) newAnnotations[internalSliceKey] = sliceData.editorState;
+          if (sliceData.attributes) newInputs[internalSliceKey] = sliceData.attributes;
           if (classification) newClassifications[internalSliceKey] = classification;
         });
-        setAnnotationsByFileAndSlice((prev) => ({ ...prev, [selectedFileName]: newAnnotations }));
-        setInputsByFileAndSlice((prev) => ({ ...prev, [selectedFileName]: newInputs }));
-        setClassificationByFileAndSlice((prev) => ({ ...prev, [selectedFileName]: newClassifications }));
+
+        setAnnotationsByFileAndSlice((previous) => ({
+          ...previous,
+          [selectedFileName]: newAnnotations,
+        }));
+        setInputsByFileAndSlice((previous) => ({
+          ...previous,
+          [selectedFileName]: newInputs,
+        }));
+        setClassificationByFileAndSlice((previous) => ({
+          ...previous,
+          [selectedFileName]: newClassifications,
+        }));
         loadedAnnotationFilesRef.current.add(selectedFileName);
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Error loading annotations:", err);
-        }
+      } catch (error) {
+        if (!cancelled) console.error('Error loading annotations:', error);
       }
     };
+
     fetchData();
     return () => {
       cancelled = true;
@@ -191,42 +170,53 @@ const MainViewer = ({
     setClassificationByFileAndSlice,
   ]);
 
-  // --- 2. HANDLE CANVAS SYNC ---
   const currentSliceData = annotationsByFileAndSlice[selectedFileName]?.[currentSlice];
 
   useEffect(() => {
-    if (!currentCanvasRef || !currentCanvasRef.current) return;
+    if (!currentCanvasRef?.current) return;
+
     const canvas = currentCanvasRef.current;
     const isSliceChange = prevSliceRef.current !== currentSlice;
     const isFileChange = prevFileRef.current !== selectedFileName;
     const isDataUpdate = prevDataRef.current !== currentSliceData;
     if (!isSliceChange && !isFileChange && !isDataUpdate) return;
+
     if (isSliceChange || isFileChange) {
       const oldSlice = prevSliceRef.current;
       const oldFile = prevFileRef.current;
       if (oldFile === selectedFileName && oldSlice !== currentSlice) {
-        const json = canvas.exportAnnotations();
-        saveSliceAnnotationToState(oldFile, oldSlice, json);
+        saveSliceAnnotationToState(oldFile, oldSlice, canvas.exportAnnotations());
       }
     }
+
     canvas.clearAnnotations({ silent: true });
     if (currentSliceData) canvas.importAnnotations(currentSliceData);
     prevSliceRef.current = currentSlice;
     prevFileRef.current = selectedFileName;
     prevDataRef.current = currentSliceData;
-  }, [currentSlice, selectedFileName, currentCanvasRef, currentSliceData, saveSliceAnnotationToState]);
+  }, [
+    currentSlice,
+    selectedFileName,
+    currentCanvasRef,
+    currentSliceData,
+    saveSliceAnnotationToState,
+  ]);
 
-  const handleAnnotationChange = useCallback(() => {
-    onAnnotationChange?.();
-  }, [onAnnotationChange]);
+  const fileStack = useMemo(() => {
+    if (!file) return [];
+    return Array.isArray(file.files) && file.files.length > 0 ? file.files : [file];
+  }, [file]);
 
-  const isDicom = file?.type === "dicom";
-  const fileStack = useMemo(
-    () => {
-      if (!file) return [];
-      return Array.isArray(file.files) && file.files.length > 0 ? file.files : [file];
-    },
-    [file]
+  const isDicom = file?.type === 'dicom';
+  const imageIds = useMemo(
+    () => (
+      isDicom
+        ? fileStack
+            .filter((item) => item.type === 'dicom' && item.url)
+            .map((item) => `wadouri:${item.url}`)
+        : []
+    ),
+    [isDicom, fileStack]
   );
 
   const handleSliceChange = useCallback((nextSlice) => {
@@ -239,170 +229,189 @@ const MainViewer = ({
     ));
   }, [setTotalSlices]);
 
-  // -----------------------------------------------------------------------
-  // FIX: "all dicom slices = one file"
-  // Previously this grabbed *every* uploaded DICOM file regardless of which
-  // series/file the user selected, and the order was whatever order they
-  // were uploaded in. DicomViewer now treats this whole array as ONE
-  // volume (sorting + reformatting happens inside DicomViewer), so we just
-  // need to make sure we pass it the correct, complete set of slices for
-  // the *selected* series.
-  //
-  // If your uploaded file objects carry a series/study identifier (e.g.
-  // f.seriesInstanceUID or f.seriesId), group by that. Otherwise, fall back
-  // to treating all uploaded DICOM files as one series (single-series
-  // uploads).
-  // -----------------------------------------------------------------------
-  const imageIds = useMemo(
-    () => (
-      isDicom
-        ? fileStack
-            .filter((f) => f.type === "dicom" && f.url)
-            .map((f) => `wadouri:${f.url}`)
-        : []
-    ),
-    [isDicom, fileStack]
-  );
+  const handleAnnotationChange = useCallback(() => {
+    onAnnotationChange?.();
+  }, [onAnnotationChange]);
+
+  const getZoomTransform = () => {
+    if (!zoomRegion || zoomLevel <= 1) {
+      return { transform: 'none', transformOrigin: 'top left' };
+    }
+    const originX = zoomRegion.x + zoomRegion.width / 2;
+    const originY = zoomRegion.y + zoomRegion.height / 2;
+    return {
+      transform: `scale(${zoomLevel})`,
+      transformOrigin: `${originX}% ${originY}%`,
+      transition: 'transform 0.2s ease',
+    };
+  };
+
+  const handleZoomMouseDown = useCallback((event) => {
+    if (!isZoomMode || !viewerWrapperRef.current) return;
+    event.preventDefault();
+    const rect = viewerWrapperRef.current.getBoundingClientRect();
+    setDragStart({
+      x: ((event.clientX - rect.left) / rect.width) * 100,
+      y: ((event.clientY - rect.top) / rect.height) * 100,
+    });
+    setDragRect(null);
+  }, [isZoomMode]);
+
+  const handleZoomMouseMove = useCallback((event) => {
+    if (!isZoomMode || !dragStart || !viewerWrapperRef.current) return;
+    event.preventDefault();
+    const rect = viewerWrapperRef.current.getBoundingClientRect();
+    const currentX = ((event.clientX - rect.left) / rect.width) * 100;
+    const currentY = ((event.clientY - rect.top) / rect.height) * 100;
+    setDragRect({
+      x: Math.min(dragStart.x, currentX),
+      y: Math.min(dragStart.y, currentY),
+      width: Math.abs(currentX - dragStart.x),
+      height: Math.abs(currentY - dragStart.y),
+    });
+  }, [isZoomMode, dragStart]);
+
+  const handleZoomMouseUp = useCallback((event) => {
+    if (!isZoomMode || !dragStart || !dragRect) return;
+    event.preventDefault();
+    if (dragRect.width > 2 && dragRect.height > 2) {
+      const newZoom = Math.min(100 / dragRect.width, 100 / dragRect.height, 8);
+      setZoomRegion?.(dragRect);
+      setZoomLevel?.(Number(newZoom.toFixed(2)));
+    }
+    setDragStart(null);
+    setDragRect(null);
+    setIsZoomMode?.(false);
+  }, [
+    isZoomMode,
+    dragStart,
+    dragRect,
+    setZoomRegion,
+    setZoomLevel,
+    setIsZoomMode,
+  ]);
 
   if (!file) return null;
 
   const classification = classificationByFileAndSlice[selectedFileName]?.[currentSlice];
-  const borderColor =
-    classification === "positive"
-      ? "#16a34a"
-      : classification === "negative"
-      ? "#dc2626"
-      : "#e2e8f0";
-  const glowColor =
-    classification === "positive"
-      ? "rgba(22,163,74,0.3)"
-      : classification === "negative"
-      ? "rgba(220,38,38,0.3)"
-      : "rgba(0,0,0,0.05)";
-  const finalLabel =
-    selectedLabel && typeof selectedLabel === "object" ? selectedLabel.name : selectedLabel;
-
+  const finalLabel = selectedLabel && typeof selectedLabel === 'object'
+    ? selectedLabel.name
+    : selectedLabel;
   const zoomStyle = getZoomTransform();
 
   return (
-    <div className="main-viewer">
+    <div className='main-viewer' ref={mainViewerRef}>
       <div
-        className={[
-          "viewer-container",
-          classification === "positive" ? "positive" : "",
-          classification === "negative" ? "negative" : "",
-        ].filter(Boolean).join(" ")}
+        className='viewer-fit-frame'
         style={{
-          boxShadow: `0 3px 12px rgba(0,0,0,0.08), 0 0 0 4px ${glowColor}`,
-          border: `2px solid ${borderColor}`,
+          width: `${VIEWER_FRAME_WIDTH * fitScale}px`,
+          height: `${VIEWER_FRAME_HEIGHT * fitScale}px`,
         }}
       >
-        <div className="viewer-shell">
-
-          {/* Zoom mode banner */}
-          {isZoomMode && (
-            <div className="zoom-mode-banner">
-              Draw a rectangle to zoom into that region
-            </div>
-          )}
-
-          <div className="image-wrapper">
-            {/* ----------------------------------------------------------------
-                VIEWER WRAPPER — CSS zoom transform applied here.
-                DicomViewer / NiftiViewer NEVER receive isZoomMode, zoomRegion,
-                or zoomLevel, so their internal broken zoom code never runs.
-            ---------------------------------------------------------------- */}
-            <div
-              ref={viewerWrapperRef}
-              className="viewer-transform-root"
-              style={{ cursor: isZoomMode ? "crosshair" : "default" }}
-              onMouseDown={handleZoomMouseDown}
-              onMouseMove={handleZoomMouseMove}
-              onMouseUp={handleZoomMouseUp}
-            >
-              {/* The zoom transform wrapper */}
-              <div style={{ ...zoomStyle, willChange: "transform" }}>
-                {isDicom ? (
-                  <DicomViewer
-                    imageIds={imageIds}
-                    windowCenter={windowCenter}
-                    windowWidth={windowWidth}
-                    currentSlice={currentSlice}
-                    onSliceChange={handleSliceChange}
-                    setTotalSlices={handleTotalSlicesChange}
-                    viewType={viewType}
-                    width={500}
-                    height={500}
-                  />
-                ) : (
-                  <NiftiViewer
-                    url={file.url}
-                    windowCenter={windowCenter}
-                    windowWidth={windowWidth}
-                    currentSlice={currentSlice}
-                    onSliceChange={handleSliceChange}
-                    setTotalSlices={handleTotalSlicesChange}
-                    viewType={viewType}
-                    width={500}
-                    height={500}
-                  />
-                )}
-              </div>
-
-              {/* Annotation canvas overlay — disabled during zoom mode so
-                  mouse events for region drawing reach the wrapper above */}
-              <div
-                className="annotation-layer"
-                style={{ pointerEvents: isZoomMode ? "none" : "all" }}
-              >
-                <AnnotationCanvas
-                  ref={currentCanvasRef}
-                  mode={selectedShape}
-                  width={500} height={500}
-                  selectedLabel={finalLabel}
-                  brushColor={brushColor}
-                  brushSize={brushSize}
-                  toolChangeId={toolChangeId}
-                  annotationOpacity={annotationOpacity}
-                  zoomLevel={zoomLevel}
-                  isZoomMode={isZoomMode}
-                  onShapeComplete={handleAnnotationChange}
-                />
-              </div>
-
-              {/* Drag-selection rectangle drawn while user is selecting zoom region */}
-              {isZoomMode && dragRect && (
-                <div
-                  className="zoom-selection-rect"
-                  style={{
-                    left: `${dragRect.x}%`,
-                    top: `${dragRect.y}%`,
-                    width: `${dragRect.width}%`,
-                    height: `${dragRect.height}%`,
-                  }}
-                />
-              )}
-
-              {classification && (
-                <div
-                  className="classification-tag"
-                  style={{
-                    backgroundColor: borderColor,
-                  }}
-                >
-                  {classification.toUpperCase()}
+        <div
+          className='viewer-fit-content'
+          style={{ transform: `scale(${fitScale})` }}
+        >
+          <div
+            className={[
+              'viewer-container',
+              classification === 'positive' ? 'positive' : '',
+              classification === 'negative' ? 'negative' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            <div className='viewer-shell'>
+              {isZoomMode && (
+                <div className='zoom-mode-banner'>
+                  <ZoomIn size={15} />
+                  Draw a rectangle over the region to inspect
                 </div>
               )}
-            </div>
-          </div>
 
-          <div className="viewer-footer">
-            Slice {currentSlice + 1} / {totalSlices}
-            {zoomLevel > 1 && (
-              <span className="zoom-pill">
-                {zoomLevel.toFixed(1)}×
-              </span>
-            )}
+              <div className='image-wrapper'>
+                <div
+                  ref={viewerWrapperRef}
+                  className='viewer-transform-root'
+                  style={{ cursor: isZoomMode ? 'crosshair' : 'default' }}
+                  onMouseDown={handleZoomMouseDown}
+                  onMouseMove={handleZoomMouseMove}
+                  onMouseUp={handleZoomMouseUp}
+                >
+                  <div style={{ ...zoomStyle, willChange: 'transform' }}>
+                    {isDicom ? (
+                      <DicomViewer
+                        imageIds={imageIds}
+                        windowCenter={windowCenter}
+                        windowWidth={windowWidth}
+                        currentSlice={currentSlice}
+                        onSliceChange={handleSliceChange}
+                        setTotalSlices={handleTotalSlicesChange}
+                        viewType={viewType}
+                        width={VIEWER_SIZE}
+                        height={VIEWER_SIZE}
+                      />
+                    ) : (
+                      <NiftiViewer
+                        url={file.url}
+                        windowCenter={windowCenter}
+                        windowWidth={windowWidth}
+                        currentSlice={currentSlice}
+                        onSliceChange={handleSliceChange}
+                        setTotalSlices={handleTotalSlicesChange}
+                        viewType={viewType}
+                        width={VIEWER_SIZE}
+                        height={VIEWER_SIZE}
+                      />
+                    )}
+                  </div>
+
+                  <div
+                    className='annotation-layer'
+                    style={{ pointerEvents: isZoomMode ? 'none' : 'all' }}
+                  >
+                    <AnnotationCanvas
+                      ref={currentCanvasRef}
+                      mode={selectedShape}
+                      width={VIEWER_SIZE}
+                      height={VIEWER_SIZE}
+                      selectedLabel={finalLabel}
+                      brushColor={brushColor}
+                      brushSize={brushSize}
+                      toolChangeId={toolChangeId}
+                      annotationOpacity={annotationOpacity}
+                      zoomLevel={zoomLevel}
+                      isZoomMode={isZoomMode}
+                      onShapeComplete={handleAnnotationChange}
+                    />
+                  </div>
+
+                  {isZoomMode && dragRect && (
+                    <div
+                      className='zoom-selection-rect'
+                      style={{
+                        left: `${dragRect.x}%`,
+                        top: `${dragRect.y}%`,
+                        width: `${dragRect.width}%`,
+                        height: `${dragRect.height}%`,
+                      }}
+                    />
+                  )}
+
+                  {classification && (
+                    <div className={`classification-tag ${classification}`}>
+                      {classification.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <footer className='viewer-footer'>
+                <span><ScanLine size={15} /> {viewType} view</span>
+                <strong>Slice {currentSlice + 1} / {totalSlices || 0}</strong>
+                <span>
+                  {zoomLevel > 1 ? <><ZoomIn size={14} /> {zoomLevel.toFixed(1)}x</> : <><Layers3 size={14} /> 100%</>}
+                </span>
+              </footer>
+            </div>
           </div>
         </div>
       </div>

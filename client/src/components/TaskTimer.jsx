@@ -1,62 +1,51 @@
-// components/TaskTimer.jsx
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import React, { useEffect, useRef, useState } from 'react';
+import axios from 'axios';
+import { Clock3, Cloud } from 'lucide-react';
 
 const TaskTimer = ({ taskId, token }) => {
   const [seconds, setSeconds] = useState(0);
-  // 'loading' prevents the timer from ticking/saving 0 before we fetch the real time
-  const [status, setStatus] = useState("loading"); 
+  const [status, setStatus] = useState('loading');
   const secondsRef = useRef(0);
 
-  // 1. Fetch Initial Time
   useEffect(() => {
     let isMounted = true;
 
     const fetchTimer = async () => {
       try {
         const response = await axios.get(`http://localhost:5000/api/tasks/${taskId}/timer`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         if (isMounted) {
           const savedTime = response.data.seconds || 0;
           setSeconds(savedTime);
           secondsRef.current = savedTime;
-          setStatus("active"); // Only NOW do we allow counting/saving
+          setStatus('active');
         }
       } catch (error) {
-        console.error("[Timer] Error fetching:", error);
-        // Even on error, we enable the timer so user can track new time, 
-        // but ideally you might want to handle retry here.
-        setStatus("active"); 
+        console.error('[Timer] Error fetching:', error);
+        setStatus('active');
       }
     };
 
-    if (taskId && token) {
-      fetchTimer();
-    }
-
+    if (taskId && token) fetchTimer();
     return () => { isMounted = false; };
   }, [taskId, token]);
 
-  // 2. Ticking Logic (Only runs when status is 'active')
   useEffect(() => {
-    if (status !== "active") return;
-
+    if (status !== 'active') return undefined;
     const intervalId = setInterval(() => {
-      setSeconds(prev => {
-        const next = prev + 1;
+      setSeconds((previous) => {
+        const next = previous + 1;
         secondsRef.current = next;
         return next;
       });
     }, 1000);
-
     return () => clearInterval(intervalId);
   }, [status]);
 
-  // 3. Save Logic (Auto-save + Tab Close)
   useEffect(() => {
-    if (status !== "active") return;
+    if (status !== 'active') return undefined;
 
     const saveTime = async (isClosing = false) => {
       const currentTime = secondsRef.current;
@@ -65,62 +54,56 @@ const TaskTimer = ({ taskId, token }) => {
 
       try {
         if (isClosing) {
-          // 'keepalive' allows the request to complete even if the browser tab closes
-          // This supports headers, unlike sendBeacon
           await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify(payload),
-            keepalive: true 
+            keepalive: true,
           });
         } else {
-          // Standard auto-save
           await axios.post(url, payload, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
           });
         }
       } catch (error) {
-        console.error("[Timer] Save failed:", error);
+        console.error('[Timer] Save failed:', error);
       }
     };
 
-    // Auto-save every 5 seconds (Safer than 30s)
     const saveInterval = setInterval(() => saveTime(false), 5000);
-
-    // Save on Window Close / Refresh
     const handleBeforeUnload = () => saveTime(true);
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       clearInterval(saveInterval);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      // Save on component unmount (React navigation)
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       saveTime(false);
     };
   }, [status, taskId, token]);
 
-  // Format Helper
   const formatTime = (totalSeconds) => {
-    const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-    const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-    const s = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${h}:${m}:${s}`;
+    const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const remainingSeconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${hours}:${minutes}:${remainingSeconds}`;
   };
 
-  if (status === "loading") {
-    return <div className="p-2 text-gray-500">Loading Time...</div>;
-  }
-
   return (
-    <div style={{
-      fontFamily: "monospace", fontSize: "16px", fontWeight: "bold",
-      color: "#0f172a", background: "#f1f5f9", padding: "8px 12px",
-      borderRadius: "6px", border: "1px solid #e2e8f0", display: "flex", gap: "8px"
-    }}>
-      <span>⏱️</span> {formatTime(seconds)}
+    <div className={`task-session-timer ${status}`} aria-live='polite'>
+      <span className='task-session-timer-icon' aria-hidden='true'>
+        <Clock3 size={17} />
+      </span>
+      <span className='task-session-timer-copy'>
+        <small>Session time</small>
+        <strong>{status === 'loading' ? '--:--:--' : formatTime(seconds)}</strong>
+      </span>
+      <span className='task-session-save-state' title='Time is saved automatically'>
+        <Cloud size={13} />
+        Auto
+      </span>
     </div>
   );
 };

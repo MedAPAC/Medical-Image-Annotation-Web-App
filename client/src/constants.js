@@ -1,67 +1,72 @@
-// annotation/utils/constants.js
-import boundingIcon from "./icons/bounding.png";
-import brushIcon from "./icons/brush.png";
-import elipseIcon from "./icons/elipse.png";
-import polygonIcon from "./icons/polygon.png";
-import polylineIcon from "./icons/polyline.svg";
-import windowIcon from "./icons/window.png";
-import labelsIcon from "./icons/label.png";
-import opacityIcon from "./icons/opacity.png";
-import brushSettingIcon from "./icons/brushsetting.png";
-import sliceIcon from "./icons/slice.jpg";
-import zoomIcon from "./icons/zoom.svg";
-import helpIcon from "./icons/help.png";
-import saveIcon from "./icons/save.jpg";
-import trashIcon from "./icons/trash.png";
-import deleteIcon from "./icons/delete.png";
+import {
+  Brush,
+  Circle,
+  CircleHelp,
+  Eraser,
+  Images,
+  Layers3,
+  Trash2,
+  Paintbrush,
+  Pentagon,
+  PenLine,
+  Save,
+  SlidersHorizontal,
+  Square,
+  Tags,
+  ZoomIn,
+} from 'lucide-react';
 
 export const SHAPES = [
-  { name: "ellipse", icon: elipseIcon },
-  { name: "rectangle", icon: boundingIcon },
-  { name: "polygon", icon: polygonIcon },
-  { name: "polyline", icon: polylineIcon },
-  { name: "brush", icon: brushIcon },
+  { name: 'ellipse', label: 'Ellipse', icon: Circle, shortcut: 'E' },
+  { name: 'rectangle', label: 'Bounding box', icon: Square, shortcut: 'R' },
+  { name: 'polygon', label: 'Polygon', icon: Pentagon, shortcut: 'P' },
+  { name: 'polyline', label: 'Polyline', icon: PenLine, shortcut: 'L' },
+  { name: 'brush', label: 'Brush', icon: Brush, shortcut: 'B' },
 ];
 
 export const SECTION_ICONS = {
-  window: windowIcon,
-  opacity: opacityIcon,
-  brush: brushSettingIcon,
+  labels: { icon: Tags, label: 'Active label' },
+  window: { icon: SlidersHorizontal, label: 'Windowing' },
+  opacity: { icon: Layers3, label: 'Overlay opacity' },
+  brush: { icon: Paintbrush, label: 'Brush settings' },
 };
 
 export const LEFT_BUTTONS = [
-  { id: "classification", icon: labelsIcon, isImage: true },
-  { id: "slices", icon: sliceIcon, isImage: true },
-  { id: "zoom", icon: zoomIcon, isImage: true },
-  { id: "help", icon: helpIcon, isImage: true },
+  { id: 'classification', label: 'Classification and attributes', icon: Tags },
+  { id: 'slices', label: 'Slice navigation', icon: Images },
+  { id: 'zoom', label: 'Zoom controls', icon: ZoomIn },
+  { id: 'help', label: 'Help and guidance', icon: CircleHelp },
 ];
 
 export const RIGHT_BUTTONS = [
-  { 
-    id: "save", 
-    color: "#10b981", 
-    icon: saveIcon, 
-    onClick: (params) => {} // Will be passed from parent
+  {
+    id: 'save',
+    label: 'Save annotations',
+    color: '#2563eb',
+    icon: Save,
+    onClick: () => {},
   },
-  { 
-    id: "clearAll", 
-    color: "#ef4444", 
-    icon: trashIcon, 
+  {
+    id: 'clearAll',
+    label: 'Clear all annotations',
+    color: '#dc2626',
+    icon: Eraser,
     onClick: (selectedFileName, annotationRefs) => {
       const ref = annotationRefs.current[selectedFileName];
       ref?.current?.clearAnnotations();
-    }
+    },
   },
-  { 
-    id: "deleteSelected", 
-    color: "#f59e0b", 
-    icon: deleteIcon, 
+  {
+    id: 'deleteSelected',
+    label: 'Delete selected annotation',
+    color: '#d97706',
+    icon: Trash2,
     onClick: (selectedFileName, annotationRefs) => {
       const ref = annotationRefs.current[selectedFileName];
       ref?.current?.deleteSelected();
-    }
+    },
   },
 ];
 
-export const VIEW_TYPES = ["axial", "coronal", "sagittal"];
-export const CLASSIFICATIONS = ["positive", "negative", "clear"];
+export const VIEW_TYPES = ['axial', 'coronal', 'sagittal'];
+export const CLASSIFICATIONS = ['positive', 'negative', 'clear'];

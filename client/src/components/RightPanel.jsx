@@ -1,12 +1,36 @@
-// annotation/components/RightPanel.jsx
-import React, { useState, useRef } from "react";
-import ClassificationPanel from "./ClassificationPanel";
-import SlicesPanel from "./SlicesPanel";
-import ZoomPanel from "./ZoomPanel";
-import HelpPanel from "./HelpPanel";
+import React, { useRef, useState } from 'react';
+import { CircleHelp, Images, Tags, X, ZoomIn } from 'lucide-react';
+import ClassificationPanel from './ClassificationPanel';
+import SlicesPanel from './SlicesPanel';
+import ZoomPanel from './ZoomPanel';
+import HelpPanel from './HelpPanel';
+
+const PANEL_META = {
+  classification: {
+    title: 'Classification and attributes',
+    description: 'Review the current slice and record structured findings.',
+    icon: Tags,
+  },
+  slices: {
+    title: 'Slice navigation',
+    description: 'Move through the active volume without leaving the viewer.',
+    icon: Images,
+  },
+  zoom: {
+    title: 'Zoom controls',
+    description: 'Inspect a region at higher magnification.',
+    icon: ZoomIn,
+  },
+  help: {
+    title: 'Help and guidance',
+    description: 'Quick reference for annotation and review workflows.',
+    icon: CircleHelp,
+  },
+};
 
 const RightPanel = ({
   rightPanelOpen,
+  setRightPanelOpen,
   t,
   viewType,
   setViewType,
@@ -24,21 +48,24 @@ const RightPanel = ({
   setZoomLevel,
   zoomRegion,
   setZoomRegion,
-  projectAttributes
+  projectAttributes,
 }) => {
   const [showSlices, setShowSlices] = useState(false);
   const slicesRef = useRef(null);
+  const meta = PANEL_META[rightPanelOpen] || PANEL_META.classification;
+  const PanelIcon = meta.icon;
 
-  const getInputsForCurrent = () => 
-    inputsByFileAndSlice[selectedFileName]?.[currentSlice] || {};
+  const getInputsForCurrent = () => (
+    inputsByFileAndSlice[selectedFileName]?.[currentSlice] || {}
+  );
 
   const updateInputsForCurrent = (updates) => {
-    setInputsByFileAndSlice((prev) => ({
-      ...prev,
+    setInputsByFileAndSlice((previous) => ({
+      ...previous,
       [selectedFileName]: {
-        ...(prev[selectedFileName] || {}),
+        ...(previous[selectedFileName] || {}),
         [currentSlice]: {
-          ...(prev[selectedFileName]?.[currentSlice] || {}),
+          ...(previous[selectedFileName]?.[currentSlice] || {}),
           ...updates,
         },
       },
@@ -46,103 +73,78 @@ const RightPanel = ({
   };
 
   return (
-    <div
-      className={`right-panel ${rightPanelOpen ? "open" : "closed"}`}
+    <aside
+      className={`right-panel ${rightPanelOpen ? 'open' : 'closed'}`}
       aria-hidden={!rightPanelOpen}
+      aria-label={t(meta.title)}
     >
-      {rightPanelOpen === "classification" && (
-        <div className="panel-section">
-          <div className="panel-header">
-            <h3 className="panel-title">
-              Classification
-            </h3>
-            {selectedFileName && (
-              <p className="panel-subtitle">
-                {selectedFileName} • Slice {currentSlice + 1}
-              </p>
-            )}
-          </div>
-          <div className="panel-content">
-            <ClassificationPanel
-              t={t}
-              viewType={viewType}
-              setViewType={setViewType}
-              selectedFileName={selectedFileName}
-              currentSlice={currentSlice}
-              classificationByFileAndSlice={classificationByFileAndSlice}
-              setClassificationByFileAndSlice={setClassificationByFileAndSlice}
-              getInputsForCurrent={getInputsForCurrent}
-              updateInputsForCurrent={updateInputsForCurrent}
-              projectAttributes={projectAttributes}
-            />
-          </div>
+      <header className='drawer-header right-drawer-header'>
+        <span className='drawer-header-icon' aria-hidden='true'>
+          <PanelIcon size={19} />
+        </span>
+        <div className='drawer-heading-copy'>
+          <h2>{t(meta.title)}</h2>
+          <p>{t(meta.description)}</p>
         </div>
-      )}
+        <button
+          type='button'
+          className='drawer-close-button'
+          onClick={() => setRightPanelOpen(null)}
+          aria-label={t('Close panel')}
+          title={t('Close panel')}
+        >
+          <X size={17} />
+        </button>
+      </header>
 
-      {rightPanelOpen === "slices" && (
-        <div className="panel-section">
-          <div className="panel-header">
-            <h3 className="panel-title">
-              Slice Navigation
-            </h3>
-            <p className="panel-subtitle">
-              {totalSlices} total slices
-            </p>
-          </div>
-          <div className="panel-content">
-            <SlicesPanel
-              t={t}
-              showSlices={showSlices}
-              setShowSlices={setShowSlices}
-              slicesRef={slicesRef}
-              totalSlices={totalSlices}
-              currentSlice={currentSlice}
-              setCurrentSlice={setCurrentSlice}
-            />
-          </div>
-        </div>
-      )}
+      <div className='right-panel-context'>
+        <span title={selectedFileName || ''}>{selectedFileName || t('No file selected')}</span>
+        <strong>{t('Slice')} {currentSlice + 1} / {totalSlices || 0}</strong>
+      </div>
 
-      {rightPanelOpen === "zoom" && (
-        <div className="panel-section">
-          <div className="panel-header">
-            <h3 className="panel-title">
-              Zoom Controls
-            </h3>
-            <p className="panel-subtitle">
-              Adjust viewing details
-            </p>
-          </div>
-          <div className="panel-content">
-            <ZoomPanel
-              t={t}
-              isZoomMode={isZoomMode}
-              setIsZoomMode={setIsZoomMode}
-              zoomLevel={zoomLevel}
-              setZoomLevel={setZoomLevel}
-              zoomRegion={zoomRegion}
-              setZoomRegion={setZoomRegion}
-            />
-          </div>
-        </div>
-      )}
+      <div className='right-panel-content'>
+        {rightPanelOpen === 'classification' && (
+          <ClassificationPanel
+            t={t}
+            viewType={viewType}
+            setViewType={setViewType}
+            selectedFileName={selectedFileName}
+            currentSlice={currentSlice}
+            classificationByFileAndSlice={classificationByFileAndSlice}
+            setClassificationByFileAndSlice={setClassificationByFileAndSlice}
+            getInputsForCurrent={getInputsForCurrent}
+            updateInputsForCurrent={updateInputsForCurrent}
+            projectAttributes={projectAttributes}
+          />
+        )}
 
-      {rightPanelOpen === "help" && (
-        <div className="panel-section">
-          <div className="panel-header">
-            <h3 className="panel-title">
-              Help & Guidance
-            </h3>
-            <p className="panel-subtitle">
-              Reference and instructions
-            </p>
-          </div>
-          <div className="panel-content">
-            <HelpPanel t={t} />
-          </div>
-        </div>
-      )}
-    </div>
+        {rightPanelOpen === 'slices' && (
+          <SlicesPanel
+            t={t}
+            showSlices={showSlices}
+            setShowSlices={setShowSlices}
+            slicesRef={slicesRef}
+            totalSlices={totalSlices}
+            currentSlice={currentSlice}
+            setCurrentSlice={setCurrentSlice}
+          />
+        )}
+
+        {rightPanelOpen === 'zoom' && (
+          <ZoomPanel
+            t={t}
+            isZoomMode={isZoomMode}
+            setIsZoomMode={setIsZoomMode}
+            zoomLevel={zoomLevel}
+            setZoomLevel={setZoomLevel}
+            zoomRegion={zoomRegion}
+            setZoomRegion={setZoomRegion}
+          />
+        )}
+
+        {rightPanelOpen === 'help' && <HelpPanel t={t} />}
+      </div>
+    </aside>
   );
 };
 

@@ -1,5 +1,5 @@
-// annotation/components/Panels/SlicesPanel.jsx
-import React, { useEffect } from "react";
+import React, { useEffect } from 'react';
+import { ChevronLeft, ChevronRight, List, ScanLine } from 'lucide-react';
 
 const SlicesPanel = ({
   t,
@@ -8,89 +8,115 @@ const SlicesPanel = ({
   slicesRef,
   totalSlices,
   currentSlice,
-  setCurrentSlice
+  setCurrentSlice,
 }) => {
+  const safeTotalSlices = Number.isFinite(totalSlices) && totalSlices > 0
+    ? totalSlices
+    : 0;
+  const safeCurrentSlice = Number.isFinite(currentSlice)
+    ? Math.min(Math.max(currentSlice, 0), Math.max(safeTotalSlices - 1, 0))
+    : 0;
+
   useEffect(() => {
     if (!showSlices || !slicesRef.current) return;
-    if (
-      typeof currentSlice !== "number" ||
-      !Number.isFinite(currentSlice) ||
-      currentSlice < 0
-    ) {
-      return;
-    }
-
     try {
-      const selected = slicesRef.current.querySelector(`#slice-${currentSlice}`);
-      selected?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    } catch (err) {
-      console.warn("SlicesPanel: failed to scroll to slice", currentSlice, err);
+      slicesRef.current
+        .querySelector(`#slice-${safeCurrentSlice}`)
+        ?.scrollIntoView({ block: 'nearest' });
+    } catch (error) {
+      console.warn('SlicesPanel: failed to focus current slice', error);
     }
-  }, [showSlices, currentSlice, slicesRef]);
+  }, [showSlices, safeCurrentSlice, slicesRef]);
 
-  const safeTotalSlices = Number.isFinite(totalSlices) && totalSlices > 0 ? totalSlices : 0;
-  const safeCurrentSlice =
-    typeof currentSlice === "number" && Number.isFinite(currentSlice)
-      ? Math.min(Math.max(currentSlice, 0), Math.max(safeTotalSlices - 1, 0))
-      : 0;
-  const displaySlice = safeTotalSlices > 0 ? safeCurrentSlice + 1 : 0;
-
-  const handleSliderChange = (e) => {
-    if (safeTotalSlices <= 0) return;
-    const raw = Number(e.target.value);
-    if (!Number.isFinite(raw)) return;
-    setCurrentSlice(Math.min(Math.max(raw, 0), Math.max(safeTotalSlices - 1, 0)));
+  const goToSlice = (nextSlice) => {
+    if (safeTotalSlices <= 0 || !Number.isFinite(nextSlice)) return;
+    setCurrentSlice(Math.min(Math.max(Math.round(nextSlice), 0), safeTotalSlices - 1));
   };
 
   return (
-    <div className="slices-panel">
-      <div className="slice-readout">
-        <span>{t("Current slice")}</span>
-        <strong>{displaySlice} / {safeTotalSlices}</strong>
+    <div className='slices-panel'>
+      <div className='slice-stepper'>
+        <button
+          type='button'
+          onClick={() => goToSlice(safeCurrentSlice - 1)}
+          disabled={safeCurrentSlice <= 0}
+          aria-label={t('Previous slice')}
+          title={t('Previous slice')}
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <label>
+          <span>{t('Current slice')}</span>
+          <div>
+            <input
+              type='number'
+              min='1'
+              max={safeTotalSlices || 1}
+              value={safeTotalSlices ? safeCurrentSlice + 1 : 0}
+              onChange={(event) => goToSlice(Number(event.target.value) - 1)}
+              disabled={safeTotalSlices <= 0}
+            />
+            <strong>/ {safeTotalSlices}</strong>
+          </div>
+        </label>
+        <button
+          type='button'
+          onClick={() => goToSlice(safeCurrentSlice + 1)}
+          disabled={safeCurrentSlice >= safeTotalSlices - 1 || safeTotalSlices <= 0}
+          aria-label={t('Next slice')}
+          title={t('Next slice')}
+        >
+          <ChevronRight size={18} />
+        </button>
       </div>
 
+      <label className='clinical-range-field'>
+        <span className='sr-only'>{t('Current slice')}</span>
+        <input
+          type='range'
+          min='0'
+          max={Math.max(safeTotalSlices - 1, 0)}
+          value={safeCurrentSlice}
+          onChange={(event) => goToSlice(Number(event.target.value))}
+          disabled={safeTotalSlices <= 1}
+        />
+        <span className='range-labels'><small>1</small><small>{safeTotalSlices || 1}</small></span>
+      </label>
+
       <button
-        type="button"
-        onClick={() => setShowSlices((prev) => !prev)}
+        type='button'
+        onClick={() => setShowSlices((previous) => !previous)}
         disabled={safeTotalSlices <= 0}
-        className="slice-picker-button"
+        className='slice-picker-button'
+        aria-expanded={showSlices}
       >
-        {showSlices ? t("Hide slices") : t("Choose a Slice")}
+        <List size={16} />
+        {showSlices ? t('Hide slice list') : t('Open slice list')}
       </button>
 
       {showSlices && (
-        <div ref={slicesRef} className="slice-dropdown-list">
-          {Array.from({ length: safeTotalSlices }, (_, i) => (
+        <div ref={slicesRef} className='slice-dropdown-list'>
+          {Array.from({ length: safeTotalSlices }, (_, index) => (
             <button
-              key={i}
-              id={`slice-${i}`}
-              type="button"
+              key={index}
+              id={`slice-${index}`}
+              type='button'
               onClick={() => {
-                setCurrentSlice(Math.min(Math.max(i, 0), Math.max(safeTotalSlices - 1, 0)));
+                goToSlice(index);
                 setShowSlices(false);
               }}
-              className={i === safeCurrentSlice ? "active" : ""}
+              className={index === safeCurrentSlice ? 'active' : ''}
             >
-              <span>{t("Slice")} {i + 1}</span>
+              <span className='slice-list-label'><ScanLine size={13} /> {t('Slice')} {index + 1}</span>
+              {index === safeCurrentSlice ? <strong>{t('Current')}</strong> : null}
             </button>
           ))}
         </div>
       )}
 
-      <div className="slice-slider-control">
-        <input
-          type="range"
-          min={0}
-          max={Math.max(safeTotalSlices - 1, 0)}
-          value={safeCurrentSlice}
-          onChange={handleSliderChange}
-          disabled={safeTotalSlices <= 1}
-        />
-        <div className="slice-slider-labels">
-          <span>1</span>
-          <span>{safeTotalSlices || 1}</span>
-        </div>
-      </div>
+      <p className='annotation-control-note'>
+        {t('Use the left and right arrow keys to move between slices while the viewer is focused.')}
+      </p>
     </div>
   );
 };

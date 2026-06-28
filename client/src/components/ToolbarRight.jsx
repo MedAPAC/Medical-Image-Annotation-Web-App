@@ -1,64 +1,61 @@
-import React from "react";
+import React from 'react';
 
 const ToolbarRight = ({
-  buttons_right,
-  buttons,
+  buttons_right: actionButtons,
+  buttons: panelButtons,
   rightPanelOpen,
   setRightPanelOpen,
-  onSave, // Using the function from Annotation.jsx
+  onSave,
   selectedFileName,
-  annotationRefs
-}) => {
-
-  return (
-    <div className="annotation-right-toolbar" aria-label="Annotation actions and panels">
-      {buttons_right.map(({ id, color, icon, onClick }) => (
+  annotationRefs,
+}) => (
+  <aside className='annotation-right-toolbar' aria-label='Annotation actions and panels'>
+    <div className='annotation-rail-section'>
+      <span className='annotation-rail-label'>Actions</span>
+      {actionButtons.map(({ id, color, icon: Icon, label, onClick }) => (
         <button
           key={id}
+          type='button'
           onClick={() => {
-            if (id === "save") {
-              onSave(); // Call the robust save function
-            } else if (typeof onClick === "function") {
-              onClick(selectedFileName, annotationRefs);
-            }
+            if (id === 'save') onSave();
+            else if (typeof onClick === 'function') onClick(selectedFileName, annotationRefs);
           }}
           className={`annotation-action-button ${id}`}
-          style={{ "--action-color": color }}
-          title={id === "save" ? "Save annotations" : id === "clearAll" ? "Clear all annotations" : "Delete selected annotation"}
+          style={{ '--action-color': color }}
+          title={label}
+          data-tooltip={label}
+          aria-label={label}
         >
-          {icon && <img src={icon} alt={id} className="annotation-action-icon" />}
+          <span className='annotation-control-icon' aria-hidden='true'>
+            <Icon size={20} strokeWidth={2.2} />
+          </span>
         </button>
       ))}
-
-      <div className="annotation-toolbar-spacer" />
-
-      {buttons.map(({ id, icon, isImage }) => {
-        // GUARD: if isImage is false but `icon` is not a valid React
-        // component (undefined, null, or a string), rendering
-        // `<icon size={20} />` throws "Element type is invalid: expected
-        // a string... but got: undefined" and crashes the whole app.
-        const IconComponent = icon;
-        const canRenderAsComponent =
-          !isImage &&
-          (typeof IconComponent === "function" || typeof IconComponent === "object");
-
-        return (
-          <button
-            key={id}
-            onClick={() => setRightPanelOpen(rightPanelOpen === id ? null : id)}
-            className={`annotation-panel-button ${rightPanelOpen === id ? "active" : ""}`}
-            title={`Open ${id}`}
-          >
-            {isImage && icon ? (
-              <img src={icon} alt={id} className="annotation-panel-icon" />
-            ) : canRenderAsComponent ? (
-              <IconComponent size={20} />
-            ) : null}
-          </button>
-        );
-      })}
     </div>
-  );
-};
+
+    <div className='annotation-toolbar-spacer' />
+    <div className='annotation-rail-divider' />
+
+    <div className='annotation-rail-section'>
+      <span className='annotation-rail-label'>Review</span>
+      {panelButtons.map(({ id, icon: Icon, label }) => (
+        <button
+          key={id}
+          type='button'
+          onClick={() => setRightPanelOpen(rightPanelOpen === id ? null : id)}
+          className={`annotation-panel-button ${rightPanelOpen === id ? 'active' : ''}`}
+          title={label}
+          data-tooltip={label}
+          aria-label={label}
+          aria-expanded={rightPanelOpen === id}
+        >
+          <span className='annotation-control-icon' aria-hidden='true'>
+            <Icon size={20} strokeWidth={2} />
+          </span>
+        </button>
+      ))}
+    </div>
+  </aside>
+);
 
 export default ToolbarRight;

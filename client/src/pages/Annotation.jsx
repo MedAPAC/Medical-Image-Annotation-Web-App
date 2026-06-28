@@ -6,6 +6,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { fabric } from "fabric";
 
+import { CircleDot, ScanLine } from 'lucide-react';
+
 // Hooks
 import useTaskData from "../useTaskData";
 import useAnnotationData from "../useAnnotationData";
@@ -442,10 +444,18 @@ function Annotation() {
   const allowedShapeIds = useMemo(() => {
     return taskData?.labels?.length
       ? Array.from(new Set(taskData.labels.map(l => l.type)))
-      : SHAPES.map(s => s.id);
+      : SHAPES.map(s => s.name);
   }, [taskData]);
 
   const projectAttributes = useMemo(() => taskData?.attributes || [], [taskData]);
+  const activeTool = useMemo(
+    () => SHAPES.find((shape) => shape.name === selectedShape),
+    [selectedShape]
+  );
+  const activeLabelOption = useMemo(
+    () => labelOptions.find((option) => option.value === selectedLabel),
+    [labelOptions, selectedLabel]
+  );
 
   // ── File switch ───────────────────────────────────────────────────
   const handleFileSwitch = useCallback((newFileName) => {
@@ -618,6 +628,7 @@ function Annotation() {
 
             <LeftDrawer
               openSection={openSection}
+              setOpenSection={setOpenSection}
               windowCenter={windowCenter} windowWidth={windowWidth}
               setWindowCenter={setWindowCenter} setWindowWidth={setWindowWidth}
               annotationOpacity={annotationOpacity} setAnnotationOpacity={setAnnotationOpacity}
@@ -629,7 +640,34 @@ function Annotation() {
             />
 
             <section className="annotation-stage" aria-label="Medical image annotation viewer">
-              <MainViewer
+              <div className='annotation-stage-header'>
+                <div className='annotation-stage-title'>
+                  <span className='annotation-stage-icon' aria-hidden='true'>
+                    <ScanLine size={18} />
+                  </span>
+                  <div>
+                    <strong>{t('Image workspace')}</strong>
+                    <span>{t(viewType.charAt(0).toUpperCase() + viewType.slice(1))} | {t('Slice')} {currentSlice + 1} / {totalSlices || 0}</span>
+                  </div>
+                </div>
+                <div className='annotation-stage-state'>
+                  <span className={`workspace-save-state ${isDirty ? 'dirty' : 'saved'}`}>
+                    <CircleDot size={13} />
+                    {isDirty ? t('Unsaved changes') : t('All changes saved')}
+                  </span>
+                  <span className='workspace-context-chip'>
+                    <small>{t('Tool')}</small>
+                    <strong>{activeTool ? t(activeTool.label) : t('Select')}</strong>
+                  </span>
+                  <span className='workspace-context-chip label-chip'>
+                    <i style={{ backgroundColor: activeLabelOption?.color || '#94a3b8' }} />
+                    <small>{t('Label')}</small>
+                    <strong>{activeLabelOption?.label || selectedLabel || t('None')}</strong>
+                  </span>
+                </div>
+              </div>
+              <div className='annotation-stage-body'>
+                <MainViewer
                 uploadedFiles={allUploadedFiles} selectedFileName={selectedFileName}
                 windowCenter={windowCenter} windowWidth={windowWidth}
                 currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
@@ -654,6 +692,7 @@ function Annotation() {
                 setZoomRegion={setZoomRegion}
                 setIsZoomMode={setIsZoomMode}
               />
+              </div>
             </section>
 
             <ToolbarRight
@@ -664,7 +703,7 @@ function Annotation() {
             />
 
             <RightPanel
-              rightPanelOpen={rightPanelOpen} t={t}
+              rightPanelOpen={rightPanelOpen} setRightPanelOpen={setRightPanelOpen} t={t}
               viewType={viewType} setViewType={setViewType}
               selectedFileName={selectedFileName}
               currentSlice={currentSlice} setCurrentSlice={setCurrentSlice}
