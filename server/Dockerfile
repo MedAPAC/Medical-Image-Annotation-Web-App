@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim
 
 ENV NODE_ENV=production \
     PORT=5000 \
