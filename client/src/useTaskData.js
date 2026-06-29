@@ -1,3 +1,5 @@
+import { apiUrl, taskFileContentUrl } from './config/api';
+
 // hooks/useTaskData.js
 import { useState, useCallback } from "react";
 import axios from "axios";
@@ -14,7 +16,7 @@ const useTaskData = (taskId, isAuthenticated, token, language, navigate) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`http://localhost:5000/api/tasks/${taskId}`, {
+      const response = await axios.get(apiUrl(`/api/tasks/${taskId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept-Language': language
@@ -42,7 +44,7 @@ const useTaskData = (taskId, isAuthenticated, token, language, navigate) => {
           }
 
           // Construct the URL
-          const fileUrl = `http://localhost:5000/uploads/tasks/${taskId}/${cleanFilename}`;
+          const fileUrl = taskFileContentUrl(taskId, file._id || file.id || cleanFilename);
           
           // --- FIX END ---
 

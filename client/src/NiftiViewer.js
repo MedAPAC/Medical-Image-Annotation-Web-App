@@ -3,6 +3,7 @@ import * as nifti from "nifti-reader-js";
 
 function NiftiViewer({
   url,
+  token,
   windowCenter = null,
   windowWidth = null,
   onSliceChange,
@@ -137,7 +138,10 @@ function NiftiViewer({
 
     async function loadNifti() {
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!response.ok) throw new Error(`NIfTI request failed with status ${response.status}`);
         const arrayBuffer = await response.arrayBuffer();
         const dataBuffer = nifti.isCompressed(arrayBuffer)
           ? nifti.decompress(arrayBuffer)
@@ -168,7 +172,7 @@ function NiftiViewer({
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, token]);
 
   // Update total slices when header or viewType changes, and clamp the
   // current slice index so switching plane never points out of bounds.

@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Clock3, Cloud } from 'lucide-react';
 
+import { apiUrl } from '../config/api';
+
 const TaskTimer = ({ taskId, token }) => {
   const [seconds, setSeconds] = useState(0);
   const [status, setStatus] = useState('loading');
@@ -12,7 +14,7 @@ const TaskTimer = ({ taskId, token }) => {
 
     const fetchTimer = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/tasks/${taskId}/timer`, {
+        const response = await axios.get(apiUrl(`/api/tasks/${taskId}/timer`), {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -49,7 +51,7 @@ const TaskTimer = ({ taskId, token }) => {
 
     const saveTime = async (isClosing = false) => {
       const currentTime = secondsRef.current;
-      const url = `http://localhost:5000/api/tasks/${taskId}/timer`;
+      const url = apiUrl(`/api/tasks/${taskId}/timer`);
       const payload = { seconds: currentTime };
 
       try {

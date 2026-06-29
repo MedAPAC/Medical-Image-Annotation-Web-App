@@ -10,6 +10,8 @@ import {
   toInternalSliceKey,
 } from '../annotationFormat';
 
+import { apiUrl } from '../config/api';
+
 const VIEWER_SIZE = 500;
 const VIEWER_FRAME_WIDTH = 526;
 const VIEWER_FRAME_HEIGHT = 564;
@@ -117,7 +119,7 @@ const MainViewer = ({
     let cancelled = false;
     const fetchData = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/annotations/${taskId}`, {
+        const response = await axios.get(apiUrl(`/annotations/${taskId}`), {
           params: { fileName: selectedFileName },
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -340,6 +342,7 @@ const MainViewer = ({
                     {isDicom ? (
                       <DicomViewer
                         imageIds={imageIds}
+                        token={token}
                         windowCenter={windowCenter}
                         windowWidth={windowWidth}
                         currentSlice={currentSlice}
@@ -352,6 +355,7 @@ const MainViewer = ({
                     ) : (
                       <NiftiViewer
                         url={file.url}
+                        token={token}
                         windowCenter={windowCenter}
                         windowWidth={windowWidth}
                         currentSlice={currentSlice}

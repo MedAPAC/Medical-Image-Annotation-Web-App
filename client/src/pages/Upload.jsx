@@ -11,6 +11,8 @@ import {
   X
 } from 'lucide-react';
 
+import { apiUrl } from '../config/api';
+
 const UploadPage = () => {
   const { user, isAuthenticated, token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -94,7 +96,7 @@ const UploadPage = () => {
       formData.append("file", file);
 
       try {
-        const res = await axios.post("http://localhost:5000/upload", formData, {
+        const res = await axios.post(apiUrl('/upload'), formData, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

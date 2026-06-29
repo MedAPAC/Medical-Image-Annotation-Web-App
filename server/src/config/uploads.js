@@ -1,70 +1,73 @@
-const fs = require("fs");
-const path = require("path");
-const multer = require("multer");
-const { UPLOADS_ROOT } = require("./constants");
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+const {
+  UPLOADS_ROOT,
+  MAX_UPLOAD_FILE_BYTES,
+  MAX_UPLOAD_FILES,
+} = require('./constants');
+
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.nii', '.nii.gz', '.dcm', '.dicom']);
 
 const ensureDirectory = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+};
+
+const getValidatedExtension = (originalName) => {
+  const safeName = path.basename(String(originalName || '')).toLowerCase();
+  if (!safeName || safeName.length > 255 || safeName.includes('\0')) return null;
+  const extension = safeName.endsWith('.nii.gz') ? '.nii.gz' : path.extname(safeName);
+  return ALLOWED_EXTENSIONS.has(extension) ? extension : null;
+};
+
+const fileFilter = (req, file, callback) => {
+  if (!getValidatedExtension(file.originalname)) {
+    const error = new Error('Invalid file type. Supported formats are DICOM, NIfTI, JPEG, and PNG.');
+    error.status = 400;
+    callback(error);
+    return;
   }
+  callback(null, true);
+};
+
+const commonLimits = {
+  fileSize: MAX_UPLOAD_FILE_BYTES,
+  files: MAX_UPLOAD_FILES,
+  fields: 10,
+  parts: MAX_UPLOAD_FILES + 10,
+  fieldNameSize: 100,
+  fieldSize: 64 * 1024,
 };
 
 const createUploadMiddleware = (uploadDir = UPLOADS_ROOT) => {
   ensureDirectory(uploadDir);
 
   const generalStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-      const timestamp = Date.now();
-      const ext = path.extname(file.originalname);
-      const base = path.basename(file.originalname, ext).replace(/\s+/g, "_");
-      cb(null, `${base}-${timestamp}${ext}`);
+    destination: (req, file, callback) => callback(null, uploadDir),
+    filename: (req, file, callback) => {
+      const extension = getValidatedExtension(file.originalname);
+      callback(null, `${crypto.randomUUID()}${extension || ''}`);
     },
   });
 
   const taskStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      const taskId = req.params.taskId;
-      const taskUploadDir = path.join(uploadDir, "tasks", taskId);
+    destination: (req, file, callback) => {
+      const taskUploadDir = path.resolve(uploadDir, 'tasks', String(req.params.taskId));
       ensureDirectory(taskUploadDir);
-      cb(null, taskUploadDir);
+      callback(null, taskUploadDir);
     },
-    filename: (req, file, cb) => {
-      const originalName = file.originalname.toLowerCase();
-      let extension = path.extname(originalName);
-
-      if (originalName.endsWith(".nii.gz")) {
-        extension = ".nii.gz";
-      }
-      if (originalName.endsWith(".nii")) {
-        extension = ".nii";
-      }
-
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
-      cb(null, uniqueSuffix + extension);
-    },
-  });
-
-  const taskUpload = multer({
-    storage: taskStorage,
-    limits: { fileSize: 1000 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-      const allowed = [".jpg", ".jpeg", ".png", ".nii", ".nii.gz", ".dcm", ".dicom"];
-      const ext = path.extname(file.originalname).toLowerCase();
-
-      if (file.originalname.toLowerCase().endsWith(".nii.gz") || allowed.includes(ext) || file.originalname.toLowerCase().endsWith(".nii")) {
-        cb(null, true);
-      } else {
-        cb(new Error("Invalid file type"));
-      }
+    filename: (req, file, callback) => {
+      const extension = getValidatedExtension(file.originalname);
+      callback(null, `${crypto.randomUUID()}${extension || ''}`);
     },
   });
 
   return {
-    upload: multer({ storage: generalStorage }),
-    taskUpload,
+    upload: multer({ storage: generalStorage, limits: commonLimits, fileFilter }),
+    taskUpload: multer({ storage: taskStorage, limits: commonLimits, fileFilter }),
     uploadDir,
   };
 };
 
-module.exports = { createUploadMiddleware };
+module.exports = { createUploadMiddleware, getValidatedExtension };

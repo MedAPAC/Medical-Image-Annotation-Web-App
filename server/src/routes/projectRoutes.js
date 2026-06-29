@@ -3,6 +3,9 @@ module.exports = function registerProjectRoutes(app, context) {
     authenticateToken,
     ObjectId,
     fs,
+    path,
+    UPLOADS_ROOT,
+    db,
     annotationsCollection,
     usersCollection,
     projectsCollection,
@@ -538,13 +541,21 @@ app.delete("/api/projects/:id", authenticateToken, async (req, res) => {
     // Delete uploaded files for each task
     for (const task of tasks) {
       if (task.files && task.files.length > 0) {
-        const uploadDir = `uploads/tasks/${task._id}`;
+        const uploadDir = path.resolve(UPLOADS_ROOT, 'tasks', String(task._id));
         if (fs.existsSync(uploadDir)) {
           fs.rmSync(uploadDir, { recursive: true, force: true });
         }
       }
     }
     
+    const taskIds = tasks.map((task) => String(task._id));
+    if (taskIds.length > 0) {
+      await Promise.all([
+        annotationsCollection.deleteMany({ taskId: { $in: taskIds } }),
+        db.collection('taskTimersCollection').deleteMany({ taskId: { $in: taskIds } }),
+      ]);
+    }
+
     // Delete tasks from database
     await tasksCollection.deleteMany({ projectId: req.params.id });
 

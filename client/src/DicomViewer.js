@@ -30,6 +30,7 @@ cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
  */
 function DicomViewer({
   imageIds = [],
+  token,
   windowCenter = null,
   windowWidth = null,
   onSliceChange,
@@ -51,6 +52,12 @@ function DicomViewer({
   const [loadingVolume, setLoadingVolume] = useState(false);
 
   const lastImageIdsRef = useRef(null);
+
+  useEffect(() => {
+    cornerstoneWADOImageLoader.configure({
+      beforeSend: () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    });
+  }, [token]);
 
   // -------------------------------------------------------------------
   // 1. Enable cornerstone on a hidden element (required for

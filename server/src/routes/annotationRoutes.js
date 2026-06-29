@@ -2,128 +2,141 @@ module.exports = function registerAnnotationRoutes(app, context) {
   const {
     authenticateToken,
     upload,
+    crypto,
+    ObjectId,
     annotationsCollection,
     canUserAccessTaskId,
     broadcastAnnotationUpdate,
     backupAnnotationSnapshotToDrive,
+    hashFile,
   } = context;
-app.post("/upload", authenticateToken, upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-  res.json({ 
-    filename: req.file.filename, 
-    originalName: req.file.originalname,
-    userId: req.user.id
+
+  const hashAnnotationData = (sliceData) => crypto
+    .createHash('sha256')
+    .update(JSON.stringify(sliceData || {}))
+    .digest('hex');
+
+  app.post('/upload', authenticateToken, upload.single('file'), async (req, res, next) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    try {
+      const sha256 = await hashFile(req.file.path);
+      return res.json({
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        sha256,
+        userId: req.user.id,
+      });
+    } catch (error) {
+      return next(error);
+    }
   });
-});
 
-// server.js (or your routes file)
+  app.post('/save-annotations', authenticateToken, async (req, res) => {
+    if (!annotationsCollection) return res.status(500).json({ error: 'Database not initialized' });
 
-// POST: Save Annotations & Classifications
-// Payload uses one-based slice keys: { taskId, filename, sliceData: { "1": { sliceNumber: 1, ... } } }
-app.post("/save-annotations", authenticateToken, async (req, res) => {
-  if (!annotationsCollection) {
-    return res.status(500).json({ error: "Database not initialized" });
-  }
-
-  const { taskId, filename, sliceData, clientId } = req.body;
-
-  if (!filename || !taskId) {
-    return res.status(400).json({ error: "Missing filename or taskId" });
-  }
-
-  try {
-    const canAccess = await canUserAccessTaskId(taskId, req.user);
-    if (!canAccess) {
-      return res.status(403).json({ error: "Task not found or access denied" });
+    const { taskId, filename, sliceData, clientId } = req.body || {};
+    if (
+      !ObjectId.isValid(taskId) ||
+      typeof filename !== 'string' ||
+      !filename.trim() ||
+      filename.length > 512 ||
+      !sliceData ||
+      typeof sliceData !== 'object' ||
+      Array.isArray(sliceData)
+    ) {
+      return res.status(400).json({ error: 'Invalid annotation payload' });
     }
 
-    const updatedAt = new Date();
-    
-    await annotationsCollection.updateOne(
-      { 
-        filename: filename, 
-        taskId: taskId,
-      },
-      {
-        $set: {
-          slices: sliceData,
-          userId: req.user.id,
-          updatedBy: req.user.id,
-          updatedByEmail: req.user.email,
-          updatedAt,
-        },
-        $setOnInsert: {
-          createdAt: updatedAt,
-        },
-      },
-      { upsert: true }
-    );
-
-    let driveBackup = null;
     try {
-      driveBackup = await backupAnnotationSnapshotToDrive({
+      const canAccess = await canUserAccessTaskId(taskId, req.user);
+      if (!canAccess) return res.status(403).json({ error: 'Task not found or access denied' });
+
+      const updatedAt = new Date();
+      const integrityHash = hashAnnotationData(sliceData);
+      const updateResult = await annotationsCollection.findOneAndUpdate(
+        { filename, taskId },
+        {
+          $set: {
+            slices: sliceData,
+            updatedBy: String(req.user.id),
+            updatedAt,
+            integrity: { algorithm: 'sha256', hash: integrityHash },
+          },
+          $setOnInsert: {
+            createdBy: String(req.user.id),
+            createdAt: updatedAt,
+          },
+          $inc: { revision: 1 },
+        },
+        { upsert: true, returnDocument: 'after' }
+      );
+
+      let driveBackup = null;
+      try {
+        driveBackup = await backupAnnotationSnapshotToDrive({
+          taskId,
+          filename,
+          sliceData,
+          updatedAt,
+          integrityHash,
+          user: req.user,
+        });
+      } catch (driveError) {
+        console.error('Google Drive annotation backup failed:', driveError);
+        driveBackup = { status: 'failed', error: 'Google Drive backup failed' };
+      }
+
+      broadcastAnnotationUpdate(taskId, {
         taskId,
         filename,
-        sliceData,
-        updatedAt,
-        user: req.user
+        clientId: typeof clientId === 'string' ? clientId.slice(0, 128) : null,
+        updatedBy: req.user.name || req.user.email || req.user.id,
+        updatedAt: updatedAt.toISOString(),
+        revision: updateResult?.revision || null,
       });
-    } catch (driveErr) {
-      console.error("Google Drive annotation backup failed:", driveErr);
-      driveBackup = {
-        status: 'failed',
-        error: driveErr.message || 'Google Drive backup failed'
-      };
+
+      return res.json({
+        message: 'Changes Successfully Saved!',
+        revision: updateResult?.revision || null,
+        integrity: { algorithm: 'sha256', hash: integrityHash },
+        driveBackup,
+      });
+    } catch (error) {
+      console.error('Failed to save annotations to DB:', error);
+      return res.status(500).json({ error: 'Failed to Save Changes.' });
+    }
+  });
+
+  app.get('/annotations/:taskId', authenticateToken, async (req, res) => {
+    if (!annotationsCollection) return res.status(500).json({ error: 'Database not initialized' });
+    const { taskId } = req.params;
+    const fileName = typeof req.query.fileName === 'string' ? req.query.fileName : '';
+    if (!ObjectId.isValid(taskId) || !fileName || fileName.length > 512) {
+      return res.status(400).json({ error: 'Invalid annotation request' });
     }
 
-    broadcastAnnotationUpdate(taskId, {
-      taskId,
-      filename,
-      clientId: clientId || null,
-      updatedBy: req.user.email || req.user.id,
-      updatedAt: updatedAt.toISOString(),
-    });
+    try {
+      const canAccess = await canUserAccessTaskId(taskId, req.user);
+      if (!canAccess) return res.status(403).json({ error: 'Task not found or access denied' });
 
-    res.json({ message: "Changes Successfully Saved!", driveBackup });
-  } catch (err) {
-    console.error("Failed to save annotations to DB:", err);
-    res.status(500).json({ error: "Failed to Save Changes." });
-  }
-});
+      const document = await annotationsCollection.findOne(
+        { filename: fileName, taskId },
+        { projection: { slices: 1, integrity: 1 } }
+      );
+      if (!document) return res.json({});
 
-// GET: Retrieve Annotations
-app.get("/annotations/:taskId", authenticateToken, async (req, res) => {
-  if (!annotationsCollection) {
-    return res.status(500).json({ error: "Database not initialized" });
-  }
-
-  const { taskId } = req.params;
-  const { fileName } = req.query; // Expect filename in query string
-
-  try {
-    const canAccess = await canUserAccessTaskId(taskId, req.user);
-    if (!canAccess) {
-      return res.status(403).json({ error: "Task not found or access denied" });
+      if (document.integrity?.hash) {
+        const actualHash = hashAnnotationData(document.slices || {});
+        if (actualHash !== document.integrity.hash) {
+          console.error(`Annotation integrity verification failed for task ${taskId}.`);
+          return res.status(409).json({ error: 'Annotation integrity verification failed' });
+        }
+      }
+      return res.json(document.slices || {});
+    } catch (error) {
+      console.error('Failed to fetch annotations from DB:', error);
+      return res.status(500).json({ error: 'Failed to fetch annotations' });
     }
-
-    const doc = await annotationsCollection.findOne(
-      { 
-        filename: fileName, 
-        taskId: taskId,
-      },
-      { sort: { updatedAt: -1 } }
-    );
-
-    if (!doc) {
-      // Return empty structure if new file
-      return res.json({}); 
-    }
-
-    // Return the stored one-based slices map. The frontend also supports older zero-based documents.
-    res.json(doc.slices || {}); 
-  } catch (err) {
-    console.error("Failed to fetch annotations from DB", err);
-    res.status(500).json({ error: "Failed to fetch annotations" });
-  }
-});
+  });
 };

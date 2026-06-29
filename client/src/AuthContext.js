@@ -1,15 +1,22 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
+import { apiUrl } from './config/api';
+
 const AuthContext = createContext();
 const AUTH_HEADER = 'Authorization';
 
 const readStoredUser = () => {
   try {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+    if (storedUser && !sessionStorage.getItem('user')) {
+      sessionStorage.setItem('user', storedUser);
+      localStorage.removeItem('user');
+    }
     return storedUser ? JSON.parse(storedUser) : null;
   } catch (error) {
     console.error('Failed to read stored user:', error);
+    sessionStorage.removeItem('user');
     localStorage.removeItem('user');
     return null;
   }
@@ -35,12 +42,18 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(readStoredUser);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(() => {
-    const storedToken = localStorage.getItem('token');
+    const storedToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+    if (storedToken && !sessionStorage.getItem('token')) {
+      sessionStorage.setItem('token', storedToken);
+      localStorage.removeItem('token');
+    }
     setAxiosToken(storedToken);
     return storedToken;
   });
 
   const clearSession = useCallback(() => {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setAxiosToken(null);
@@ -50,20 +63,20 @@ export const AuthProvider = ({ children }) => {
 
   const applySession = useCallback((nextToken, nextUser) => {
     if (nextToken) {
-      localStorage.setItem('token', nextToken);
+      sessionStorage.setItem('token', nextToken);
       setAxiosToken(nextToken);
       setToken(nextToken);
     }
 
     if (nextUser) {
-      localStorage.setItem('user', JSON.stringify(nextUser));
+      sessionStorage.setItem('user', JSON.stringify(nextUser));
       setUser(nextUser);
     }
   }, []);
 
   const updateUser = useCallback((nextUser, nextToken) => {
     if (nextToken) {
-      localStorage.setItem('token', nextToken);
+      sessionStorage.setItem('token', nextToken);
       setAxiosToken(nextToken);
       setToken(nextToken);
     }
@@ -75,7 +88,7 @@ export const AuthProvider = ({ children }) => {
         ...(currentUser || {}),
         ...nextUser,
       };
-      localStorage.setItem('user', JSON.stringify(mergedUser));
+      sessionStorage.setItem('user', JSON.stringify(mergedUser));
       return mergedUser;
     });
   }, []);
@@ -95,7 +108,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
 
       try {
-        const response = await axios.get('http://localhost:5000/api/auth/verify');
+        const response = await axios.get(apiUrl('/api/auth/verify'));
         if (!cancelled) {
           updateUser(response.data.user);
         }
@@ -118,7 +131,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post(apiUrl('/api/auth/login'), {
         email,
         password
       });
@@ -137,7 +150,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = useCallback(async (name, email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/signup', {
+      const response = await axios.post(apiUrl('/api/auth/signup'), {
         name,
         email,
         password

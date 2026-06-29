@@ -19,6 +19,8 @@ import {
   UserPlus
 } from 'lucide-react';
 
+import { apiUrl } from '../config/api';
+
 const Tasks = () => {
   const { isAuthenticated, user, token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -64,7 +66,7 @@ const Tasks = () => {
   // Load projects and tasks
   const loadProjects = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/projects');
+      const response = await axios.get(apiUrl('/api/projects'));
       if (response.data.projects) {
         setProjects(response.data.projects);
       }
@@ -75,7 +77,7 @@ const Tasks = () => {
 
   const loadTasks = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/tasks');
+      const response = await axios.get(apiUrl('/api/tasks'));
       if (response.data.tasks) {
         setTasks(response.data.tasks);
       }
@@ -86,7 +88,7 @@ const Tasks = () => {
 
   const loadTeams = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/teams');
+      const response = await axios.get(apiUrl('/api/teams'));
       setTeams(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error loading teams:', error);
@@ -99,7 +101,7 @@ const Tasks = () => {
     try {
       // In a real app, you'd have a /api/users endpoint
       // For now, we'll get users from the projects they're involved in
-      const projectsResponse = await axios.get('http://localhost:5000/api/projects');
+      const projectsResponse = await axios.get(apiUrl('/api/projects'));
       const allUsers = new Set();
       
       if (projectsResponse.data.projects) {
@@ -195,7 +197,7 @@ const Tasks = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/tasks/${taskId}/files`,
+        apiUrl(`/api/tasks/${taskId}/files`),
         formData,
         {
           headers: {
@@ -284,7 +286,7 @@ const Tasks = () => {
       };
 
       const taskResponse = await axios.post(
-        'http://localhost:5000/api/tasks',
+        apiUrl('/api/tasks'),
         taskData
       );
 
@@ -355,7 +357,7 @@ const Tasks = () => {
 
     try {
       await axios.put(
-        `http://localhost:5000/api/tasks/${taskId}/assign`,
+        apiUrl(`/api/tasks/${taskId}/assign`),
         { assigneeEmail: newAssigneeEmail.trim() || null }
       );
       
@@ -379,7 +381,7 @@ const Tasks = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/tasks/${taskId}`);
+      await axios.delete(apiUrl(`/api/tasks/${taskId}`));
       
       // Remove from local state
       setTasks(prevTasks => prevTasks.filter(t => t._id !== taskId && t.id !== taskId));

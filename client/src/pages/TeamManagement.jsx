@@ -5,6 +5,8 @@ import Header from '../components/Header';
 import { Plus, Search, Trash2, Edit2, X, UserPlus, Calendar, Users } from 'lucide-react';
 import '../styles/TeamManagement.css';
 
+import { apiUrl } from '../config/api';
+
 const Toast = ({ toasts, removeToast }) => (
   <div className="toast-container">
     {toasts.map(t => (
@@ -52,7 +54,7 @@ const TeamManagement = () => {
     const allEmails = [...new Set(teams.flatMap(t => t.members || []))];
     if (allEmails.length === 0) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/users/resolve',
+      const res = await axios.post(apiUrl('/api/users/resolve'),
         { emails: allEmails },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -64,7 +66,7 @@ const TeamManagement = () => {
   const fetchTeams = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/teams', {
+      const res = await axios.get(apiUrl('/api/teams'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       const owned = res.data.filter(t => t.createdBy === user.id);
@@ -108,7 +110,7 @@ const TeamManagement = () => {
 
   const verifyUserExists = async (email) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/verify-user',
+      const res = await axios.post(apiUrl('/api/verify-user'),
         { email }, { headers: { Authorization: `Bearer ${token}` } });
       return res.data.exists;
     } catch { return false; }
@@ -117,7 +119,7 @@ const TeamManagement = () => {
   const resolveNewEmail = async (email) => {
     if (nameMap[email.toLowerCase()]) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/users/resolve',
+      const res = await axios.post(apiUrl('/api/users/resolve'),
         { emails: [email] },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -172,8 +174,8 @@ const TeamManagement = () => {
     if (isDuplicate) { addToast('You already have a team with this name'); return; }
 
     const endpoint = isEditing
-      ? `http://localhost:5000/api/teams/${currentTeamId}`
-      : 'http://localhost:5000/api/teams';
+      ? apiUrl(`/api/teams/${currentTeamId}`)
+      : apiUrl('/api/teams');
     const method = isEditing ? 'put' : 'post';
 
     try {
@@ -194,7 +196,7 @@ const TeamManagement = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this team?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/teams/${id}`, {
+      await axios.delete(apiUrl(`/api/teams/${id}`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchTeams();

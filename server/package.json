@@ -14,7 +14,10 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
     "i18next": "^25.5.2",
     "i18next-express-middleware": "^2.0.0",
     "i18next-fs-backend": "^2.6.0",

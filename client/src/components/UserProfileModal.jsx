@@ -15,8 +15,10 @@ import {
 import { useAuth } from '../AuthContext';
 import '../styles/UserProfileModal.css';
 
+import { apiUrl } from '../config/api';
+
 function UserProfileModal({ isOpen, onClose, user }) {
-  const { updateUser } = useAuth();
+  const { updateUser, token } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '' });
@@ -85,9 +87,7 @@ function UserProfileModal({ isOpen, onClose, user }) {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-
-      const response = await fetch('http://localhost:5000/api/user/profile', {
+      const response = await fetch(apiUrl('/api/user/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -136,8 +136,8 @@ function UserProfileModal({ isOpen, onClose, user }) {
       setError('New password is required.');
       return;
     }
-    if (passwordData.next.length < 6) {
-      setError('New password must be at least 6 characters.');
+    if (passwordData.next.length < 12) {
+      setError('New password must be at least 12 characters.');
       return;
     }
     if (passwordData.next !== passwordData.confirm) {
@@ -153,9 +153,7 @@ function UserProfileModal({ isOpen, onClose, user }) {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-
-      const response = await fetch('http://localhost:5000/api/user/password', {
+      const response = await fetch(apiUrl('/api/user/password'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -406,7 +404,7 @@ function UserProfileModal({ isOpen, onClose, user }) {
                       value={passwordData.next}
                       onChange={handlePasswordChange}
                       className="upm-input upm-input--with-icon"
-                      placeholder="At least 6 characters"
+                      placeholder="At least 12 characters"
                       autoComplete="new-password"
                     />
                     <button

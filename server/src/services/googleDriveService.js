@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const createGoogleDriveService = ({ collections, ObjectId, port, makeRequestError }) => {
+const createGoogleDriveService = ({ collections, ObjectId, port, makeRequestError, tokenCipher }) => {
 const GOOGLE_DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email'
@@ -60,7 +60,13 @@ const parseGoogleJsonResponse = async (response) => {
 
 const getStoredGoogleDriveConnection = async (userId) => {
   if (!collections.googleDriveConnectionsCollection) return null;
-  return collections.googleDriveConnectionsCollection.findOne({ userId: String(userId) });
+  const connection = await collections.googleDriveConnectionsCollection.findOne({ userId: String(userId) });
+  if (!connection) return null;
+  return {
+    ...connection,
+    accessToken: tokenCipher.decrypt(connection.accessToken),
+    refreshToken: tokenCipher.decrypt(connection.refreshToken),
+  };
 };
 
 const refreshGoogleAccessToken = async (connection) => {
@@ -95,7 +101,7 @@ const refreshGoogleAccessToken = async (connection) => {
     { userId: connection.userId },
     {
       $set: {
-        accessToken: tokenData.access_token,
+        accessToken: tokenCipher.encrypt(tokenData.access_token),
         expiresAt,
         updatedAt: new Date()
       }
@@ -432,7 +438,14 @@ const backupTaskFileToDrive = async (project, task, file) => {
   return fileDriveBackup;
 };
 
-const backupAnnotationSnapshotToDrive = async ({ taskId, filename, sliceData, updatedAt, user }) => {
+const backupAnnotationSnapshotToDrive = async ({
+  taskId,
+  filename,
+  sliceData,
+  updatedAt,
+  integrityHash,
+  user,
+}) => {
   if (!collections.tasksCollection || !collections.projectsCollection) return null;
 
   const task = await collections.tasksCollection.findOne({ _id: new ObjectId(taskId) });
@@ -468,6 +481,9 @@ const backupAnnotationSnapshotToDrive = async ({ taskId, filename, sliceData, up
       id: user.id,
       email: user.email
     },
+    integrity: integrityHash
+      ? { algorithm: 'sha256', hash: integrityHash }
+      : undefined,
     slices: sliceData || {}
   };
 
@@ -498,12 +514,19 @@ const buildProjectExportPayload = async (project) => {
   const tasks = await collections.tasksCollection.find({ projectId: project._id.toString() }).toArray();
   const taskIds = tasks.map(task => task._id.toString());
   const annotations = await collections.annotationsCollection.find({ taskId: { $in: taskIds } }).toArray();
+  const exportTasks = tasks.map((task) => ({
+    ...task,
+    files: (task.files || []).map((file) => {
+      const { path: storedPath, ...publicFile } = file;
+      return publicFile;
+    }),
+  }));
 
   return {
     format: 'medical-image-annotation-web-app.project-export.v1',
     exportedAt: new Date().toISOString(),
     project,
-    tasks,
+    tasks: exportTasks,
     annotations
   };
 };

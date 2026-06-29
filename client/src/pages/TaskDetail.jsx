@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import '../styles/TaskDetail.css';
 
-const API_BASE_URL = 'http://localhost:5000';
+import { API_BASE_URL, taskFileContentUrl } from '../config/api';
 
 const TaskDetail = () => {
   const { taskId } = useParams();
@@ -313,13 +313,29 @@ const TaskDetail = () => {
     }
   };
 
-  const handleFileDownload = (file) => {
-    const filename = file.filename || file.originalName;
-    if (!filename) {
+  const handleFileDownload = async (file) => {
+    const fileId = file._id || file.id || file.filename;
+    const filename = file.originalName || file.filename;
+    if (!fileId || !filename) {
       showNotice('error', 'File download path is missing.');
       return;
     }
-    window.open(`${API_BASE_URL}/uploads/tasks/${taskId}/${encodeURIComponent(filename)}`, '_blank', 'noopener,noreferrer');
+    try {
+      const response = await axios.get(taskFileContentUrl(taskId, fileId, true), {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+      const objectUrl = URL.createObjectURL(response.data);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (downloadError) {
+      showNotice('error', downloadError.response?.data?.error || 'Failed to download file.');
+    }
   };
 
   const handleUpdateSubset = async (value) => {

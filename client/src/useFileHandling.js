@@ -1,3 +1,5 @@
+import { apiUrl, taskFileContentUrl } from './config/api';
+
 // hooks/useFileHandling.js
 import { useState } from "react";
 import axios from "axios";
@@ -60,7 +62,7 @@ const useFileHandling = (taskId, token, setSelectedFileName, notify) => {
       formData.append("files", file);
 
       try {
-        const res = await axios.post(`http://localhost:5000/api/tasks/${taskId}/files`, formData, {
+        const res = await axios.post(apiUrl(`/api/tasks/${taskId}/files`), formData, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
@@ -86,7 +88,10 @@ const useFileHandling = (taskId, token, setSelectedFileName, notify) => {
           originalName: file.name,
           filename: res.data.files[0].filename,
           type,
-          url: `http://localhost:5000/uploads/tasks/${taskId}/${res.data.files[0].filename}`
+          url: taskFileContentUrl(
+            taskId,
+            res.data.files[0]._id || res.data.files[0].id || res.data.files[0].filename
+          )
         };
         
         newUploadedFiles.push(uploadedFile);

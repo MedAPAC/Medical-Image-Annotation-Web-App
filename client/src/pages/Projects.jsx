@@ -21,6 +21,8 @@ import {
   FolderOpen
 } from 'lucide-react';
 
+import { apiUrl } from '../config/api';
+
 const Projects = () => {
   const { isAuthenticated, user, token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -317,7 +319,7 @@ const Projects = () => {
       const projectData = prepareProjectData();
 
       await axios.post(
-        'http://localhost:5000/api/projects',
+        apiUrl('/api/projects'),
         projectData,
         {
           headers: {
@@ -379,7 +381,7 @@ const Projects = () => {
       const projectData = prepareProjectData();
 
       const response = await axios.post(
-        'http://localhost:5000/api/projects',
+        apiUrl('/api/projects'),
         projectData,
         {
           headers: {
@@ -410,7 +412,7 @@ const Projects = () => {
 
   const loadProjects = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/projects', {
+      const response = await axios.get(apiUrl('/api/projects'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -441,7 +443,7 @@ const Projects = () => {
 
   const loadTeams = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/teams', {
+      const response = await axios.get(apiUrl('/api/teams'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -472,7 +474,7 @@ const Projects = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/projects/${projectId}`, {
+      await axios.delete(apiUrl(`/api/projects/${projectId}`), {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -15,6 +15,13 @@ module.exports = function registerTaskRoutes(app, context) {
     resolveUserIdsFromEmailsAndTeams,
     isDriveBackupEnabled,
     backupTaskFileToDrive,
+    UPLOADS_ROOT,
+    resolveTaskFilePath,
+    hashFile,
+    getSafeContentType,
+    sanitizeDownloadName,
+    toPublicFile,
+    toPublicTask,
   } = context;
 // Get all tasks accessible to user
 app.get('/api/tasks', authenticateToken, async (req, res) => {
@@ -62,7 +69,7 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
         }
 
         return {
-          ...task,
+          ...toPublicTask(task),
           assigneeDetails
         };
       })
@@ -105,7 +112,7 @@ app.get('/api/projects/:projectId/tasks', authenticateToken, checkProjectAccess,
         }
 
         return {
-          ...task,
+          ...toPublicTask(task),
           assigneeDetails
         };
       })
@@ -217,7 +224,7 @@ app.get('/api/tasks/:taskId', authenticateToken, checkTaskAccess, async (req, re
 
     res.json({ 
       task: {
-        ...task,
+        ...toPublicTask(task),
         assigneeDetails, // Legacy object
         assignees: assigneesList // New Array of emails ['a@b.com', 'c@d.com']
       }
@@ -401,7 +408,7 @@ app.put('/api/tasks/:taskId/assign', authenticateToken, checkTaskAccess, async (
 
     res.json({
       message: 'Task assignments updated successfully',
-      task: updatedTask
+      task: toPublicTask(updatedTask)
     });
   } catch (err) {
     console.error('Failed to update task assignment:', err);
@@ -420,17 +427,21 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
-    // Generate ObjectId for each file to allow specific deletion later
-    const files = req.files.map(file => ({
-      _id: new ObjectId(), // <--- CRITICAL: Generate ID for the file
-      originalName: file.originalname,
-      filename: file.filename,
-      path: file.path, // relative path usually handled by multer storage
-      size: file.size,
-      mimetype: file.mimetype,
-      type: getFileType(file.originalname),
-      uploadedAt: new Date()
-    }));
+    const files = [];
+    for (const file of req.files) {
+      files.push({
+        _id: new ObjectId(),
+        originalName: path.basename(file.originalname).slice(0, 255),
+        filename: file.filename,
+        path: file.path,
+        size: file.size,
+        mimetype: getSafeContentType(file.originalname),
+        type: getFileType(file.originalname),
+        sha256: await hashFile(file.path),
+        uploadedAt: new Date(),
+        uploadedBy: String(req.user.id),
+      });
+    }
 
     // Add files to task
     const result = await tasksCollection.updateOne(
@@ -471,12 +482,37 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
     // Return the files with their new IDs
     res.json({
       message: 'Files uploaded successfully',
-      files: files,
+      files: files.map(toPublicFile),
       totalFiles: (req.task.files ? req.task.files.length : 0) + files.length
     });
   } catch (err) {
     console.error('File upload error:', err);
     res.status(500).json({ error: 'Failed to upload files: ' + err.message });
+  }
+});
+
+// Stream an uploaded medical file only after task-level authorization.
+app.get('/api/tasks/:taskId/files/:fileId/content', authenticateToken, checkTaskAccess, async (req, res, next) => {
+  try {
+    const file = (req.task.files || []).find((candidate) => (
+      String(candidate._id || '') === String(req.params.fileId) ||
+      candidate.filename === req.params.fileId
+    ));
+    if (!file) return res.status(404).json({ error: 'File not found in task' });
+
+    const filePath = resolveTaskFilePath(UPLOADS_ROOT, req.params.taskId, file);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Stored file not found' });
+
+    const downloadName = sanitizeDownloadName(file.originalName || file.filename);
+    const disposition = req.query.download === '1' ? 'attachment' : 'inline';
+    res.setHeader('Content-Type', getSafeContentType(file.originalName || file.filename));
+    res.setHeader('Content-Disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(downloadName)}`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.sendFile(filePath, (error) => {
+      if (error && !res.headersSent) next(error);
+    });
+  } catch (error) {
+    return next(error);
   }
 });
 
@@ -518,7 +554,7 @@ app.delete('/api/tasks/:taskId/files/:fileId', authenticateToken, async (req, re
         // Construct absolute path. 
         // Note: fileToDelete.path from Multer is usually the full path, 
         // but if it's relative, ensure we join it correctly.
-        const filePath = path.resolve(fileToDelete.path); 
+        const filePath = resolveTaskFilePath(UPLOADS_ROOT, taskId, fileToDelete);
         
         if (fs.existsSync(filePath)) {
             try {
@@ -550,7 +586,7 @@ app.delete('/api/tasks/:taskId/files/:fileId', authenticateToken, async (req, re
 // -------------------------------------------------------------------------
 // GET: Retrieve Timer
 // -------------------------------------------------------------------------
-app.get('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
+app.get('/api/tasks/:taskId/timer', authenticateToken, checkTaskAccess, async (req, res) => {
   try {
     const { taskId } = req.params;
     const userId = req.user.id;
@@ -576,14 +612,21 @@ app.get('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
 // -------------------------------------------------------------------------
 // POST: Save Timer (Update or Insert)
 // -------------------------------------------------------------------------
-app.post('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
+app.post('/api/tasks/:taskId/timer', authenticateToken, checkTaskAccess, async (req, res) => {
   try {
     const { taskId } = req.params;
     const userId = req.user.id;
     const { seconds } = req.body;
 
     // Validation
-    if (seconds === undefined || seconds === null) {
+    const normalizedSeconds = Number(seconds);
+    if (
+      seconds === undefined ||
+      seconds === null ||
+      !Number.isFinite(normalizedSeconds) ||
+      normalizedSeconds < 0 ||
+      normalizedSeconds > 315360000
+    ) {
         console.error("[Timer POST] Error: 'seconds' is missing in body");
         return res.status(400).json({ error: "Seconds required" });
     }
@@ -593,7 +636,7 @@ app.post('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
       { taskId: taskId, userId: userId },
       { 
         $set: { 
-          seconds: Number(seconds), // Force Number type
+          seconds: Math.floor(normalizedSeconds),
           updatedAt: new Date() 
         },
         $setOnInsert: { 
@@ -605,7 +648,7 @@ app.post('/api/tasks/:taskId/timer', authenticateToken, async (req, res) => {
       { upsert: true }
     );
 
-    res.json({ success: true, savedSeconds: seconds });
+    res.json({ success: true, savedSeconds: Math.floor(normalizedSeconds) });
   } catch (err) {
     console.error("Timer POST Error:", err);
     res.status(500).json({ error: "Failed to save timer" });
@@ -628,26 +671,54 @@ app.put('/api/tasks/:taskId', authenticateToken, checkTaskAccess, async (req, re
       ]
     });
 
-    const isAssignee = req.task.assignedTo === req.user.id;
+    const isAssignee = (
+      String(req.task.assignedTo) === String(req.user.id) ||
+      (Array.isArray(req.task.assignees) && req.task.assignees.some((id) => String(id) === String(req.user.id)))
+    );
     
     if (!project && !isAssignee) {
       return res.status(403).json({ error: "You don't have permission to update this task" });
     }
 
-    const updates = req.body;
-    updates.updatedAt = new Date();
-
-    // If user is not project owner, restrict what they can update
-    if (!project && isAssignee) {
-      // Assignee can only update progress and status
-      const allowedFields = ['progress', 'completedItems', 'status'];
-      const restrictedUpdates = {};
-      for (const key in updates) {
-        if (allowedFields.includes(key)) {
-          restrictedUpdates[key] = updates[key];
-        }
+    const requestedUpdates = req.body && typeof req.body === 'object' ? req.body : {};
+    const ownerAllowedFields = [
+      'name', 'description', 'projectId', 'subset', 'priority',
+      'status', 'state', 'progress', 'completedItems',
+    ];
+    const assigneeAllowedFields = ['progress', 'completedItems', 'status'];
+    const allowedFields = project ? ownerAllowedFields : assigneeAllowedFields;
+    const updates = { updatedAt: new Date() };
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(requestedUpdates, field)) {
+        updates[field] = requestedUpdates[field];
       }
-      Object.assign(updates, restrictedUpdates);
+    });
+
+    if (typeof updates.name === 'string') updates.name = updates.name.trim().slice(0, 200);
+    if (typeof updates.description === 'string') updates.description = updates.description.slice(0, 10000);
+    if (updates.progress !== undefined) {
+      const progressValue = Number(updates.progress);
+      if (!Number.isFinite(progressValue)) return res.status(400).json({ error: 'Invalid progress value' });
+      updates.progress = Math.min(Math.max(progressValue, 0), 100);
+    }
+    if (updates.completedItems !== undefined) {
+      const completedValue = Number(updates.completedItems);
+      if (!Number.isFinite(completedValue)) return res.status(400).json({ error: 'Invalid completed item count' });
+      updates.completedItems = Math.max(0, Math.floor(completedValue));
+    }
+
+    if (updates.projectId && updates.projectId !== req.task.projectId) {
+      if (!project || !ObjectId.isValid(updates.projectId)) {
+        return res.status(403).json({ error: 'You do not have permission to move this task' });
+      }
+      const destinationProject = await projectsCollection.findOne({
+        _id: new ObjectId(updates.projectId),
+        $or: [{ owners: req.user.id }, { userId: req.user.id }],
+      });
+      if (!destinationProject) return res.status(403).json({ error: 'Destination project access denied' });
+      updates.projectName = destinationProject.name;
+      updates.labels = destinationProject.labels || [];
+      updates.attributes = destinationProject.attributes || [];
     }
 
     const result = await tasksCollection.updateOne(
@@ -663,7 +734,7 @@ app.put('/api/tasks/:taskId', authenticateToken, checkTaskAccess, async (req, re
 
     res.json({
       message: 'Task updated successfully',
-      task: updatedTask
+      task: toPublicTask(updatedTask)
     });
   } catch (err) {
     console.error('Failed to update task:', err);
@@ -765,7 +836,7 @@ app.delete('/api/tasks/:taskId', authenticateToken, async (req, res) => {
 
     // Delete uploaded files
     if (task.files && task.files.length > 0) {
-      const uploadDir = `uploads/tasks/${req.params.taskId}`;
+      const uploadDir = path.resolve(UPLOADS_ROOT, 'tasks', String(req.params.taskId));
       if (fs.existsSync(uploadDir)) {
         fs.rmSync(uploadDir, { recursive: true, force: true });
       }
@@ -777,6 +848,11 @@ app.delete('/api/tasks/:taskId', authenticateToken, async (req, res) => {
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Task not found' });
     }
+
+    await Promise.all([
+      db.collection('annotations').deleteMany({ taskId: String(req.params.taskId) }),
+      db.collection('taskTimersCollection').deleteMany({ taskId: String(req.params.taskId) }),
+    ]);
 
     // Update project task count - DECREMENT
     await projectsCollection.updateOne(

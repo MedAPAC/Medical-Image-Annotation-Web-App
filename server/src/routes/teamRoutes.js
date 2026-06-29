@@ -10,6 +10,9 @@ module.exports = function registerTeamRoutes(app, context) {
 app.post('/api/verify-user', authenticateToken, async (req, res) => {
   try {
     const { email } = req.body;
+    if (typeof email !== 'string' || !email.trim() || email.length > 254) {
+      return res.status(400).json({ error: 'A valid email is required' });
+    }
     if (!email) return res.status(400).json({ error: "Email is required" });
 
     const user = await db.collection('users').findOne({ email: email.toLowerCase() });
@@ -56,7 +59,13 @@ app.post('/api/teams', authenticateToken, async (req, res) => {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (members !== undefined && !Array.isArray(members)) {
+      return res.status(400).json({ error: 'Members must be an array' });
+    }
     const extraMembers = members || [];
+    if (extraMembers.length > 500 || extraMembers.some((email) => typeof email !== 'string')) {
+      return res.status(400).json({ error: 'Invalid team member list' });
+    }
 
     if (extraMembers.length > 0) {
       for (const email of extraMembers) {
@@ -123,7 +132,13 @@ app.put('/api/teams/:id', authenticateToken, async (req, res) => {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (members !== undefined && !Array.isArray(members)) {
+      return res.status(400).json({ error: 'Members must be an array' });
+    }
     const extraMembers = members || [];
+    if (extraMembers.length > 500 || extraMembers.some((email) => typeof email !== 'string')) {
+      return res.status(400).json({ error: 'Invalid team member list' });
+    }
 
     if (extraMembers.length > 0) {
       for (const email of extraMembers) {
@@ -196,7 +211,7 @@ app.delete('/api/teams/:id', authenticateToken, async (req, res) => {
 app.post('/api/users/resolve', authenticateToken, async (req, res) => {
   try {
     const { emails } = req.body;
-    if (!emails || !Array.isArray(emails)) {
+    if (!emails || !Array.isArray(emails) || emails.length > 500 || emails.some((email) => typeof email !== 'string')) {
       return res.status(400).json({ error: "emails array required" });
     }
 

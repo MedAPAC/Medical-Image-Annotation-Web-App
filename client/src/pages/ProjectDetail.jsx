@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import '../styles/ProjectDetail.css';
 
-const API_BASE_URL = 'http://localhost:5000';
+import { API_BASE_URL } from '../config/api';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();

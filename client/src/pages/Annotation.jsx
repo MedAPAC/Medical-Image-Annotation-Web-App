@@ -36,6 +36,8 @@ import {
 // Constants
 import { SHAPES, SECTION_ICONS, LEFT_BUTTONS, RIGHT_BUTTONS } from "../constants";
 
+import { API_BASE_URL, apiUrl } from '../config/api';
+
 const fileSelectionKey = (file) => file?.annotationKey || file?.originalName;
 
 const getDicomSeriesKey = (file) => {
@@ -290,6 +292,7 @@ function Annotation() {
   //                           data load, where state updates are not user edits
   // -----------------------------------------------------------------------
   const [isDirty, setIsDirtyLocal] = useState(false);
+  const [eventTicket, setEventTicket] = useState(null);
 
   useEffect(() => {
     selectedFileNameRef.current = selectedFileName;
@@ -342,14 +345,44 @@ function Annotation() {
   }, [authLoading, isAuthenticated, token, taskId, fetchTask, navigate]);
 
   useEffect(() => {
+    if (!taskId || !token) return undefined;
+    let cancelled = false;
+    let refreshTimer;
+
+    const requestEventTicket = async () => {
+      try {
+        const response = await axios.post(
+          apiUrl(`/api/annotation-events/${taskId}/ticket`),
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!cancelled) {
+          setEventTicket(response.data.ticket);
+          refreshTimer = window.setTimeout(requestEventTicket, 14 * 60 * 1000);
+        }
+      } catch (error) {
+        if (!cancelled) console.warn('Failed to establish realtime collaboration', error);
+      }
+    };
+
+    requestEventTicket();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(refreshTimer);
+      setEventTicket(null);
+    };
+  }, [taskId, token]);
+
+  useEffect(() => {
     if (!taskId || !token || typeof EventSource === "undefined") return;
 
+    if (!eventTicket) return;
     const params = new URLSearchParams({
-      token,
+      ticket: eventTicket,
       clientId: collaborationClientIdRef.current,
     });
     const source = new EventSource(
-      `http://localhost:5000/annotation-events/${taskId}?${params.toString()}`
+      `${API_BASE_URL}/annotation-events/${taskId}?${params.toString()}`
     );
 
     const handleAnnotationUpdate = (event) => {
@@ -404,7 +437,7 @@ function Annotation() {
       source.removeEventListener("annotation-updated", handleAnnotationUpdate);
       source.close();
     };
-  }, [taskId, token, showPageAlert, t]);
+  }, [taskId, token, eventTicket, showPageAlert, t]);
 
   useEffect(() => {
     if (allUploadedFiles.length === 0) return;
@@ -541,7 +574,7 @@ function Annotation() {
         });
 
         return axios.post(
-          "http://localhost:5000/save-annotations",
+          apiUrl('/save-annotations'),
           {
             taskId,
             filename: fileName,

@@ -17,7 +17,7 @@ const SignupPage = () => {
   const { signup } = useAuth();
 
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
-  const passwordValid = password.length >= 6;
+  const passwordValid = password.length >= 12;
   const isFormValid = passwordValid && passwordsMatch && name && email;
 
   const onSubmit = async (e) => {
@@ -25,7 +25,7 @@ const SignupPage = () => {
     setError('');
 
     if (!passwordValid) {
-      setError('Password must be at least 6 characters');
+      setError('Password must be at least 12 characters');
       return;
     }
 
@@ -112,7 +112,7 @@ const SignupPage = () => {
               }}
             />
             <p className="password-hint">
-              Minimum 6 characters required
+              Minimum 12 characters required
             </p>
           </div>
 

@@ -3,8 +3,7 @@ module.exports = function registerProfileRoutes(app, context) {
     authenticateToken,
     ObjectId,
     bcrypt,
-    jwt,
-    JWT_SECRET,
+    signAccessToken,
     usersCollection,
   } = context;
 // User Profile Update API
@@ -15,8 +14,14 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
     // userId comes from the JWT. Support both string and ObjectId.
     const userId = req.user.id || req.user._id;
  
-    if (!name || !email) {
+    if (typeof name !== 'string' || typeof email !== 'string' || !name.trim() || !email.trim()) {
       return res.status(400).json({ error: 'Name and email are required.' });
+    }
+    if (name.trim().length > 120 || email.trim().length > 254) {
+      return res.status(400).json({ error: 'Name or email is too long.' });
+    }
+    if (!ObjectId.isValid(userId)) {
+      return res.status(401).json({ error: 'Invalid user session.' });
     }
  
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -49,11 +54,11 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
     }
  
     // Ã¢Å“â€¦ New token includes `name` so the UI stays in sync
-    const newToken = jwt.sign(
-      { id: updatedUser._id, email: updatedUser.email, name: updatedUser.name },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const newToken = signAccessToken({
+      id: updatedUser._id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+    });
  
     res.json({
       message: 'Profile updated successfully',
@@ -80,8 +85,8 @@ app.put('/api/user/password', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required.' });
     }
  
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    if (newPassword.length < 12 || newPassword.length > 128) {
+      return res.status(400).json({ error: 'New password must be between 12 and 128 characters.' });
     }
  
     if (currentPassword === newPassword) {
@@ -101,7 +106,7 @@ app.put('/api/user/password', authenticateToken, async (req, res) => {
     }
  
     // Ã¢â€â‚¬Ã¢â€â‚¬ Hash and save new password Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    const hashedNew = await bcrypt.hash(newPassword, 10);
+    const hashedNew = await bcrypt.hash(newPassword, 12);
  
     await usersCollection.updateOne(
       { _id: new ObjectId(userId) },
