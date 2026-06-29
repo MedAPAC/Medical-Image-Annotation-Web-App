@@ -21,6 +21,7 @@
   <a href='#security'>Security</a>
 </p>
 
+![Demo](assets/demo.gif)
 </div>
 
 ---
