@@ -20,7 +20,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
-    "i18next": "^25.5.2",
+    "i18next": "^26.3.3",
     "i18next-express-middleware": "^2.0.0",
     "i18next-fs-backend": "^2.6.0",
     "jsonwebtoken": "^9.0.2",
