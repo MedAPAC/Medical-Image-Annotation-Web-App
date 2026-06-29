@@ -18,6 +18,7 @@ module.exports = function registerTaskRoutes(app, context) {
     UPLOADS_ROOT,
     resolveTaskFilePath,
     hashFile,
+    validateMedicalFileSignature,
     getSafeContentType,
     sanitizeDownloadName,
     toPublicFile,
@@ -246,8 +247,14 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
   // Accept assigneeEmails (Array) OR assigneeEmail (String - legacy)
   const { name, projectId, subset, description, assigneeEmails, assigneeEmail, assigneeTeamIds = [], priority } = req.body;
 
-  if (!name || !name.trim()) {
+  if (typeof name !== 'string' || !name.trim() || name.length > 200) {
     return res.status(400).json({ error: "Task name is required" });
+  }
+  if (projectId && !ObjectId.isValid(projectId)) {
+    return res.status(400).json({ error: 'Invalid project ID' });
+  }
+  if (description !== undefined && (typeof description !== 'string' || description.length > 10000)) {
+    return res.status(400).json({ error: 'Invalid task description' });
   }
   if (!projectId) {
     return res.status(400).json({ error: "Project ID is required" });
@@ -429,6 +436,7 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
 
     const files = [];
     for (const file of req.files) {
+      await validateMedicalFileSignature(file.path, file.originalname);
       files.push({
         _id: new ObjectId(),
         originalName: path.basename(file.originalname).slice(0, 255),
@@ -486,6 +494,11 @@ app.post('/api/tasks/:taskId/files', authenticateToken, checkTaskAccess, taskUpl
       totalFiles: (req.task.files ? req.task.files.length : 0) + files.length
     });
   } catch (err) {
+    for (const uploadedFile of req.files || []) {
+      if (uploadedFile.path && fs.existsSync(uploadedFile.path)) {
+        fs.unlinkSync(uploadedFile.path);
+      }
+    }
     console.error('File upload error:', err);
     res.status(500).json({ error: 'Failed to upload files: ' + err.message });
   }
@@ -508,6 +521,9 @@ app.get('/api/tasks/:taskId/files/:fileId/content', authenticateToken, checkTask
     res.setHeader('Content-Type', getSafeContentType(file.originalName || file.filename));
     res.setHeader('Content-Disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(downloadName)}`);
     res.setHeader('Cache-Control', 'private, no-store');
+    if (file.sha256) {
+      res.setHeader('X-Content-SHA256', file.sha256);
+    }
     return res.sendFile(filePath, (error) => {
       if (error && !res.headersSent) next(error);
     });

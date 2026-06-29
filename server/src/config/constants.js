@@ -1,15 +1,21 @@
 const path = require('path');
+const { readSecret } = require('./secrets');
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const IS_PRODUCTION = NODE_ENV === 'production';
 const PORT = Number.parseInt(process.env.PORT || '5000', 10);
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017';
+const mongoPassword = readSecret('MONGO_PASSWORD');
+const MONGO_URL = readSecret('MONGO_URL') || (
+  process.env.MONGO_HOST && process.env.MONGO_USER && mongoPassword
+    ? `mongodb://${encodeURIComponent(process.env.MONGO_USER)}:${encodeURIComponent(mongoPassword)}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT || '27017'}/${process.env.MONGO_DB_NAME || 'annotationApp'}?authSource=${encodeURIComponent(process.env.MONGO_AUTH_SOURCE || process.env.MONGO_DB_NAME || 'annotationApp')}`
+    : 'mongodb://localhost:27017'
+);
 const DB_NAME = process.env.MONGO_DB_NAME || 'annotationApp';
 const DEVELOPMENT_JWT_SECRET = 'development-only-jwt-secret-change-before-production';
-const JWT_SECRET = process.env.JWT_SECRET || DEVELOPMENT_JWT_SECRET;
+const JWT_SECRET = readSecret('JWT_SECRET', DEVELOPMENT_JWT_SECRET);
 const JWT_ISSUER = process.env.JWT_ISSUER || 'medical-image-annotation-api';
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || 'medical-image-annotation-client';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const SERVER_ROOT = path.resolve(__dirname, '..', '..');
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_ROOT || path.join(SERVER_ROOT, 'uploads'));
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '25mb';
@@ -21,7 +27,7 @@ const MAX_UPLOAD_FILES = Number.parseInt(process.env.MAX_UPLOAD_FILES || '2000',
 const API_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.API_RATE_LIMIT_WINDOW_MS || '900000', 10);
 const API_RATE_LIMIT_MAX = Number.parseInt(process.env.API_RATE_LIMIT_MAX || '2000', 10);
 const AUTH_RATE_LIMIT_MAX = Number.parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20', 10);
-const DATA_ENCRYPTION_KEY = process.env.DATA_ENCRYPTION_KEY || '';
+const DATA_ENCRYPTION_KEY = readSecret('DATA_ENCRYPTION_KEY');
 const AUDIT_RETENTION_DAYS = Number.parseInt(process.env.AUDIT_RETENTION_DAYS || '365', 10);
 const CLIENT_BASE_URL = process.env.CLIENT_BASE_URL || 'http://localhost:3000';
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || CLIENT_BASE_URL)
@@ -38,6 +44,7 @@ const parseTrustProxy = (value) => {
 };
 
 const TRUST_PROXY = parseTrustProxy(process.env.TRUST_PROXY);
+const ENFORCE_HTTPS = process.env.ENFORCE_HTTPS === 'true';
 
 const assertSecurityConfig = () => {
   const errors = [];
@@ -47,7 +54,7 @@ const assertSecurityConfig = () => {
   }
 
   if (IS_PRODUCTION) {
-    if (!process.env.JWT_SECRET || JWT_SECRET === DEVELOPMENT_JWT_SECRET || JWT_SECRET.length < 32) {
+    if (JWT_SECRET === DEVELOPMENT_JWT_SECRET || JWT_SECRET.length < 32) {
       errors.push('JWT_SECRET must be set to at least 32 unpredictable characters.');
     }
     if (CORS_ORIGINS.length === 0 || CORS_ORIGINS.includes('*')) {
@@ -93,5 +100,6 @@ module.exports = {
   CLIENT_BASE_URL,
   CORS_ORIGINS,
   TRUST_PROXY,
+  ENFORCE_HTTPS,
   assertSecurityConfig,
 };

@@ -67,6 +67,22 @@ mkdir -p docs/media/gifs
 mkdir -p server/uploads
 mkdir -p uploads
 
+if [ ! -f server/.env ]; then
+    echo 'Creating server/.env with random local secrets...'
+    node -e '
+      const crypto = require(`crypto`);
+      const fs = require(`fs`);
+      let value = fs.readFileSync(`server/.env.example`, `utf8`);
+      value = value.replace(`JWT_SECRET=`, `JWT_SECRET=${crypto.randomBytes(48).toString(`base64url`)}`);
+      value = value.replace(`DATA_ENCRYPTION_KEY=`, `DATA_ENCRYPTION_KEY=${crypto.randomBytes(32).toString(`base64`)}`);
+      fs.writeFileSync(`server/.env`, value, { mode: 0o600, flag: `wx` });
+    '
+fi
+
+if [ ! -f .env.docker ]; then
+    node scripts/generate-docker-env.js
+fi
+
 print_section "Installing backend dependencies"
 cd server
 if [ ! -f package.json ]; then

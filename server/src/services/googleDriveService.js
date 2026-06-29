@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 
+const { readSecret } = require('../config/secrets');
+
 const createGoogleDriveService = ({ collections, ObjectId, port, makeRequestError, tokenCipher }) => {
 const GOOGLE_DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
@@ -13,7 +15,7 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 const getGoogleDriveConfig = () => ({
   clientId: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  clientSecret: readSecret('GOOGLE_CLIENT_SECRET'),
   redirectUri: process.env.GOOGLE_REDIRECT_URI || `http://localhost:${port}/api/integrations/google-drive/callback`
 });
 

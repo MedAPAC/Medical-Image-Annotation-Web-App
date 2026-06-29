@@ -1,0 +1,133 @@
+name: medical-image-annotation
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: ['mongod', '--auth', '--bind_ip_all', '--noscripting']
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-medical_root}
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_root_password
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-annotationApp}
+      MONGO_APP_USER: ${MONGO_APP_USER:-medical_app}
+      MONGO_APP_PASSWORD_FILE: /run/secrets/mongo_app_password
+    secrets:
+      - mongo_root_password
+      - mongo_app_password
+    volumes:
+      - mongo_data:/data/db
+      - ./docker/mongo-init.sh:/docker-entrypoint-initdb.d/01-create-app-user.sh:ro
+    networks:
+      - private
+    healthcheck:
+      test: ['CMD-SHELL', 'root_password=$$(cat $${MONGO_INITDB_ROOT_PASSWORD_FILE}); mongosh --quiet --username $${MONGO_INITDB_ROOT_USERNAME} --password $${root_password} --authenticationDatabase admin --eval ''db.runCommand({ ping: 1 }).ok'' | grep 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    pids_limit: 300
+
+  server:
+    image: ${SERVER_IMAGE:-medical-image-annotation-server:local}
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-annotationApp}
+      MONGO_AUTH_SOURCE: ${MONGO_DB_NAME:-annotationApp}
+      MONGO_USER: ${MONGO_APP_USER:-medical_app}
+      MONGO_PASSWORD_FILE: /run/secrets/mongo_app_password
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
+      CLIENT_BASE_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:3000}
+      TRUST_PROXY: 1
+      ENFORCE_HTTPS: ${ENFORCE_HTTPS:-false}
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-365}
+      MAX_UPLOAD_FILE_BYTES: ${MAX_UPLOAD_FILE_BYTES:-1048576000}
+      MAX_UPLOAD_FILES: ${MAX_UPLOAD_FILES:-2000}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/api/integrations/google-drive/callback}
+    secrets:
+      - mongo_app_password
+      - jwt_secret
+      - data_encryption_key
+      - google_client_secret
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - public
+      - private
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'fetch(`http://127.0.0.1:5000/api/health`).then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
+
+  client:
+    image: ${CLIENT_IMAGE:-medical-image-annotation-client:local}
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_BASE_URL: ''
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: http://server:5000
+      NGINX_ENVSUBST_FILTER: API_UPSTREAM
+    ports:
+      - ${APP_PORT:-3000}:8080
+    networks:
+      - public
+    depends_on:
+      server:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /etc/nginx/conf.d:rw,noexec,nosuid,size=1m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+
+networks:
+  public:
+  private:
+    internal: true
+
+volumes:
+  mongo_data:
+  uploads_data:
+
+secrets:
+  mongo_root_password:
+    environment: MONGO_ROOT_PASSWORD
+  mongo_app_password:
+    environment: MONGO_APP_PASSWORD
+  jwt_secret:
+    environment: JWT_SECRET
+  data_encryption_key:
+    environment: DATA_ENCRYPTION_KEY
+  google_client_secret:
+    environment: GOOGLE_CLIENT_SECRET

@@ -1,3 +1,5 @@
+const DUMMY_PASSWORD_HASH = '$2b$12$VNLhrJU17HrvrHs800tSkOlbpwkaHbJg37kObXAt/4Al/YtNXc07C';
+
 module.exports = function registerAuthRoutes(app, context) {
   const {
     authenticateToken,
@@ -63,7 +65,8 @@ module.exports = function registerAuthRoutes(app, context) {
 
     try {
       const user = await usersCollection.findOne({ email });
-      if (!user || !(await bcrypt.compare(password, user.password))) {
+      const passwordIsValid = await bcrypt.compare(password, user?.password || DUMMY_PASSWORD_HASH);
+      if (!user || !passwordIsValid) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 

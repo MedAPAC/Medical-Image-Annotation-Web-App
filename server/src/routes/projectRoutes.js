@@ -29,10 +29,30 @@ app.post("/api/projects", authenticateToken, async (req, res) => {
 
   const { name, description, labels, attributes, ownerEmails = [], ownerTeamIds = [] } = req.body;
 
-  if (!name || !name.trim()) {
+  if (typeof name !== 'string' || !name.trim() || name.length > 200) {
     return res.status(400).json({ error: "Project name is required" });
   }
 
+  if (
+    Array.isArray(ownerEmails) && (
+      ownerEmails.length > 500 || ownerEmails.some((email) => typeof email !== 'string')
+    )
+  ) {
+    return res.status(400).json({ error: 'Invalid owner email list' });
+  }
+  if (
+    Array.isArray(ownerTeamIds) && (
+      ownerTeamIds.length > 500 || ownerTeamIds.some((id) => typeof id !== 'string')
+    )
+  ) {
+    return res.status(400).json({ error: 'Invalid owner team list' });
+  }
+  if ((Array.isArray(labels) && labels.length > 1000) || (Array.isArray(attributes) && attributes.length > 1000)) {
+    return res.status(400).json({ error: 'Project configuration is too large' });
+  }
+  if (description !== undefined && (typeof description !== 'string' || description.length > 10000)) {
+    return res.status(400).json({ error: 'Invalid project description' });
+  }
   if (!Array.isArray(ownerEmails) || !Array.isArray(ownerTeamIds)) {
     return res.status(400).json({ error: "ownerEmails and ownerTeamIds must be arrays" });
   }
@@ -340,6 +360,16 @@ app.put("/api/projects/:id", authenticateToken, async (req, res) => {
   }
 
   const { name, description, labels, attributes, status, ownerEmails, ownerTeamIds } = req.body;
+
+  if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.length > 200)) {
+    return res.status(400).json({ error: 'Invalid project name' });
+  }
+  if (description !== undefined && (typeof description !== 'string' || description.length > 10000)) {
+    return res.status(400).json({ error: 'Invalid project description' });
+  }
+  if ((Array.isArray(labels) && labels.length > 1000) || (Array.isArray(attributes) && attributes.length > 1000)) {
+    return res.status(400).json({ error: 'Project configuration is too large' });
+  }
 
   try {
     // Check if user is an owner of the project

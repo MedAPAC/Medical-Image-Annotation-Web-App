@@ -81,12 +81,28 @@
 #   MONGO_URL=mongodb://localhost:27017
 #   MONGO_DB_NAME=annotationApp
 #   JWT_SECRET=replace-with-a-strong-secret
+#   DATA_ENCRYPTION_KEY=replace-with-a-32-byte-base64-key
+#   CLIENT_BASE_URL=https://annotation.example.org
+#   CORS_ORIGINS=https://annotation.example.org
+#   TRUST_PROXY=1
+#   ENFORCE_HTTPS=true
 #   GOOGLE_CLIENT_ID=
 #   GOOGLE_CLIENT_SECRET=
 #   GOOGLE_REDIRECT_URI=
 #
-# Note: the current development server has local defaults in server/index.js.
-# For production, move hardcoded secrets and connection strings into environment variables.
+# Production startup rejects the development JWT secret and unsafe CORS settings.
+# Secrets may be mounted with JWT_SECRET_FILE, DATA_ENCRYPTION_KEY_FILE,
+# MONGO_PASSWORD_FILE, and GOOGLE_CLIENT_SECRET_FILE.
+
+# Optional Docker Deployment
+# --------------------------
+# Requires Docker Engine or Docker Desktop with Compose v2.
+#   npm run docker:env
+#   npm run docker:config
+#   npm run docker:build
+#   npm run docker:up
+#
+# See compose.yaml, .env.docker.example, README.md, and SECURITY.md.
 
 # Documentation Media Folders
 # ---------------------------

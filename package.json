@@ -9,6 +9,11 @@
     "build": "npm run build --prefix client",
     "start": "npm start --prefix server",
     "check:server": "npm test --prefix server",
-    "test:client": "npm test --prefix client -- --watchAll=false"
+    "test:client": "npm run test:ci --prefix client",
+    "docker:env": "node scripts/generate-docker-env.js",
+    "docker:config": "docker compose --env-file .env.docker config",
+    "docker:build": "docker compose --env-file .env.docker build",
+    "docker:up": "docker compose --env-file .env.docker up -d",
+    "docker:down": "docker compose --env-file .env.docker down"
   }
 }

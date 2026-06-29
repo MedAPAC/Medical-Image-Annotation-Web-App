@@ -9,6 +9,7 @@ module.exports = function registerAnnotationRoutes(app, context) {
     broadcastAnnotationUpdate,
     backupAnnotationSnapshotToDrive,
     hashFile,
+    validateMedicalFileSignature,
   } = context;
 
   const hashAnnotationData = (sliceData) => crypto
@@ -19,6 +20,7 @@ module.exports = function registerAnnotationRoutes(app, context) {
   app.post('/upload', authenticateToken, upload.single('file'), async (req, res, next) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     try {
+      await validateMedicalFileSignature(req.file.path, req.file.originalname);
       const sha256 = await hashFile(req.file.path);
       return res.json({
         filename: req.file.filename,
@@ -28,6 +30,9 @@ module.exports = function registerAnnotationRoutes(app, context) {
         userId: req.user.id,
       });
     } catch (error) {
+      if (req.file?.path && context.fs.existsSync(req.file.path)) {
+        context.fs.unlinkSync(req.file.path);
+      }
       return next(error);
     }
   });

@@ -51,6 +51,10 @@ const startServer = async () => {
     console.warn('Security warning: Google credentials will not be encrypted until DATA_ENCRYPTION_KEY is configured.');
   }
 
+  app.use(createAuditMiddleware({
+    auditCollection: collections.securityAuditCollection,
+    retentionDays: constants.AUDIT_RETENTION_DAYS,
+  }));
   configureSecurityMiddleware(app, {
     isProduction: constants.IS_PRODUCTION,
     trustProxy: constants.TRUST_PROXY,
@@ -59,12 +63,8 @@ const startServer = async () => {
     rateLimitWindowMs: constants.API_RATE_LIMIT_WINDOW_MS,
     apiRateLimitMax: constants.API_RATE_LIMIT_MAX,
     authRateLimitMax: constants.AUTH_RATE_LIMIT_MAX,
+    enforceHttps: constants.ENFORCE_HTTPS,
   });
-  app.use(createAuditMiddleware({
-    auditCollection: collections.securityAuditCollection,
-    retentionDays: constants.AUDIT_RETENTION_DAYS,
-  }));
-
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
   annotationEvents.registerAnnotationEventRoutes(app, {

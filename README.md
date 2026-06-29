@@ -135,7 +135,7 @@ Google Drive project folder
 | Users, sessions, projects, teams, tasks | MongoDB |
 | Annotation records and classification state | MongoDB |
 | Uploaded files | Server upload storage, optionally mirrored to Drive |
-| Google OAuth tokens | Server-side MongoDB collection |
+| Google OAuth tokens | AES-256-GCM encrypted records in a server-side MongoDB collection |
 | Drive backup files and snapshots | Google Drive backup folder |
 
 ## Tech Stack
@@ -201,6 +201,54 @@ Optional for Google Drive backup:
 
 ## Quick Start
 
+### Docker Compose
+
+Docker is optional; the existing local Node.js workflow remains available.
+
+1. Install Docker Desktop or Docker Engine with Compose v2.
+2. Generate a private local Docker environment:
+
+```bash
+npm run docker:env
+```
+
+3. Review `.env.docker`, especially `PUBLIC_APP_URL` and the optional Google OAuth values.
+4. Validate and build the stack:
+
+```bash
+npm run docker:config
+npm run docker:build
+```
+
+5. Start the containers:
+
+```bash
+npm run docker:up
+```
+
+Open `http://localhost:3000`. MongoDB and the API are not published as host ports; NGINX proxies authorized API, medical-file, upload, and realtime traffic. `mongo_data` and `uploads_data` named volumes preserve data across normal restarts.
+
+Stop the stack without deleting data:
+
+```bash
+npm run docker:down
+```
+
+Do not use `docker compose down -v` unless permanent deletion of MongoDB and uploaded medical files is intended.
+
+### Published Images
+
+The release workflow in `.github/workflows/docker-publish.yml` publishes multi-architecture client and server images to GitHub Container Registry when a `v*` tag is pushed. To use published images, set `CLIENT_IMAGE` and `SERVER_IMAGE` in `.env.docker`, then run:
+
+```bash
+docker compose --env-file .env.docker pull
+docker compose --env-file .env.docker up -d --no-build
+```
+
+The client image expects an API upstream named `server` by default. Override `API_UPSTREAM` when running it outside this Compose stack.
+
+### Local Installation
+
 Run the setup helper from the repository root:
 
 ```bash
@@ -252,7 +300,7 @@ mongodb://localhost:27017
 
 ## Environment Configuration
 
-The current development server includes local defaults. For production, move secrets and environment-specific values into environment variables.
+Development has local defaults, while production startup rejects the development JWT secret and wildcard/empty CORS configuration. Use environment variables or the supported `_FILE` variants for mounted secrets.
 
 Recommended server variables:
 
@@ -261,13 +309,18 @@ PORT=5000
 MONGO_URL=mongodb://localhost:27017
 MONGO_DB_NAME=annotationApp
 JWT_SECRET=replace-with-a-strong-secret
+DATA_ENCRYPTION_KEY=replace-with-a-32-byte-base64-key
+CLIENT_BASE_URL=https://annotation.example.org
+CORS_ORIGINS=https://annotation.example.org
+TRUST_PROXY=1
+ENFORCE_HTTPS=true
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=http://localhost:5000/api/integrations/google-drive/callback
 ```
 
-Do not use the development JWT secret in production.
+See `server/.env.example` for upload, rate-limit, audit-retention, JWT, MongoDB, and Google Drive settings. Do not use development credentials or an unauthenticated MongoDB deployment in production.
 
 ## Google Drive Setup
 
@@ -398,6 +451,7 @@ Google Drive snapshots wrap the saved slice map with project, task, and file met
 | `PUT` | `/api/tasks/:taskId/progress` |
 | `DELETE` | `/api/tasks/:taskId` |
 | `POST` | `/api/tasks/:taskId/files` |
+| `GET` | `/api/tasks/:taskId/files/:fileId/content` |
 | `DELETE` | `/api/tasks/:taskId/files/:fileId` |
 
 ### Annotations
@@ -407,6 +461,7 @@ Google Drive snapshots wrap the saved slice map with project, task, and file met
 | `POST` | `/save-annotations` |
 | `GET` | `/annotations/:taskId` |
 | `GET` | `/annotation-events/:taskId` |
+| `POST` | `/api/annotation-events/:taskId/ticket` |
 
 ### Teams
 
@@ -457,14 +512,14 @@ node --check server/index.js
 
 ## Production Checklist
 
-- Move secrets into environment variables.
-- Replace development JWT secrets.
-- Use HTTPS.
-- Restrict CORS to trusted origins.
-- Configure production MongoDB and backup policies.
-- Define upload size, retention, and storage policies.
-- Review access controls for projects, tasks, teams, and Drive folders.
-- Add structured logging and request tracing.
+- Follow [SECURITY.md](SECURITY.md) and complete a formal risk assessment.
+- Terminate TLS at a trusted ingress and enable TLS plus encryption at rest for MongoDB.
+- Store secrets in a managed secret store and rotate them on a documented schedule.
+- Forward audit records to protected centralized storage and monitor authentication/access failures.
+- Add approved malware scanning and DICOM de-identification controls before accepting clinical files.
+- Configure encrypted backups, retention, restore testing, and secure deletion procedures.
+- Add MFA or enterprise SSO for clinical use.
+- Scan dependencies and container images continuously.
 - Validate annotation export format against downstream AI or research requirements.
 - Confirm privacy, compliance, and institutional data-handling requirements before storing medical data.
 
