@@ -1,6 +1,6 @@
 <div align='center'>
 
-# Medical Image Annotation Platform
+# MediAnnotate: A Medical Image Annotation Platform
 
 **Secure clinical image review, collaborative annotation, and traceable dataset creation in one web workspace.**
 
