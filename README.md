@@ -254,10 +254,6 @@ docs/SECURITY_AUDIT.md  Current dependency and residual-risk record
 
 </details>
 
-## License
-
-No license is currently included. Add an approved license before public distribution.
-
 ---
 
 <p align='center'><sub>Designed for medical imaging teams, clinical researchers, and AI dataset programs.</sub></p>
