@@ -39,16 +39,16 @@ This document outlines the phased plan to implement the modular, pluggable semi-
 - [x] Task: Conductor - User Manual Verification 'Interactive Prompting and Multi-Output Canvas Rendering' (Protocol in workflow.md)
 
 ## Phase 3: Bi-directional Polygon/Mask Converter [checkpoint: TBD]
-- [ ] Task: Polygon-to-Mask Conversion Utility
-    - [ ] Write unit tests for converting vector coordinates of arbitrary polygons to a 2D binary grid mask
-    - [ ] Implement the polygon-to-mask rasterization function
-    - [ ] Verify correctness of rasterized masks against original polygon shapes
-- [ ] Task: Mask-to-Polygon Conversion Utility
-    - [ ] Write unit tests for tracing boundary contours of a binary grid mask and generating polygon path coords
-    - [ ] Implement mask contour tracing algorithm (such as Marching Squares or boundary tracking)
-    - [ ] Verify correctness of traced polygons against original binary mask grids
-- [ ] Task: Interactive Conversion Controls
-    - [ ] Write integration tests for manual conversion triggers in the UI
-    - [ ] Implement action buttons in the workspace viewer to trigger "Convert Polygon to Mask" and "Convert Mask to Polygon"
-    - [ ] Verify that conversion operations update the canvas correctly and preserve editing functionality
-- [ ] Task: Conductor - User Manual Verification 'Bi-directional Polygon/Mask Converter' (Protocol in workflow.md)
+- [x] Task: Polygon-to-Mask Conversion Utility [8b635a5]
+    - [x] Write unit tests for converting vector coordinates of arbitrary polygons to a 2D binary grid mask
+    - [x] Implement the polygon-to-mask rasterization function
+    - [x] Verify correctness of rasterized masks against original polygon shapes
+- [x] Task: Mask-to-Polygon Conversion Utility [8b635a5]
+    - [x] Write unit tests for tracing boundary contours of a binary grid mask and generating polygon path coords
+    - [x] Implement mask contour tracing algorithm (such as Marching Squares or boundary tracking)
+    - [x] Verify correctness of traced polygons against original binary mask grids
+- [x] Task: Interactive Conversion Controls [8b635a5]
+    - [x] Write integration tests for manual conversion triggers in the UI
+    - [x] Implement action buttons in the workspace viewer to trigger "Convert Polygon to Mask" and "Convert Mask to Polygon"
+    - [x] Verify that conversion operations update the canvas correctly and preserve editing functionality
+- [~] Task: Conductor - User Manual Verification 'Bi-directional Polygon/Mask Converter' (Protocol in workflow.md)
