@@ -19,7 +19,7 @@ This document outlines the phased plan to implement the modular, pluggable semi-
     - [x] Verify endpoints respond correctly with JSON payloads
 - [x] Task: Conductor - User Manual Verification 'Core Interfaces and Mock Inference Engine' (Protocol in workflow.md)
 
-## Phase 2: Interactive Prompting and Multi-Output Canvas Rendering [checkpoint: TBD]
+## Phase 2: Interactive Prompting and Multi-Output Canvas Rendering [checkpoint: 110f28e]
 - [x] Task: Canvas Prompting Controls [76da671]
     - [x] Write tests for capturing points, boxes, and text prompts on the editor canvas
     - [x] Implement mouse click listener (positive/negative clicks) and bounding box selection on Fabric.js canvas
@@ -36,7 +36,7 @@ This document outlines the phased plan to implement the modular, pluggable semi-
     - [x] Write tests verifying dynamic update of task classification attributes from model predictions
     - [x] Implement sidebar updater to synchronize predicted labels/attributes with task metadata properties
     - [x] Verify task attributes panels refresh instantly when classification predictions are received
-- [~] Task: Conductor - User Manual Verification 'Interactive Prompting and Multi-Output Canvas Rendering' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Interactive Prompting and Multi-Output Canvas Rendering' (Protocol in workflow.md)
 
 ## Phase 3: Bi-directional Polygon/Mask Converter [checkpoint: TBD]
 - [ ] Task: Polygon-to-Mask Conversion Utility
