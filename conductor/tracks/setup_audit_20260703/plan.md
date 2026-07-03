@@ -21,10 +21,10 @@ This document outlines the phased plan to initialize the development environment
 - [x] Task: Conductor - User Manual Verification 'Codebase Architecture & HMI Audit' (Protocol in workflow.md)
 
 ## Phase 3: Bug Hunting & Security Vulnerability Scan
-- [ ] Task: Audit Security Controls
-    - [ ] Scan for secrets in repository files
-    - [ ] Audit JWT validation logic, express rate limits, and helmet headers
-- [ ] Task: Document Findings and Recommendations
-    - [ ] Identify bugs and loopholes (such as session timeouts, unencrypted storage, or missing validation)
-    - [ ] Write final report detail to assign tasks to developer team
+- [x] Task: Audit Security Controls
+    - [x] Scan for secrets in repository files (in audit_report.md)
+    - [x] Audit JWT validation logic, express rate limits, and helmet headers (in audit_report.md)
+- [x] Task: Document Findings and Recommendations
+    - [x] Identify bugs and loopholes (such as session timeouts, unencrypted storage, or missing validation) (in audit_report.md)
+    - [x] Write final report detail to assign tasks to developer team (in audit_report.md)
 - [ ] Task: Conductor - User Manual Verification 'Bug Hunting & Security Vulnerability Scan' (Protocol in workflow.md)

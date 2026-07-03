@@ -75,10 +75,33 @@ All routes register dynamic controllers using dependencies injected via a centra
 
 ## 4. Key Gaps & Vulnerabilities Identified
 
-### Design Gaps
-* **Missing 2D Image (X-ray) Viewer:** 
-  The file classifier (`fileTypes.js`) correctly labels `.png` and `.jpeg` files as `type: "image"`. However, the frontend `MainViewer.jsx` only checks `isDicom ? <DicomViewer /> : <NiftiViewer />`. This causes standard 2D image formats (like chest X-rays) to be fed into the `NiftiViewer`, throwing render crashes.
-* **DICOM Metadata Inspection Gap:**
-  Although `dicomParser` is loaded client-side to parse headers for decoding, there is no UI section/panel exposing DICOM tags (e.g. Scanner Modality, Exposure time, Patient Age group) to the clinician.
-* **Session Expiry Warning:**
-  No warning banner or idle timeout checks exist to protect exposed patient views on workstations.
+### 4.1 Security Gaps & Loopholes
+1. **Lack of Automated Workstation Session Lockout (HIPAA/GDPR Compliance Gap):**
+   * **Vulnerability:** When a clinician leaves a workstation, the active annotation session remains open indefinitely.
+   * **Remediation:** Implement an inactive timer in `client/src/App.js` that automatically logs the user out and clears access tokens after 15 minutes of idle time.
+2. **Missing Multi-Factor Authentication (MFA):**
+   * **Vulnerability:** Access depends entirely on password authentication. Weak or reused passwords could lead to unauthorized access to medical records.
+   * **Remediation:** Propose integrating a secondary verification flow (e.g., TOTP authenticator app support) on `/api/auth/login`.
+3. **Local Database Encryption-at-Rest Gap:**
+   * **Vulnerability:** MongoDB connection strings do not enforce volume encryption or SSL by default.
+   * **Remediation:** Update `compose.yaml` to specify MongoDB configuration options that mandate TLS/SSL and encrypt local persistent directories.
+
+### 4.2 Codebase Bugs & Gaps
+1. **Frontend Crash on Standard 2D Images (X-rays, etc.):**
+   * **Bug:** Files categorized as `type: "image"` (PNG/JPEG) are passed to `NiftiViewer` in `client/src/components/MainViewer.jsx`, triggering JavaScript runtime crashes.
+   * **Remediation:** Add a dedicated branch in `MainViewer.jsx` to render a 2D viewport when `file?.type === 'image'`.
+2. **DICOM Metadata Panel Missing:**
+   * **Gap:** Clinicians cannot inspect critical tags (e.g., Modality, Study Date, Patient Age) in the viewer.
+   * **Remediation:** Map parsed headers using `dicomParser` in `DicomViewer.js` and render them in a collapsible right drawer.
+
+---
+
+## 5. Summary of Recommended Dev Tasks
+
+| Task | Category | Severity | File Targets |
+| :--- | :--- | :---: | :--- |
+| **Fix 2D Image View Crash** | Bug | High | [MainViewer.jsx](file:///home/mamdaliof/Documents/GitHub/mamdaliof-obsidian/02-Projects/Medical-Image-Annotation-Web-App/client/src/components/MainViewer.jsx) |
+| **Build DICOM Metadata Sidebar** | Feature | Medium | [DicomViewer.js](file:///home/mamdaliof/Documents/GitHub/mamdaliof-obsidian/02-Projects/Medical-Image-Annotation-Web-App/client/src/DicomViewer.js) |
+| **Implement 15-Minute Session Lock** | Security | High | [App.js](file:///home/mamdaliof/Documents/GitHub/mamdaliof-obsidian/02-Projects/Medical-Image-Annotation-Web-App/client/src/App.js) |
+| **Enforce MongoDB TLS & Encryption** | Security | Critical | [compose.yaml](file:///home/mamdaliof/Documents/GitHub/mamdaliof-obsidian/02-Projects/Medical-Image-Annotation-Web-App/compose.yaml) |
+
