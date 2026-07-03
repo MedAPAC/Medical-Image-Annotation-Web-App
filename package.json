@@ -15,5 +15,8 @@
     "docker:build": "docker compose --env-file .env.docker build",
     "docker:up": "docker compose --env-file .env.docker up -d",
     "docker:down": "docker compose --env-file .env.docker down"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

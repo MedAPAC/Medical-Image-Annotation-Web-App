@@ -6,6 +6,11 @@ import React, {
   useRef,
 } from "react";
 import { fabric } from "fabric";
+import {
+  isAxisAlignedRectangle,
+  isBoundingBoxAnnotation,
+  resizeBoundingBoxPoints,
+} from "./annotationGeometry";
 
 const AnnotationCanvas = forwardRef(
   (
@@ -171,7 +176,7 @@ const AnnotationCanvas = forwardRef(
       const bounds = getBoundsFromPoints(points.map(([x, y]) => ({ x, y })));
 
       return {
-        type: shape.customType || shape.type,
+        type: shape.annotationKind || shape.customType || shape.type,
         label: shape.label || "Unlabeled",
         coordinateSystem: "image-pixel",
         points,
@@ -282,7 +287,12 @@ const AnnotationCanvas = forwardRef(
         if (fabricRef.current) {
           cleanupTempObjects(fabricRef.current);
           attachStandardGeometry(fabricRef.current);
-          return fabricRef.current.toJSON(["label", "customType", "standardGeometry"]);
+          return fabricRef.current.toJSON([
+            "label",
+            "customType",
+            "annotationKind",
+            "standardGeometry",
+          ]);
         }
         return null;
       },
@@ -307,6 +317,13 @@ const AnnotationCanvas = forwardRef(
             });
 
             canvas.getObjects().forEach((obj) => {
+              if (
+                !obj.annotationKind &&
+                obj.customType === "polygon" &&
+                isAxisAlignedRectangle(obj.points)
+              ) {
+                obj.annotationKind = "rectangle";
+              }
               if (obj.customType === "polygon" || obj.customType === "polyline") {
                 generateVertexHandles(obj, canvas);
               }
@@ -769,6 +786,7 @@ const AnnotationCanvas = forwardRef(
           fill,
           selectable: true,
           customType: "polygon",
+          annotationKind: "rectangle",
           objectCaching: false,
           hasControls: false,
           hasBorders: false,
@@ -1057,7 +1075,12 @@ const AnnotationCanvas = forwardRef(
       const pIndex = handle.pointIndex;
       if (!poly.points || !poly.points[pIndex]) return;
 
-      const anchorIndex = poly.points.length > 1 ? (pIndex === 0 ? 1 : pIndex - 1) : pIndex;
+      const isBoundingBox = isBoundingBoxAnnotation(poly);
+      const anchorIndex = isBoundingBox
+        ? (pIndex + 2) % 4
+        : poly.points.length > 1
+          ? (pIndex === 0 ? 1 : pIndex - 1)
+          : pIndex;
       const anchorBefore = poly.points[anchorIndex];
       const anchorWorld = fabric.util.transformPoint(
         {
@@ -1081,10 +1104,15 @@ const AnnotationCanvas = forwardRef(
       //    of the bounding box). Adding pathOffset converts back to the
       //    absolute point-array coordinate space that fabric.Polygon uses
       //    internally (top-left of original bounding box = 0,0).
-      poly.points[pIndex] = {
+      const proposedPoint = {
         x: localPoint.x + poly.pathOffset.x,
         y: localPoint.y + poly.pathOffset.y,
       };
+      if (isBoundingBox) {
+        poly.points = resizeBoundingBoxPoints(poly.points, pIndex, proposedPoint);
+      } else {
+        poly.points[pIndex] = proposedPoint;
+      }
 
       if (typeof poly._setPositionDimensions === "function") {
         poly._setPositionDimensions({});
@@ -1123,7 +1151,7 @@ const AnnotationCanvas = forwardRef(
       if (poly.editHandles) {
         const newMatrix = poly.calcTransformMatrix();
         poly.editHandles.forEach((h, i) => {
-          if (i === pIndex) return;
+          if (i === pIndex && !isBoundingBox) return;
           const pt = poly.points[i];
           const ptLocal = { x: pt.x - poly.pathOffset.x, y: pt.y - poly.pathOffset.y };
           const ptWorld = fabric.util.transformPoint(ptLocal, newMatrix);
