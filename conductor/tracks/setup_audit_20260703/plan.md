@@ -12,12 +12,12 @@ This document outlines the phased plan to initialize the development environment
 - [x] Task: Conductor - User Manual Verification 'Conda and Node environment setup' (Protocol in workflow.md)
 
 ## Phase 2: Codebase Architecture & HMI Audit
-- [x] Task: Document Codebase Architecture
+- [x] Task: Document Codebase Architecture [c72ef30]
     - [x] Map client and server folders and compile directory tree (in audit_report.md)
     - [x] Document endpoint patterns, routing, and controller architectures (in audit_report.md)
-- [ ] Task: Map Frontend Canvas and HMI Interaction
-    - [ ] Document Fabric.js and Cornerstone integrations in client/
-    - [ ] Verify 2D clinical image support structure and DICOM metadata tag extraction points
+- [x] Task: Map Frontend Canvas and HMI Interaction
+    - [x] Document Fabric.js and Cornerstone integrations in client/ (in audit_report.md)
+    - [x] Verify 2D clinical image support structure and DICOM metadata tag extraction points (in audit_report.md)
 - [ ] Task: Conductor - User Manual Verification 'Codebase Architecture & HMI Audit' (Protocol in workflow.md)
 
 ## Phase 3: Bug Hunting & Security Vulnerability Scan

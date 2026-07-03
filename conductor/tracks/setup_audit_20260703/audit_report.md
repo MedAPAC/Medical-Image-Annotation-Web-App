@@ -59,6 +59,18 @@ All routes register dynamic controllers using dependencies injected via a centra
 2. **NiftiViewer:** Loads `.nii` or `.nii.gz` file streams and renders them using `VTK.js`.
 3. **AnnotationCanvas:** A transparent overlay canvas using `Fabric.js` placed directly on top of the image wrapper. It handles mouse/pointer inputs to draw and modify bounding boxes, polygons, and polylines.
 
+### Canvas & Cornerstone HMI Mechanics
+* **Cornerstone Multi-planar Viewport:**
+  * Uses `cornerstone-core` and WADO image loader to load and cache DICOM files.
+  * Decodes slices into a single linear buffer (`volume.data`) representing voxel intensities.
+  * Dynamically extracts and interpolates sagittal and coronal planes relative to the axial slice set bounds.
+  * Connects to a hidden canvas element where Cornerstone handles rasterization, while the outer canvas renders the processed viewport.
+* **Fabric.js Vector Layer:**
+  * Coordinates of hand-drawn shapes on Fabric.js are mapped to the standard `image-pixel` coordinate system using transformation matrices (`calcTransformMatrix`).
+  * Vertex points are rounded to 3 decimal places to ensure consistent export formats.
+  * The canvas intercepts mouse down, move, and up events when in active drawing mode (e.g. polygon, polyline, ellipse, rectangle, or brush mask tools).
+  * Synchronization with the backend is achieved by sending structured shape arrays (representing points and labels) to `/api/tasks/:id/annotations`.
+
 ---
 
 ## 4. Key Gaps & Vulnerabilities Identified
