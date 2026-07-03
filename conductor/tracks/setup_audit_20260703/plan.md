@@ -11,7 +11,7 @@ This document outlines the phased plan to initialize the development environment
     - [x] Run npm install --legacy-peer-deps in frontend client directory
 - [x] Task: Conductor - User Manual Verification 'Conda and Node environment setup' (Protocol in workflow.md)
 
-## Phase 2: Codebase Architecture & HMI Audit
+## Phase 2: Codebase Architecture & HMI Audit [checkpoint: d2ed0ee]
 - [x] Task: Document Codebase Architecture [c72ef30]
     - [x] Map client and server folders and compile directory tree (in audit_report.md)
     - [x] Document endpoint patterns, routing, and controller architectures (in audit_report.md)
