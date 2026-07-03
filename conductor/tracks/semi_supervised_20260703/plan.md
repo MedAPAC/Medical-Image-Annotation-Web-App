@@ -38,7 +38,7 @@ This document outlines the phased plan to implement the modular, pluggable semi-
     - [x] Verify task attributes panels refresh instantly when classification predictions are received
 - [x] Task: Conductor - User Manual Verification 'Interactive Prompting and Multi-Output Canvas Rendering' (Protocol in workflow.md)
 
-## Phase 3: Bi-directional Polygon/Mask Converter [checkpoint: TBD]
+## Phase 3: Bi-directional Polygon/Mask Converter [checkpoint: 6efb27e]
 - [x] Task: Polygon-to-Mask Conversion Utility [8b635a5]
     - [x] Write unit tests for converting vector coordinates of arbitrary polygons to a 2D binary grid mask
     - [x] Implement the polygon-to-mask rasterization function
@@ -51,4 +51,4 @@ This document outlines the phased plan to implement the modular, pluggable semi-
     - [x] Write integration tests for manual conversion triggers in the UI
     - [x] Implement action buttons in the workspace viewer to trigger "Convert Polygon to Mask" and "Convert Mask to Polygon"
     - [x] Verify that conversion operations update the canvas correctly and preserve editing functionality
-- [~] Task: Conductor - User Manual Verification 'Bi-directional Polygon/Mask Converter' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Bi-directional Polygon/Mask Converter' (Protocol in workflow.md)
