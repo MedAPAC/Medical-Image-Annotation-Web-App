@@ -20,23 +20,23 @@ This document outlines the phased plan to implement the modular, pluggable semi-
 - [x] Task: Conductor - User Manual Verification 'Core Interfaces and Mock Inference Engine' (Protocol in workflow.md)
 
 ## Phase 2: Interactive Prompting and Multi-Output Canvas Rendering [checkpoint: TBD]
-- [ ] Task: Canvas Prompting Controls
-    - [ ] Write tests for capturing points, boxes, and text prompts on the editor canvas
-    - [ ] Implement mouse click listener (positive/negative clicks) and bounding box selection on Fabric.js canvas
-    - [ ] Implement text input element in annotation panel to allow text prompts (for open-vocabulary detection)
-    - [ ] Implement owner configuration options to enable/disable individual prompt modes
-    - [ ] Verify inputs are correctly formatted into corresponding prompt subclass instances
-- [ ] Task: Multi-Output Canvas Rendering
-    - [ ] Write tests for rendering polygon nodes, mask overlays, box handles, keypoints, and metadata sync
-    - [ ] Implement Fabric.js renderer for polygon nodes (with draggable, editable vertices)
-    - [ ] Implement mask rendering layer (semi-transparent pixel overlays on top of Cornerstone viewports)
-    - [ ] Implement keypoints rendering and bounding box rendering with scaling anchors
-    - [ ] Verify that model outputs render correctly on the canvas and remain editable by the annotator
-- [ ] Task: Sync Classification Labels with Sidebar
-    - [ ] Write tests verifying dynamic update of task classification attributes from model predictions
-    - [ ] Implement sidebar updater to synchronize predicted labels/attributes with task metadata properties
-    - [ ] Verify task attributes panels refresh instantly when classification predictions are received
-- [ ] Task: Conductor - User Manual Verification 'Interactive Prompting and Multi-Output Canvas Rendering' (Protocol in workflow.md)
+- [x] Task: Canvas Prompting Controls [76da671]
+    - [x] Write tests for capturing points, boxes, and text prompts on the editor canvas
+    - [x] Implement mouse click listener (positive/negative clicks) and bounding box selection on Fabric.js canvas
+    - [x] Implement text input element in annotation panel to allow text prompts (for open-vocabulary detection)
+    - [x] Implement owner configuration options to enable/disable individual prompt modes
+    - [x] Verify inputs are correctly formatted into corresponding prompt subclass instances
+- [x] Task: Multi-Output Canvas Rendering [76da671]
+    - [x] Write tests for rendering polygon nodes, mask overlays, box handles, keypoints, and metadata sync
+    - [x] Implement Fabric.js renderer for polygon nodes (with draggable, editable vertices)
+    - [x] Implement mask rendering layer (semi-transparent pixel overlays on top of Cornerstone viewports)
+    - [x] Implement keypoints rendering and bounding box rendering with scaling anchors
+    - [x] Verify that model outputs render correctly on the canvas and remain editable by the annotator
+- [x] Task: Sync Classification Labels with Sidebar [76da671]
+    - [x] Write tests verifying dynamic update of task classification attributes from model predictions
+    - [x] Implement sidebar updater to synchronize predicted labels/attributes with task metadata properties
+    - [x] Verify task attributes panels refresh instantly when classification predictions are received
+- [~] Task: Conductor - User Manual Verification 'Interactive Prompting and Multi-Output Canvas Rendering' (Protocol in workflow.md)
 
 ## Phase 3: Bi-directional Polygon/Mask Converter [checkpoint: TBD]
 - [ ] Task: Polygon-to-Mask Conversion Utility
