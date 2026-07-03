@@ -6,6 +6,7 @@ const registerTaskRoutes = require("./taskRoutes");
 const registerTeamRoutes = require("./teamRoutes");
 const registerProfileRoutes = require("./profileRoutes");
 const registerInferenceRoutes = require("./inferenceRoutes");
+const registerAiRoutes = require("./aiRoutes");
 
 const registerRoutes = (app, context) => {
   registerAuthRoutes(app, context);
@@ -16,6 +17,7 @@ const registerRoutes = (app, context) => {
   registerTeamRoutes(app, context);
   registerProfileRoutes(app, context);
   registerInferenceRoutes(app, context);
+  registerAiRoutes(app, context);
 };
 
 module.exports = { registerRoutes };
