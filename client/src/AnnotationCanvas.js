@@ -545,9 +545,11 @@ const AnnotationCanvas = forwardRef(
       cleanupTempObjects(canvas);
       drawingModeRef.current = mode;
 
-      const isDrawing = ["rectangle", "polygon", "polyline", "ellipse"].includes(mode);
-      canvas.defaultCursor = isDrawing ? "crosshair" : "default";
-      canvas.selection = !isDrawing;
+      const isAnnotationTool = ["rectangle", "polygon", "polyline", "ellipse"].includes(mode);
+      canvas.defaultCursor = isAnnotationTool ? "crosshair" : "default";
+      canvas.hoverCursor = isAnnotationTool ? "crosshair" : "default";
+      canvas.moveCursor = isAnnotationTool ? "crosshair" : "default";
+      canvas.selection = !isAnnotationTool;
       canvas.isDrawingMode = mode === "brush";
 
       if (mode === "brush") {
@@ -707,7 +709,7 @@ const AnnotationCanvas = forwardRef(
       const pointer = canvas.getPointer(opt.e);
       const mode = drawingModeRef.current;
 
-      if (["rectangle", "ellipse"].includes(mode)) {
+      if (["rectangle", "polygon", "polyline", "ellipse"].includes(mode)) {
         updateCrosshairs(pointer, canvas);
       } else if (crosshairLines.current.horizontal) {
         canvas.remove(crosshairLines.current.horizontal);
