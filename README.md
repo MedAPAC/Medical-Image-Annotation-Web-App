@@ -256,4 +256,4 @@ docs/SECURITY_AUDIT.md  Current dependency and residual-risk record
 
 ---
 
-<p align='center'><sub>Designed for medical imaging teams, clinical researchers, and AI dataset programs.</sub></p>
+<p align='center'><sub>Designed for medical imaging teams, clinical researchers, and AI dataset programs. </sub></p>
