@@ -3,11 +3,11 @@
 This document outlines the phased plan to implement the modular, pluggable semi-supervised annotation system.
 
 ## Phase 1: Core Interfaces and Mock Inference Engine [checkpoint: TBD]
-- [ ] Task: Define Base Input and Output Structures
-    - [ ] Write tests defining the structures of `BasePrompt` and `BaseModelOutput`
-    - [ ] Implement `BasePrompt` with Point, Box, and Text prompt subclasses
-    - [ ] Implement `BaseModelOutput` with Polygon, Mask, Box, Classification, and Keypoint output subclasses
-    - [ ] Verify test suite runs and all type definitions pass compile checks
+- [x] Task: Define Base Input and Output Structures [999d104]
+    - [x] Write tests defining the structures of `BasePrompt` and `BaseModelOutput`
+    - [x] Implement `BasePrompt` with Point, Box, and Text prompt subclasses
+    - [x] Implement `BaseModelOutput` with Polygon, Mask, Box, Classification, and Keypoint output subclasses
+    - [x] Verify test suite runs and all type definitions pass compile checks
 - [ ] Task: Implement Pluggable Inference Runner
     - [ ] Write unit tests for pluggable `InferenceRunner` lifecycle and registration
     - [ ] Implement abstract `InferenceRunner` and registration registry in the client application
