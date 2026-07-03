@@ -13,10 +13,10 @@ This document outlines the phased plan to implement the modular, pluggable semi-
     - [x] Implement abstract `InferenceRunner` and registration registry in the client application
     - [x] Implement `MockInferenceRunner` that simulates model predictions (polygons, masks, boxes, classification labels) using random/placeholder math
     - [x] Verify tests pass and runner returns correct mocked model outputs
-- [ ] Task: Implement Backend Placeholder API Routes
-    - [ ] Write integration tests for backend inference API placeholder endpoints
-    - [ ] Implement HTTP POST endpoints in the Express server to receive prompts and return mock inference outputs
-    - [ ] Verify endpoints respond correctly with JSON payloads
+- [x] Task: Implement Backend Placeholder API Routes [382a1c5]
+    - [x] Write integration tests for backend inference API placeholder endpoints
+    - [x] Implement HTTP POST endpoints in the Express server to receive prompts and return mock inference outputs
+    - [x] Verify endpoints respond correctly with JSON payloads
 - [ ] Task: Conductor - User Manual Verification 'Core Interfaces and Mock Inference Engine' (Protocol in workflow.md)
 
 ## Phase 2: Interactive Prompting and Multi-Output Canvas Rendering [checkpoint: TBD]
