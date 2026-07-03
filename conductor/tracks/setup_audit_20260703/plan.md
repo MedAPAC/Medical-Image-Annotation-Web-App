@@ -3,9 +3,9 @@
 This document outlines the phased plan to initialize the development environment and perform the initial audit/scan of the codebase.
 
 ## Phase 1: Conda and Node environment setup
-- [ ] Task: Conda Environment Initialization
-    - [ ] Create Conda environment named `mediannotate` using Python 3.10
-    - [ ] Verify conda environment is activated and python version is correct
+- [x] Task: Conda Environment Initialization
+    - [x] Create Conda environment named `mediannotate` using Python 3.10
+    - [x] Verify conda environment is activated and python version is correct
 - [ ] Task: Install Node.js Dependencies
     - [ ] Run npm install in backend server directory
     - [ ] Run npm install --legacy-peer-deps in frontend client directory
