@@ -2,7 +2,7 @@
 
 This document outlines the phased plan to implement the modular, pluggable semi-supervised annotation system.
 
-## Phase 1: Core Interfaces and Mock Inference Engine [checkpoint: TBD]
+## Phase 1: Core Interfaces and Mock Inference Engine [checkpoint: b4c5fc1]
 - [x] Task: Define Base Input and Output Structures [999d104]
     - [x] Write tests defining the structures of `BasePrompt` and `BaseModelOutput`
     - [x] Implement `BasePrompt` with Point, Box, and Text prompt subclasses
@@ -17,7 +17,7 @@ This document outlines the phased plan to implement the modular, pluggable semi-
     - [x] Write integration tests for backend inference API placeholder endpoints
     - [x] Implement HTTP POST endpoints in the Express server to receive prompts and return mock inference outputs
     - [x] Verify endpoints respond correctly with JSON payloads
-- [ ] Task: Conductor - User Manual Verification 'Core Interfaces and Mock Inference Engine' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Core Interfaces and Mock Inference Engine' (Protocol in workflow.md)
 
 ## Phase 2: Interactive Prompting and Multi-Output Canvas Rendering [checkpoint: TBD]
 - [ ] Task: Canvas Prompting Controls
