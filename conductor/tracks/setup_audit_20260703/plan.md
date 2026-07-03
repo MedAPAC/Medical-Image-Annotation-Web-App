@@ -6,10 +6,10 @@ This document outlines the phased plan to initialize the development environment
 - [x] Task: Conda Environment Initialization [32cfb2d]
     - [x] Create Conda environment named `mediannotate` using Python 3.10
     - [x] Verify conda environment is activated and python version is correct
-- [x] Task: Install Node.js Dependencies
+- [x] Task: Install Node.js Dependencies [b60b3b3]
     - [x] Run npm install in backend server directory
     - [x] Run npm install --legacy-peer-deps in frontend client directory
-- [ ] Task: Conductor - User Manual Verification 'Conda and Node environment setup' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Conda and Node environment setup' (Protocol in workflow.md)
 
 ## Phase 2: Codebase Architecture & HMI Audit
 - [ ] Task: Document Codebase Architecture
