@@ -1,0 +1,8 @@
+{
+  "track_id": "setup_audit_20260703",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-07-03T14:15:00Z",
+  "updated_at": "2026-07-03T14:15:00Z",
+  "description": "Setup Conda environment, install dependencies, audit project architecture, map HMI features, and scan for bugs and vulnerabilities"
+}
