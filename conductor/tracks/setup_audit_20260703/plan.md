@@ -2,7 +2,7 @@
 
 This document outlines the phased plan to initialize the development environment and perform the initial audit/scan of the codebase.
 
-## Phase 1: Conda and Node environment setup
+## Phase 1: Conda and Node environment setup [checkpoint: 66239a6]
 - [x] Task: Conda Environment Initialization [32cfb2d]
     - [x] Create Conda environment named `mediannotate` using Python 3.10
     - [x] Verify conda environment is activated and python version is correct
