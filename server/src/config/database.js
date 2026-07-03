@@ -22,6 +22,7 @@ const connectDatabase = async () => {
     teamsCollection: db.collection('teamsCollection'),
     securityAuditCollection: db.collection('security_audit'),
     oauthStatesCollection: db.collection('oauth_states'),
+    ticketsCollection: db.collection('tickets'),
   };
 
   await collections.taskTimersCollection.createIndex({ taskId: 1, userId: 1 }, { unique: true });
