@@ -8,11 +8,11 @@ This document outlines the phased plan to implement the modular, pluggable semi-
     - [x] Implement `BasePrompt` with Point, Box, and Text prompt subclasses
     - [x] Implement `BaseModelOutput` with Polygon, Mask, Box, Classification, and Keypoint output subclasses
     - [x] Verify test suite runs and all type definitions pass compile checks
-- [ ] Task: Implement Pluggable Inference Runner
-    - [ ] Write unit tests for pluggable `InferenceRunner` lifecycle and registration
-    - [ ] Implement abstract `InferenceRunner` and registration registry in the client application
-    - [ ] Implement `MockInferenceRunner` that simulates model predictions (polygons, masks, boxes, classification labels) using random/placeholder math
-    - [ ] Verify tests pass and runner returns correct mocked model outputs
+- [x] Task: Implement Pluggable Inference Runner [e68c24a]
+    - [x] Write unit tests for pluggable `InferenceRunner` lifecycle and registration
+    - [x] Implement abstract `InferenceRunner` and registration registry in the client application
+    - [x] Implement `MockInferenceRunner` that simulates model predictions (polygons, masks, boxes, classification labels) using random/placeholder math
+    - [x] Verify tests pass and runner returns correct mocked model outputs
 - [ ] Task: Implement Backend Placeholder API Routes
     - [ ] Write integration tests for backend inference API placeholder endpoints
     - [ ] Implement HTTP POST endpoints in the Express server to receive prompts and return mock inference outputs
