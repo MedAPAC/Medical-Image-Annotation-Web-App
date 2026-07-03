@@ -81,7 +81,7 @@ All routes register dynamic controllers using dependencies injected via a centra
    * **Remediation:** Implement an inactive timer in `client/src/App.js` that automatically logs the user out and clears access tokens after 15 minutes of idle time.
 2. **Missing Multi-Factor Authentication (MFA):**
    * **Vulnerability:** Access depends entirely on password authentication. Weak or reused passwords could lead to unauthorized access to medical records.
-   * **Remediation:** Propose integrating a secondary verification flow (e.g., TOTP authenticator app support) on `/api/auth/login`.
+   * **Remediation:** Implement an optional MFA feature configured by the project owner/creator. When enabled, users must authenticate with an email-based One-Time Passcode (OTP) sent to their registered address during login.
 3. **Local Database Encryption-at-Rest Gap:**
    * **Vulnerability:** MongoDB connection strings do not enforce volume encryption or SSL by default.
    * **Remediation:** Update `compose.yaml` to specify MongoDB configuration options that mandate TLS/SSL and encrypt local persistent directories.
