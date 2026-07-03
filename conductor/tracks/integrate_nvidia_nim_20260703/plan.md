@@ -3,11 +3,11 @@
 This document outlines the phased plan to implement the Nvidia NIM AI assistant chatbot.
 
 ## Phase 1: Backend proxy route and Nvidia NIM Service [checkpoint: TBD]
-- [ ] Task: Backend AI Chat Route
-    - [ ] Write integration tests for `POST /api/ai/chat` verifying authentication, payload validation, and forwarding
-    - [ ] Implement backend proxy route `POST /api/ai/chat` using native fetch to call Nvidia NIM API
-    - [ ] Verify that Nvidia NIM API keys are retrieved securely from environment variables
-- [ ] Task: Developer Ticket Logging Service
+- [x] Task: Backend AI Chat Route [2865a04]
+    - [x] Write integration tests for `POST /api/ai/chat` verifying authentication, payload validation, and forwarding
+    - [x] Implement backend proxy route `POST /api/ai/chat` using native fetch to call Nvidia NIM API
+    - [x] Verify that Nvidia NIM API keys are retrieved securely from environment variables
+- [~] Task: Developer Ticket Logging Service
     - [ ] Write integration tests for `POST /api/tickets/create` verifying schema validation and database insertion
     - [ ] Implement Express route `POST /api/tickets/create` to store issue reports in MongoDB
     - [ ] Verify ticket collection records save successfully with audit logs
