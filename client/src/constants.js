@@ -14,6 +14,8 @@ import {
   Square,
   Tags,
   ZoomIn,
+  CircleDot,
+  ScanLine,
 } from 'lucide-react';
 
 export const SHAPES = [
@@ -22,6 +24,8 @@ export const SHAPES = [
   { name: 'polygon', label: 'Polygon', icon: Pentagon, shortcut: 'P' },
   { name: 'polyline', label: 'Polyline', icon: PenLine, shortcut: 'L' },
   { name: 'brush', label: 'Brush', icon: Brush, shortcut: 'B' },
+  { name: 'ai-point', label: 'AI Click Prompt', icon: CircleDot, shortcut: 'I' },
+  { name: 'ai-box', label: 'AI Box Prompt', icon: ScanLine, shortcut: 'O' },
 ];
 
 export const SECTION_ICONS = {
@@ -29,6 +33,7 @@ export const SECTION_ICONS = {
   window: { icon: SlidersHorizontal, label: 'Windowing' },
   opacity: { icon: Layers3, label: 'Overlay opacity' },
   brush: { icon: Paintbrush, label: 'Brush settings' },
+  ai: { icon: CircleDot, label: 'Semi-Supervised AI' },
 };
 
 export const LEFT_BUTTONS = [

@@ -369,6 +369,71 @@ const AnnotationCanvas = forwardRef(
           removeShapeAndLabel(activeObject, canvas);
         }
       },
+      clearAIPrompts: () => {
+        const canvas = fabricRef.current;
+        if (!canvas) return;
+        const objects = canvas.getObjects().slice();
+        objects.forEach((obj) => {
+          if (obj.customType === "temp-ai-point" || obj.customType === "temp-ai-box") {
+            canvas.remove(obj);
+          }
+        });
+        canvas.requestRenderAll();
+      },
+      addAIAnnotation: (type, data) => {
+        const canvas = fabricRef.current;
+        if (!canvas) return;
+
+        const { stroke, fill } = getColors();
+
+        if (type === "polygon") {
+          const polygon = new fabric.Polygon(data.points, {
+            stroke,
+            strokeWidth: ANNOTATION_STROKE_WIDTH,
+            fill,
+            selectable: true,
+            customType: "polygon",
+            objectCaching: false,
+            hasControls: false,
+            hasBorders: false,
+          });
+          finishShape(polygon, canvas, "polygon");
+        } else if (type === "box") {
+          const points = [
+            { x: data.x1, y: data.y1 },
+            { x: data.x2, y: data.y1 },
+            { x: data.x2, y: data.y2 },
+            { x: data.x1, y: data.y2 }
+          ];
+          const polygonRect = new fabric.Polygon(points, {
+            stroke,
+            strokeWidth: ANNOTATION_STROKE_WIDTH,
+            fill,
+            selectable: true,
+            customType: "polygon",
+            annotationKind: "rectangle",
+            objectCaching: false,
+            hasControls: false,
+            hasBorders: false,
+          });
+          finishShape(polygonRect, canvas, "rectangle");
+        } else if (type === "keypoint") {
+          data.points.forEach((pt) => {
+            const circle = new fabric.Circle({
+              radius: 4,
+              fill: "white",
+              stroke: "#333",
+              strokeWidth: 1,
+              left: pt.x,
+              top: pt.y,
+              selectable: true,
+              customType: "keypoint",
+            });
+            canvas.add(circle);
+          });
+          canvas.requestRenderAll();
+        }
+      },
     }));
 
     // --- Strict Cleanup Helper ---
@@ -393,7 +458,9 @@ const AnnotationCanvas = forwardRef(
         "temp-polygon",
         "temp-polyline",
         "preview-box",
-        "preview-ellipse"
+        "preview-ellipse",
+        "temp-ai-point",
+        "temp-ai-box"
       ]);
 
       const objects = canvas.getObjects();
@@ -702,6 +769,54 @@ const AnnotationCanvas = forwardRef(
           excludeFromExport: true,
         });
         canvas.add(previewEllipse.current);
+      } else if (mode === "ai-point") {
+        const isPositive = !opt.e.shiftKey;
+        const marker = new fabric.Circle({
+          left: pointer.x - 5,
+          top: pointer.y - 5,
+          radius: 5,
+          fill: isPositive ? "#4caf50" : "#f44336",
+          stroke: "#ffffff",
+          strokeWidth: 1.5,
+          selectable: false,
+          evented: false,
+          customType: "temp-ai-point",
+          isPositive,
+          excludeFromExport: true,
+        });
+        canvas.add(marker);
+        canvas.requestRenderAll();
+
+        if (onShapeComplete) {
+          const pointObjects = canvas.getObjects().filter(o => o.customType === "temp-ai-point");
+          const prompts = pointObjects.map(o => ({
+            type: "point",
+            x: o.left + 5,
+            y: o.top + 5,
+            isPositive: o.isPositive
+          }));
+          onShapeComplete({ type: "ai-prompt", target: { type: "points", prompts } });
+        }
+      } else if (mode === "ai-box") {
+        canvas.discardActiveObject();
+        isDrawingBox.current = true;
+        boxStart.current = pointer;
+
+        previewBox.current = new fabric.Rect({
+          left: pointer.x,
+          top: pointer.y,
+          width: 0,
+          height: 0,
+          stroke: "#2196f3",
+          strokeWidth: 2,
+          strokeDashArray: [4, 4],
+          fill: "rgba(33, 150, 243, 0.1)",
+          selectable: false,
+          evented: false,
+          customType: "preview-box",
+          excludeFromExport: true,
+        });
+        canvas.add(previewBox.current);
       }
     };
 
@@ -709,7 +824,7 @@ const AnnotationCanvas = forwardRef(
       const pointer = canvas.getPointer(opt.e);
       const mode = drawingModeRef.current;
 
-      if (["rectangle", "polygon", "polyline", "ellipse"].includes(mode)) {
+      if (["rectangle", "polygon", "polyline", "ellipse", "ai-box"].includes(mode)) {
         updateCrosshairs(pointer, canvas);
       } else if (crosshairLines.current.horizontal) {
         canvas.remove(crosshairLines.current.horizontal);
@@ -735,7 +850,7 @@ const AnnotationCanvas = forwardRef(
         canvas.requestRenderAll();
       }
 
-      if (mode === "rectangle" && isDrawingBox.current && previewBox.current) {
+      if ((mode === "rectangle" || mode === "ai-box") && isDrawingBox.current && previewBox.current) {
         const startX = boxStart.current.x;
         const startY = boxStart.current.y;
         const width = pointer.x - startX;
@@ -797,6 +912,46 @@ const AnnotationCanvas = forwardRef(
         canvas.remove(previewBox.current);
         previewBox.current = null;
         finishShape(polygonRect, canvas, "rectangle");
+      }
+
+      if (mode === "ai-box" && isDrawingBox.current) {
+        isDrawingBox.current = false;
+        if (
+          !previewBox.current ||
+          previewBox.current.width < 5 ||
+          previewBox.current.height < 5
+        ) {
+          cleanupTempObjects(canvas);
+          return;
+        }
+
+        const existingBoxes = canvas.getObjects().filter(o => o.customType === "temp-ai-box" && o !== previewBox.current);
+        existingBoxes.forEach(o => canvas.remove(o));
+
+        const { left, top, width, height } = previewBox.current;
+        previewBox.current.set({
+          customType: "temp-ai-box",
+          selectable: false,
+          evented: false,
+          stroke: "#2196f3",
+          strokeWidth: 2,
+          strokeDashArray: [4, 4],
+          fill: "rgba(33, 150, 243, 0.1)"
+        });
+        previewBox.current = null;
+
+        if (onShapeComplete) {
+          onShapeComplete({
+            type: "ai-prompt",
+            target: {
+              type: "box",
+              x1: left,
+              y1: top,
+              x2: left + width,
+              y2: top + height
+            }
+          });
+        }
       }
 
       if (mode === "ellipse" && isDrawingEllipse.current) {

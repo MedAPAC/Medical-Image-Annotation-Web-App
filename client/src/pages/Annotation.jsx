@@ -6,7 +6,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { fabric } from "fabric";
 
-import { CircleDot, ScanLine } from 'lucide-react';
+import { CircleDot, ScanLine, Wand2 } from 'lucide-react';
+import { runnerRegistry } from "../inference/InferenceRunner";
+import { formatAIPrompt } from "../inference/promptFormatter";
 
 // Hooks
 import useTaskData from "../useTaskData";
@@ -228,6 +230,13 @@ function Annotation() {
     viewType, setViewType,
     annotationRefs
   } = useAnnotationData();
+
+  // AI prompting & inference state
+  const [activeAIModel, setActiveAIModel] = useState("mock");
+  const [enabledAIPromptTypes, setEnabledAIPromptTypes] = useState(["point", "box", "text"]);
+  const [aiTextPrompt, setAiTextPrompt] = useState("");
+  const [aiPromptIsPositive, setAiPromptIsPositive] = useState(true);
+  const [activeAIPrompts, setActiveAIPrompts] = useState({ points: [], box: null });
 
   const collaborationClientIdRef = useRef(
     `annotation-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -508,6 +517,110 @@ function Annotation() {
     saveSliceAnnotationToState, setTotalSlices, setCurrentSlice, setSelectedFileName,
   ]);
 
+  const clearAIPrompts = useCallback(() => {
+    setActiveAIPrompts({ points: [], box: null });
+    const canvasRef = annotationRefs.current[selectedFileName];
+    canvasRef?.current?.clearAIPrompts();
+  }, [selectedFileName, annotationRefs]);
+
+  const runAIInference = useCallback(async () => {
+    const runner = runnerRegistry.get(activeAIModel);
+    if (!runner) {
+      showPageAlert("error", "No inference runner found for model " + activeAIModel);
+      return;
+    }
+
+    const prompts = [];
+    
+    if (enabledAIPromptTypes.includes("point") && activeAIPrompts.points.length > 0) {
+      activeAIPrompts.points.forEach((pt) => {
+        prompts.push(formatAIPrompt({ type: "point", x: pt.x, y: pt.y, isPositive: pt.isPositive }));
+      });
+    }
+
+    if (enabledAIPromptTypes.includes("box") && activeAIPrompts.box) {
+      const box = activeAIPrompts.box;
+      prompts.push(formatAIPrompt({ type: "box", x1: box.x1, y1: box.y1, x2: box.x2, y2: box.y2 }));
+    }
+
+    if (enabledAIPromptTypes.includes("text") && aiTextPrompt) {
+      prompts.push(formatAIPrompt({ type: "text", text: aiTextPrompt }));
+    }
+
+    if (prompts.length === 0) {
+      showPageAlert("info", "Please provide a point, box, or text prompt first.");
+      return;
+    }
+
+    try {
+      showPageAlert("info", "Running AI inference...");
+      const canvasRef = annotationRefs.current[selectedFileName];
+      
+      const imageContext = {
+        width: canvasRef?.current?.fabricRef?.current?.width || 512,
+        height: canvasRef?.current?.fabricRef?.current?.height || 512,
+      };
+
+      const results = await runner.predict(prompts, imageContext);
+
+      let addedAny = false;
+      results.forEach((output) => {
+        if (output.type === "polygon" || output.type === "mask" || output.type === "bbox") {
+          if (output.type === "polygon") {
+            canvasRef?.current?.addAIAnnotation("polygon", { points: output.points });
+            addedAny = true;
+          } else if (output.type === "bbox") {
+            canvasRef?.current?.addAIAnnotation("box", { x1: output.x1, y1: output.y1, x2: output.x2, y2: output.y2 });
+            addedAny = true;
+          }
+        } else if (output.type === "classification") {
+          const label = output.labels[0];
+          if (label) {
+            setDirtyClassificationByFileAndSlice((prev) => ({
+              ...prev,
+              [selectedFileName]: {
+                ...(prev[selectedFileName] || {}),
+                [currentSlice]: label,
+              },
+            }));
+            showPageAlert("success", `AI predicted classification: ${label}`);
+          }
+        }
+      });
+
+      if (addedAny) {
+        showPageAlert("success", "AI inference complete! Annotation added.");
+        clearAIPrompts();
+      }
+    } catch (err) {
+      console.error(err);
+      showPageAlert("error", "AI Inference failed: " + (err.message || err));
+    }
+  }, [
+    activeAIModel,
+    enabledAIPromptTypes,
+    activeAIPrompts,
+    aiTextPrompt,
+    selectedFileName,
+    currentSlice,
+    showPageAlert,
+    annotationRefs,
+    clearAIPrompts,
+    setDirtyClassificationByFileAndSlice,
+  ]);
+
+  const handleAnnotationChange = useCallback((event) => {
+    markDirty();
+    if (event && event.type === "ai-prompt") {
+      const { target } = event;
+      if (target.type === "points") {
+        setActiveAIPrompts((prev) => ({ ...prev, points: target.prompts }));
+      } else if (target.type === "box") {
+        setActiveAIPrompts((prev) => ({ ...prev, box: target }));
+      }
+    }
+  }, [markDirty]);
+
   // ── Save ──────────────────────────────────────────────────────────
   const handleSaveAll = useCallback(async () => {
     if (!selectedFileName) {
@@ -670,6 +783,12 @@ function Annotation() {
               brushSize={brushSize} setBrushSize={setBrushSize}
               selectedLabel={selectedLabel} setSelectedLabel={setSelectedLabel}
               labelOptions={labelOptions} t={t}
+              activeAIModel={activeAIModel} setActiveAIModel={setActiveAIModel}
+              enabledAIPromptTypes={enabledAIPromptTypes} setEnabledAIPromptTypes={setEnabledAIPromptTypes}
+              aiTextPrompt={aiTextPrompt} setAiTextPrompt={setAiTextPrompt}
+              aiPromptIsPositive={aiPromptIsPositive} setAiPromptIsPositive={setAiPromptIsPositive}
+              onRunAIInference={runAIInference}
+              onClearAIPrompts={clearAIPrompts}
             />
 
             <section className="annotation-stage" aria-label="Medical image annotation viewer">
@@ -716,7 +835,7 @@ function Annotation() {
                 setInputsByFileAndSlice={setInputsByFileAndSlice}
                 setClassificationByFileAndSlice={setClassificationByFileAndSlice}
                 setAnnotationsByFileAndSlice={setAnnotationsByFileAndSlice}
-                onAnnotationChange={markDirty}
+                onAnnotationChange={handleAnnotationChange}
                 annotationRefs={annotationRefs}
                 totalSlices={totalSlices}
                 taskId={taskId}

@@ -7,6 +7,8 @@ import {
   SlidersHorizontal,
   Tags,
   X,
+  CircleDot,
+  Wand2,
 } from 'lucide-react';
 
 const PANEL_META = {
@@ -30,6 +32,11 @@ const PANEL_META = {
     description: 'Set the color and diameter of the active brush.',
     icon: Paintbrush,
   },
+  ai: {
+    title: 'Semi-Supervised AI',
+    description: 'Configure interactive prompts and model inference settings.',
+    icon: CircleDot,
+  },
 };
 
 const LeftDrawer = ({
@@ -50,6 +57,16 @@ const LeftDrawer = ({
   setSelectedLabel,
   labelOptions = [],
   t,
+  activeAIModel,
+  setActiveAIModel,
+  enabledAIPromptTypes,
+  setEnabledAIPromptTypes,
+  aiTextPrompt,
+  setAiTextPrompt,
+  aiPromptIsPositive,
+  setAiPromptIsPositive,
+  onRunAIInference,
+  onClearAIPrompts,
 }) => {
   const meta = PANEL_META[openSection] || PANEL_META.labels;
   const PanelIcon = meta.icon;
@@ -266,6 +283,113 @@ const LeftDrawer = ({
                   {size}px
                 </button>
               ))}
+            </div>
+          </section>
+        )}
+
+        {openSection === 'ai' && (
+          <section className='drawer-section'>
+            <div className='drawer-section-heading'>
+              <span>{t('Active Model')}</span>
+            </div>
+            <select
+              value={activeAIModel || 'mock'}
+              onChange={(e) => setActiveAIModel(e.target.value)}
+              className='clinical-select'
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#1e293b', color: '#fff', border: '1px solid #475569', marginBottom: '16px' }}
+            >
+              <option value='mock'>Mock Inference Model</option>
+              <option value='sam'>Segment Anything Model (SAM)</option>
+              <option value='dino'>Grounding DINO (Text-guided)</option>
+            </select>
+
+            <div className='drawer-section-heading' style={{ marginTop: '12px' }}>
+              <span>{t('Configured Prompt Modes')}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              {['point', 'box', 'text'].map((type) => {
+                const isEnabled = enabledAIPromptTypes.includes(type);
+                return (
+                  <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type='checkbox'
+                      checked={isEnabled}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setEnabledAIPromptTypes([...enabledAIPromptTypes, type]);
+                        } else {
+                          setEnabledAIPromptTypes(enabledAIPromptTypes.filter((t) => t !== type));
+                        }
+                      }}
+                      style={{ accentColor: '#2563eb' }}
+                    />
+                    <span style={{ textTransform: 'capitalize' }}>{type} prompt</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {enabledAIPromptTypes.includes('point') && (
+              <>
+                <div className='drawer-section-heading' style={{ marginTop: '12px' }}>
+                  <span>{t('AI Click Type')}</span>
+                </div>
+                <div className='drawer-preset-grid' style={{ marginBottom: '16px' }}>
+                  <button
+                    type='button'
+                    className={aiPromptIsPositive ? 'active' : ''}
+                    onClick={() => setAiPromptIsPositive(true)}
+                    style={{ backgroundColor: aiPromptIsPositive ? '#4caf50' : 'transparent', color: '#fff' }}
+                  >
+                    Positive (+)
+                  </button>
+                  <button
+                    type='button'
+                    className={!aiPromptIsPositive ? 'active' : ''}
+                    onClick={() => setAiPromptIsPositive(false)}
+                    style={{ backgroundColor: !aiPromptIsPositive ? '#f44336' : 'transparent', color: '#fff' }}
+                  >
+                    Negative (-)
+                  </button>
+                </div>
+              </>
+            )}
+
+            {enabledAIPromptTypes.includes('text') && (
+              <>
+                <label className='clinical-field' style={{ marginBottom: '16px' }}>
+                  <span><strong>{t('Text Prompt')}</strong></span>
+                  <input
+                    type='text'
+                    value={aiTextPrompt || ''}
+                    onChange={(e) => setAiTextPrompt(e.target.value)}
+                    placeholder='e.g. lung nodule'
+                    className='clinical-input'
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', backgroundColor: '#1e293b', color: '#fff', border: '1px solid #475569' }}
+                  />
+                </label>
+              </>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
+              <button
+                type='button'
+                className='drawer-secondary-button'
+                onClick={onRunAIInference}
+                style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', backgroundColor: '#2563eb', color: '#fff', borderRadius: '4px', border: 'none', cursor: 'pointer' }}
+              >
+                <Wand2 size={16} />
+                {t('Run AI Inference')}
+              </button>
+
+              <button
+                type='button'
+                className='drawer-secondary-button'
+                onClick={onClearAIPrompts}
+                style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: '1px solid #475569', color: '#cbd5e1', cursor: 'pointer', backgroundColor: 'transparent' }}
+              >
+                {t('Clear AI Prompts')}
+              </button>
             </div>
           </section>
         )}

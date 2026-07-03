@@ -231,8 +231,8 @@ const MainViewer = ({
     ));
   }, [setTotalSlices]);
 
-  const handleAnnotationChange = useCallback(() => {
-    onAnnotationChange?.();
+  const handleAnnotationChange = useCallback((event) => {
+    onAnnotationChange?.(event);
   }, [onAnnotationChange]);
 
   const getZoomTransform = () => {
