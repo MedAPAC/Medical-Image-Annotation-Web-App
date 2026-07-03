@@ -9,6 +9,7 @@ import { fabric } from "fabric";
 import { CircleDot, ScanLine, Wand2 } from 'lucide-react';
 import { runnerRegistry } from "../inference/InferenceRunner";
 import { formatAIPrompt } from "../inference/promptFormatter";
+import { polygonToMask, maskToPolygon } from "../inference/maskConverter";
 
 // Hooks
 import useTaskData from "../useTaskData";
@@ -621,6 +622,55 @@ function Annotation() {
     }
   }, [markDirty]);
 
+  const handleConvertPolygonToMask = useCallback(() => {
+    const canvasRef = annotationRefs.current[selectedFileName];
+    if (!canvasRef?.current) return;
+
+    const points = canvasRef.current.getSelectedShapePoints();
+    if (!points) {
+      showPageAlert("info", "Please select a polygon or polyline annotation on the canvas first.");
+      return;
+    }
+
+    const width = canvasRef.current.fabricRef?.current?.width || 512;
+    const height = canvasRef.current.fabricRef?.current?.height || 512;
+    const maskGrid = polygonToMask(points, width, height);
+
+    const tracedPoints = maskToPolygon(maskGrid, width, height);
+
+    if (tracedPoints && tracedPoints.length > 0) {
+      canvasRef.current.replaceSelectedShapePoints(tracedPoints);
+      showPageAlert("success", "Successfully converted Polygon to 2D Mask and back to contour outline!");
+    } else {
+      showPageAlert("error", "Failed to trace mask outline during conversion.");
+    }
+  }, [selectedFileName, annotationRefs, showPageAlert]);
+
+  const handleConvertMaskToPolygon = useCallback(() => {
+    const canvasRef = annotationRefs.current[selectedFileName];
+    if (!canvasRef?.current) return;
+
+    const width = canvasRef.current.fabricRef?.current?.width || 512;
+    const height = canvasRef.current.fabricRef?.current?.height || 512;
+    const mockMask = Array(height).fill(null).map(() => Array(width).fill(0));
+
+    const cy = Math.floor(height / 2);
+    const cx = Math.floor(width / 2);
+    for (let y = cy - 50; y < cy + 50; y++) {
+      for (let x = cx - 50; x < cx + 50; x++) {
+        mockMask[y][x] = 1;
+      }
+    }
+
+    const tracedPoints = maskToPolygon(mockMask, width, height);
+    if (tracedPoints && tracedPoints.length > 0) {
+      canvasRef.current.addAIAnnotation("polygon", { points: tracedPoints });
+      showPageAlert("success", "Successfully converted mock binary mask to vector polygon contour!");
+    } else {
+      showPageAlert("error", "Failed to trace mock mask outline.");
+    }
+  }, [selectedFileName, annotationRefs, showPageAlert]);
+
   // ── Save ──────────────────────────────────────────────────────────
   const handleSaveAll = useCallback(async () => {
     if (!selectedFileName) {
@@ -789,6 +839,8 @@ function Annotation() {
               aiPromptIsPositive={aiPromptIsPositive} setAiPromptIsPositive={setAiPromptIsPositive}
               onRunAIInference={runAIInference}
               onClearAIPrompts={clearAIPrompts}
+              onConvertPolygonToMask={handleConvertPolygonToMask}
+              onConvertMaskToPolygon={handleConvertMaskToPolygon}
             />
 
             <section className="annotation-stage" aria-label="Medical image annotation viewer">

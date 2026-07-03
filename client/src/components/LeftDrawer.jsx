@@ -67,6 +67,8 @@ const LeftDrawer = ({
   setAiPromptIsPositive,
   onRunAIInference,
   onClearAIPrompts,
+  onConvertPolygonToMask,
+  onConvertMaskToPolygon,
 }) => {
   const meta = PANEL_META[openSection] || PANEL_META.labels;
   const PanelIcon = meta.icon;
@@ -389,6 +391,28 @@ const LeftDrawer = ({
                 style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: '1px solid #475569', color: '#cbd5e1', cursor: 'pointer', backgroundColor: 'transparent' }}
               >
                 {t('Clear AI Prompts')}
+              </button>
+            </div>
+
+            <div className='drawer-section-heading' style={{ marginTop: '16px' }}>
+              <span>{t('Format Conversion')}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                type='button'
+                className='drawer-secondary-button'
+                onClick={onConvertPolygonToMask}
+                style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: '1px solid #475569', color: '#cbd5e1', cursor: 'pointer', backgroundColor: 'transparent' }}
+              >
+                {t('Convert Polygon to Mask')}
+              </button>
+              <button
+                type='button'
+                className='drawer-secondary-button'
+                onClick={onConvertMaskToPolygon}
+                style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: '1px solid #475569', color: '#cbd5e1', cursor: 'pointer', backgroundColor: 'transparent' }}
+              >
+                {t('Convert Mask to Polygon')}
               </button>
             </div>
           </section>

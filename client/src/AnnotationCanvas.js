@@ -431,6 +431,27 @@ const AnnotationCanvas = forwardRef(
             });
             canvas.add(circle);
           });
+      getSelectedShapePoints: () => {
+        const canvas = fabricRef.current;
+        if (!canvas) return null;
+        const active = canvas.getActiveObject();
+        if (active && (active.customType === "polygon" || active.customType === "polyline")) {
+          return getWorldPoints(active);
+        }
+        return null;
+      },
+      replaceSelectedShapePoints: (newPoints) => {
+        const canvas = fabricRef.current;
+        if (!canvas) return;
+        const active = canvas.getActiveObject();
+        if (active && (active.customType === "polygon" || active.customType === "polyline")) {
+          if (active.editHandles) {
+            active.editHandles.forEach((h) => canvas.remove(h));
+            delete active.editHandles;
+          }
+          active.set({ points: newPoints });
+          active.setCoords();
+          generateVertexHandles(active, canvas);
           canvas.requestRenderAll();
         }
       },

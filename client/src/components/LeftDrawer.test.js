@@ -31,6 +31,8 @@ describe('LeftDrawer AI settings panel', () => {
     setAiPromptIsPositive: jest.fn(),
     onRunAIInference: jest.fn(),
     onClearAIPrompts: jest.fn(),
+    onConvertPolygonToMask: jest.fn(),
+    onConvertMaskToPolygon: jest.fn(),
   };
 
   test('renders active model selector and triggers setActiveAIModel', () => {
@@ -73,5 +75,17 @@ describe('LeftDrawer AI settings panel', () => {
 
     fireEvent.click(clearBtn);
     expect(defaultProps.onClearAIPrompts).toHaveBeenCalled();
+  });
+
+  test('triggers convert polygon to mask and convert mask to polygon callbacks', () => {
+    render(<LeftDrawer {...defaultProps} />);
+    const polyToMaskBtn = screen.getByRole('button', { name: 'Convert Polygon to Mask' });
+    const maskToPolyBtn = screen.getByRole('button', { name: 'Convert Mask to Polygon' });
+
+    fireEvent.click(polyToMaskBtn);
+    expect(defaultProps.onConvertPolygonToMask).toHaveBeenCalled();
+
+    fireEvent.click(maskToPolyBtn);
+    expect(defaultProps.onConvertMaskToPolygon).toHaveBeenCalled();
   });
 });
