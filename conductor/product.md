@@ -37,6 +37,7 @@ MediAnnotate is a secure clinical medical image annotation platform designed to 
 * **2D Clinical Image Support:** Optimized annotation workspace for standard 2D images, such as X-rays (DICOM, PNG, or JPEG formats), with pan, zoom, and contrast adjustment tools.
 * **DICOM Metadata Inspector:** A dedicated panel in the annotation viewer displaying the parsed internal DICOM header metadata (e.g., Patient Age, Modality, Study Date, Manufacturer, Window Settings), enabling clinicians to inspect critical scan attributes.
 * **Collaboration & Auditability:** Real-time sync, task assignment, and full provenance/integrity checks (SHA-256) on datasets.
+* **AI Assistant Chatbot:** Integrated Nvidia NIM-powered AI assistant (`meta/llama-3.2-3b-instruct` model) in the workspace. It answers medical terminology queries, explains active task guidelines, and enables interactive "Create Developer Ticket" actions that pre-populate templates from context.
 
 ---
 

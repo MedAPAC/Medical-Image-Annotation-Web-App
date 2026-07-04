@@ -20,6 +20,7 @@
 * **File Uploads:** Multer.
 * **Real-time Synchronization:** Server-Sent Events (SSE / EventSource) for realtime task coordination.
 * **Internationalization:** i18next with Express middleware and file-system backend.
+* **AI Integrations:** Nvidia NIM API proxy route leveraging OpenAI-compatible endpoints (`meta/llama-3.2-3b-instruct`).
 
 ## Database
 * **Primary Database:** MongoDB (mongodb Node.js driver v6).
