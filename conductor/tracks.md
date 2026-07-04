@@ -14,3 +14,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Dataset export framework supporting common machine learning formats (YOLO, COCO, Pascal VOC) and custom template formats**
   *Link: [./tracks/dataset_export_20260704/](./tracks/dataset_export_20260704/)*
+
+---
+
+- [ ] **Track: Imitation learning annotation monitoring workspace capturing tool selections, zoom, panning, contrast adjustments, and image-space coordinate trajectories**
+  *Link: [./tracks/imitation_learning_20260704/](./tracks/imitation_learning_20260704/)*
