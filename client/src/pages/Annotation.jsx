@@ -239,6 +239,7 @@ function Annotation() {
   const [aiPromptIsPositive, setAiPromptIsPositive] = useState(true);
   const [activeAIPrompts, setActiveAIPrompts] = useState({ points: [], box: null });
   const [aiChatMessages, setAiChatMessages] = useState([]);
+  const [isAiTyping, setIsAiTyping] = useState(false);
 
   const collaborationClientIdRef = useRef(
     `annotation-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -680,6 +681,7 @@ function Annotation() {
    */
   const handleSendAiChatMessage = useCallback(async (text) => {
     setAiChatMessages((prev) => [...prev, { sender: "user", text }]);
+    setIsAiTyping(true);
 
     try {
       const response = await axios.post(
@@ -697,6 +699,8 @@ function Annotation() {
       console.error(error);
       const errorMsg = error.response?.data?.error || error.message || "Failed to contact assistant.";
       setAiChatMessages((prev) => [...prev, { sender: "ai", text: `Error: ${errorMsg}` }]);
+    } finally {
+      setIsAiTyping(false);
     }
   }, [token, taskData]);
 
@@ -968,6 +972,7 @@ function Annotation() {
               zoomRegion={zoomRegion} setZoomRegion={setZoomRegion}
               projectAttributes={projectAttributes}
               aiChatMessages={aiChatMessages}
+              isAiTyping={isAiTyping}
               handleSendAiChatMessage={handleSendAiChatMessage}
               handleCreateDeveloperTicket={handleCreateDeveloperTicket}
             />

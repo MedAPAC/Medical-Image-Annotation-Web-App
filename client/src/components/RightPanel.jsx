@@ -56,6 +56,7 @@ const RightPanel = ({
   setZoomRegion,
   projectAttributes,
   aiChatMessages,
+  isAiTyping,
   handleSendAiChatMessage,
   handleCreateDeveloperTicket,
 }) => {
@@ -157,6 +158,7 @@ const RightPanel = ({
           <AssistantPanel
             t={t}
             messages={aiChatMessages}
+            isTyping={isAiTyping}
             onSubmitMessage={handleSendAiChatMessage}
             onCreateTicket={handleCreateDeveloperTicket}
           />

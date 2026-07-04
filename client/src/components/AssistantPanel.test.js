@@ -54,4 +54,10 @@ describe('AssistantPanel Component', () => {
       description: 'The panel overlaps'
     });
   });
+
+  test('renders typing indicator when isTyping is true', () => {
+    const { container } = render(<AssistantPanel {...defaultProps} isTyping={true} />);
+    const dots = container.querySelectorAll('.typing-dot');
+    expect(dots.length).toBe(3);
+  });
 });
