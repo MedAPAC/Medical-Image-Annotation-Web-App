@@ -3,7 +3,7 @@
 This document outlines the phased plan to implement the Dataset Export Framework.
 
 ## Phase 1: Backend Format Exporters and ZIP Packaging [checkpoint: TBD]
-- [ ] Task: Annotation Format Converters
+- [~] Task: Annotation Format Converters
     - [ ] Write unit tests for YOLO coordinate converter
     - [ ] Implement YOLO annotation formatter `[class_id, x_center, y_center, w, h]`
     - [ ] Write unit tests for COCO JSON converter
