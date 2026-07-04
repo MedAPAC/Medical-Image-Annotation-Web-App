@@ -431,6 +431,8 @@ const AnnotationCanvas = forwardRef(
             });
             canvas.add(circle);
           });
+        }
+      },
       getSelectedShapePoints: () => {
         const canvas = fabricRef.current;
         if (!canvas) return null;
