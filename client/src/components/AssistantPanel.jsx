@@ -1,5 +1,140 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Send, Ticket, ArrowLeft, MessageSquare } from 'lucide-react';
+
+const parseInlineMarkdown = (text) => {
+  let parts = [{ type: 'text', content: text }];
+
+  // Bold replacement
+  parts = parts.flatMap((part) => {
+    if (part.type !== 'text') return part;
+    const subParts = [];
+    let remaining = part.content;
+    const boldRegex = /\*\*(.*?)\*\*/g;
+    let match;
+    let lastIndex = 0;
+    while ((match = boldRegex.exec(remaining)) !== null) {
+      if (match.index > lastIndex) {
+        subParts.push({ type: 'text', content: remaining.slice(lastIndex, match.index) });
+      }
+      subParts.push({ type: 'bold', content: match[1] });
+      lastIndex = boldRegex.lastIndex;
+    }
+    if (lastIndex < remaining.length) {
+      subParts.push({ type: 'text', content: remaining.slice(lastIndex) });
+    }
+    return subParts;
+  });
+
+  // Code replacement
+  parts = parts.flatMap((part) => {
+    if (part.type !== 'text') return part;
+    const subParts = [];
+    let remaining = part.content;
+    const codeRegex = /`(.*?)`/g;
+    let match;
+    let lastIndex = 0;
+    while ((match = codeRegex.exec(remaining)) !== null) {
+      if (match.index > lastIndex) {
+        subParts.push({ type: 'text', content: remaining.slice(lastIndex, match.index) });
+      }
+      subParts.push({ type: 'code', content: match[1] });
+      lastIndex = codeRegex.lastIndex;
+    }
+    if (lastIndex < remaining.length) {
+      subParts.push({ type: 'text', content: remaining.slice(lastIndex) });
+    }
+    return subParts;
+  });
+
+  // Italic replacement
+  parts = parts.flatMap((part) => {
+    if (part.type !== 'text') return part;
+    const subParts = [];
+    let remaining = part.content;
+    const italicRegex = /\*(.*?)\*/g;
+    let match;
+    let lastIndex = 0;
+    while ((match = italicRegex.exec(remaining)) !== null) {
+      if (match.index > lastIndex) {
+        subParts.push({ type: 'text', content: remaining.slice(lastIndex, match.index) });
+      }
+      subParts.push({ type: 'italic', content: match[1] });
+      lastIndex = italicRegex.lastIndex;
+    }
+    if (lastIndex < remaining.length) {
+      subParts.push({ type: 'text', content: remaining.slice(lastIndex) });
+    }
+    return subParts;
+  });
+
+  return parts.map((part, index) => {
+    if (part.type === 'bold') {
+      return <strong key={index}>{part.content}</strong>;
+    }
+    if (part.type === 'code') {
+      return (
+        <code
+          key={index}
+          style={{
+            backgroundColor: '#334155',
+            padding: '2px 4px',
+            borderRadius: '4px',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+          }}
+        >
+          {part.content}
+        </code>
+      );
+    }
+    if (part.type === 'italic') {
+      return <em key={index}>{part.content}</em>;
+    }
+    return part.content;
+  });
+};
+
+const parseMarkdown = (text) => {
+  if (!text) return '';
+  const lines = text.split('\n');
+  return lines.map((line, idx) => {
+    // Check for headers
+    const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headerMatch) {
+      const level = headerMatch[1].length;
+      const content = parseInlineMarkdown(headerMatch[2]);
+      const Tag = `h${level}`;
+      const sizeStyle = level === 1 ? '16px' : level === 2 ? '15px' : '14px';
+      return (
+        <Tag key={idx} style={{ margin: '8px 0 4px 0', fontWeight: 'bold', fontSize: sizeStyle }}>
+          {content}
+        </Tag>
+      );
+    }
+
+    // Check for bullet list
+    const listMatch = line.match(/^[-*]\s+(.*)$/);
+    if (listMatch) {
+      const content = parseInlineMarkdown(listMatch[1]);
+      return (
+        <ul key={idx} style={{ margin: '4px 0', paddingLeft: '16px', listStyleType: 'disc' }}>
+          <li>{content}</li>
+        </ul>
+      );
+    }
+
+    // Default paragraph
+    if (line.trim() === '') {
+      return <div key={idx} style={{ height: '8px' }} />;
+    }
+
+    return (
+      <p key={idx} style={{ margin: '4px 0' }}>
+        {parseInlineMarkdown(line)}
+      </p>
+    );
+  });
+};
 
 const AssistantPanel = ({
   t,
@@ -11,6 +146,14 @@ const AssistantPanel = ({
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [ticketTitle, setTicketTitle] = useState('');
   const [ticketDesc, setTicketDesc] = useState('');
+
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, showTicketForm]);
 
   const handleSend = (e) => {
     e.preventDefault();
@@ -127,10 +270,11 @@ const AssistantPanel = ({
                     border: msg.sender === 'user' ? 'none' : '1px solid #334155',
                   }}
                 >
-                  {msg.text}
+                  {parseMarkdown(msg.text)}
                 </div>
               ))
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           <form onSubmit={handleSend} style={{ padding: '12px', borderTop: '1px solid #334155', display: 'flex', gap: '8px', backgroundColor: '#1e293b' }}>
