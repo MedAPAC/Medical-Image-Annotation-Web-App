@@ -9,3 +9,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Implement semi-supervised annotation using a custom model or specific API**
   *Link: [./tracks/semi_supervised_20260703/](./tracks/semi_supervised_20260703/)*
+
+---
+
+- [ ] **Track: Dataset export framework supporting common machine learning formats (YOLO, COCO, Pascal VOC) and custom template formats**
+  *Link: [./tracks/dataset_export_20260704/](./tracks/dataset_export_20260704/)*
