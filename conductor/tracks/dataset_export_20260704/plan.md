@@ -3,15 +3,15 @@
 This document outlines the phased plan to implement the Dataset Export Framework.
 
 ## Phase 1: Backend Format Exporters and ZIP Packaging [checkpoint: TBD]
-- [~] Task: Annotation Format Converters
-    - [ ] Write unit tests for YOLO coordinate converter
-    - [ ] Implement YOLO annotation formatter `[class_id, x_center, y_center, w, h]`
-    - [ ] Write unit tests for COCO JSON converter
-    - [ ] Implement COCO JSON dataset compiler
-    - [ ] Write unit tests for Pascal VOC XML builder
-    - [ ] Implement Pascal VOC XML writer
-    - [ ] Write unit tests for Custom Template parser
-    - [ ] Implement Custom Template parser using regex placeholder substitution
+- [x] Task: Annotation Format Converters (3ad666a)
+    - [x] Write unit tests for YOLO coordinate converter
+    - [x] Implement YOLO annotation formatter `[class_id, x_center, y_center, w, h]`
+    - [x] Write unit tests for COCO JSON converter
+    - [x] Implement COCO JSON dataset compiler
+    - [x] Write unit tests for Pascal VOC XML builder
+    - [x] Implement Pascal VOC XML writer
+    - [x] Write unit tests for Custom Template parser
+    - [x] Implement Custom Template parser using regex placeholder substitution
 - [ ] Task: Export API Route and Packaging
     - [ ] Write integration tests for `POST /api/export/dataset` verifying filters and settings
     - [ ] Implement Express route `POST /api/export/dataset` compiling ZIP file containing annotations (and optionally images)
