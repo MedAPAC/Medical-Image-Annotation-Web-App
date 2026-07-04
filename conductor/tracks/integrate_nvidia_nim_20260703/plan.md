@@ -25,10 +25,10 @@ This document outlines the phased plan to implement the Nvidia NIM AI assistant 
     - [x] Verify message requests successfully hit `/api/ai/chat` and update history state
 - [x] Task: Conductor - User Manual Verification 'React RightPanel Chat Interface and States' (Protocol in workflow.md) [66b4fa0]
 
-## Phase 3: Guidelines, App Help, and Developer Ticket Actions [checkpoint: TBD]
+## Phase 3: Guidelines, App Help, and Developer Ticket Actions [checkpoint: f253c01]
 - [x] Task: App context injection and Ticket buttons [352dac8]
     - [x] Write tests for developer ticket actions and active task context injection
     - [x] Inject active task guidelines and medical definitions into backend system prompts
     - [x] Add interactive ticket generation button in the chat thread when requested by LLM
     - [x] Verify ticket creation round-trip successfully calls the ticket endpoint and creates records in MongoDB
-- [ ] Task: Conductor - User Manual Verification 'Guidelines, App Help, and Developer Ticket Actions' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Guidelines, App Help, and Developer Ticket Actions' (Protocol in workflow.md) [f253c01]
