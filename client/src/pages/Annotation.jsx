@@ -672,6 +672,12 @@ function Annotation() {
     }
   }, [selectedFileName, annotationRefs, showPageAlert]);
 
+  /**
+   * Submits a user prompt to the Nvidia NIM AI assistant proxy route
+   * and appends the assistant's reply to the message history.
+   *
+   * @param {string} text - The user's input query
+   */
   const handleSendAiChatMessage = useCallback(async (text) => {
     setAiChatMessages((prev) => [...prev, { sender: "user", text }]);
 
