@@ -7,7 +7,7 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
   const [syncToDrive, setSyncToDrive] = useState(false);
   const [customTemplate, setCustomTemplate] = useState('{{filename}},{{label}},{{x_min}},{{y_min}},{{x_max}},{{y_max}}');
   const [statusFilter, setStatusFilter] = useState('');
-  const [selectedLabels, setSelectedLabels] = useState(labelOptions.map(l => l.name));
+  const [selectedLabels, setSelectedLabels] = useState(labelOptions.map(l => l.name || l.value));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -194,19 +194,20 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
                 <span className="font-medium text-gray-700">Filter by Annotation Labels</span>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {labelOptions.map(opt => {
-                    const isChecked = selectedLabels.includes(opt.name);
+                    const labelName = opt.name || opt.value;
+                    const isChecked = selectedLabels.includes(labelName);
                     return (
                       <button
-                        key={opt.id}
+                        key={opt.id || opt.value}
                         type="button"
-                        onClick={() => handleLabelToggle(opt.name)}
+                        onClick={() => handleLabelToggle(labelName)}
                         className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
                           isChecked 
                             ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium' 
                             : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
                         }`}
                       >
-                        {opt.name}
+                        {labelName}
                       </button>
                     );
                   })}

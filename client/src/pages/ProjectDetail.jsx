@@ -1563,7 +1563,7 @@ const ProjectDetail = () => {
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        projectId={id}
+        projectId={projectId}
         labelOptions={project?.labels || []}
       />
     </div>
