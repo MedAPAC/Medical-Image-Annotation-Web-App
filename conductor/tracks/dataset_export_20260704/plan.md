@@ -19,10 +19,10 @@ This document outlines the phased plan to implement the Dataset Export Framework
 - [x] Task: Conductor - User Manual Verification 'Backend Format Exporters and ZIP Packaging' (Protocol in workflow.md)
 
 ## Phase 2: React Export Modals and HMI Actions [checkpoint: TBD]
-- [~] Task: Export Configuration Dialog
-    - [ ] Write component tests for `ExportModal.jsx` rendering options and toggles
-    - [ ] Implement `ExportModal.jsx` component supporting format select, filters, and image download toggles
-    - [ ] Add trigger logic for direct download, server download, and Google Drive upload
+- [x] Task: Export Configuration Dialog (b62928f)
+    - [x] Write component tests for `ExportModal.jsx` rendering options and toggles
+    - [x] Implement `ExportModal.jsx` component supporting format select, filters, and image download toggles
+    - [x] Add trigger logic for direct download, server download, and Google Drive upload
 - [ ] Task: Workspace and Project Dashboard Integrations
     - [ ] Write tests for export button clicks on Annotation Workspace and Project views
     - [ ] Add "Export Dataset" button to Project Detail dashboard
