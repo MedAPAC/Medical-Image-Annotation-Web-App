@@ -78,7 +78,7 @@ test('POST /api/ai/chat - processes chat message and calls NIM proxy', async () 
     mockRes.statusCode = 200;
     await controller(mockReqValid, mockRes);
     assert.equal(mockRes.statusCode, 200);
-    assert.match(resJson.reply, /\[MOCK AI ASSISTANT\]/);
+    assert.match(resJson.reply, /clinical annotation assistant/);
   } finally {
     global.fetch = originalFetch;
     process.env.NVIDIA_NIM_API_KEY = originalKey;

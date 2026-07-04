@@ -50,12 +50,14 @@ If the user asks about an issue, bug, or requests to create a developer ticket, 
 
     // Mock fallback if API key is not configured (e.g. local developer mode)
     if (!nimApiKey) {
-      let mockReply = `[MOCK AI ASSISTANT] You asked: "${message}". Nvidia NIM is not configured (missing NVIDIA_NIM_API_KEY). `;
+      let mockReply = 'Hello! I am your clinical annotation assistant. ';
       if (matchedTerms.length > 0) {
-        mockReply += `Clinical definitions:\n${matchedTerms.join('\n')} `;
+        mockReply += `Here is the clinical definition for your reference:\n\n${matchedTerms.join('\n\n')}`;
+      } else {
+        mockReply += `You asked: "${message}". Please let me know how I can assist you with active task guidelines or medical terminology.`;
       }
       if (lowerMessage.includes('ticket') || lowerMessage.includes('bug') || lowerMessage.includes('issue')) {
-        mockReply += `I noticed you mentioned an issue or ticket. [action:create_ticket]`;
+        mockReply += `\n\nIt looks like you encountered an issue. If you would like to report this to the engineering team, please click below: [action:create_ticket]`;
       }
       return res.json({ reply: mockReply });
     }
