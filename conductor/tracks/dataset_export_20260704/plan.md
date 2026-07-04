@@ -2,7 +2,7 @@
 
 This document outlines the phased plan to implement the Dataset Export Framework.
 
-## Phase 1: Backend Format Exporters and ZIP Packaging [checkpoint: TBD]
+## Phase 1: Backend Format Exporters and ZIP Packaging [checkpoint: f4c69bf]
 - [x] Task: Annotation Format Converters (3ad666a)
     - [x] Write unit tests for YOLO coordinate converter
     - [x] Implement YOLO annotation formatter `[class_id, x_center, y_center, w, h]`
@@ -16,7 +16,7 @@ This document outlines the phased plan to implement the Dataset Export Framework
     - [x] Write integration tests for `POST /api/export/dataset` verifying filters and settings
     - [x] Implement Express route `POST /api/export/dataset` compiling ZIP file containing annotations (and optionally images)
     - [x] Integrate Google Drive sync upload for exported ZIP files
-- [ ] Task: Conductor - User Manual Verification 'Backend Format Exporters and ZIP Packaging' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Backend Format Exporters and ZIP Packaging' (Protocol in workflow.md)
 
 ## Phase 2: React Export Modals and HMI Actions [checkpoint: TBD]
 - [ ] Task: Export Configuration Dialog
