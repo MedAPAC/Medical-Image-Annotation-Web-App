@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { apiUrl } from '../config/api';
 
 export default function ExportModal({ isOpen, onClose, projectId, taskId, labelOptions = [] }) {
   const [format, setFormat] = useState('YOLO');
@@ -43,14 +44,14 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
       };
 
       if (syncToDrive) {
-        const response = await axios.post('/api/export/dataset', payload, {
+        const response = await axios.post(apiUrl('/api/export/dataset'), payload, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
         setSuccessMsg(response.data.message || 'Export synced to Google Drive!');
       } else {
-        const response = await axios.post('/api/export/dataset', payload, {
+        const response = await axios.post(apiUrl('/api/export/dataset'), payload, {
           headers: {
             Authorization: `Bearer ${token}`
           },
