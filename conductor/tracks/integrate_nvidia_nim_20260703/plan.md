@@ -19,10 +19,10 @@ This document outlines the phased plan to implement the Nvidia NIM AI assistant 
     - [x] Add the `assistant` panel tab in `RightPanel.jsx` and `ToolbarRight.jsx`
     - [x] Implement scrollable message thread list with Markdown parser support
     - [x] Verify that chat tab opens and layout renders correctly
-- [ ] Task: Chat state handlers and Backend API Integration
-    - [ ] Write unit tests for chatbot message history state updates and API requests
-    - [ ] Implement text input state handlers and POST chat submit action
-    - [ ] Verify message requests successfully hit `/api/ai/chat` and update history state
+- [x] Task: Chat state handlers and Backend API Integration [d219aac]
+    - [x] Write unit tests for chatbot message history state updates and API requests
+    - [x] Implement text input state handlers and POST chat submit action
+    - [x] Verify message requests successfully hit `/api/ai/chat` and update history state
 - [ ] Task: Conductor - User Manual Verification 'React RightPanel Chat Interface and States' (Protocol in workflow.md)
 
 ## Phase 3: Guidelines, App Help, and Developer Ticket Actions [checkpoint: TBD]
