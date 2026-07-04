@@ -16,6 +16,7 @@ import {
   ZoomIn,
   CircleDot,
   ScanLine,
+  Bot,
 } from 'lucide-react';
 
 export const SHAPES = [
@@ -41,6 +42,7 @@ export const LEFT_BUTTONS = [
   { id: 'slices', label: 'Slice navigation', icon: Images },
   { id: 'zoom', label: 'Zoom controls', icon: ZoomIn },
   { id: 'help', label: 'Help and guidance', icon: CircleHelp },
+  { id: 'assistant', label: 'AI Assistant Chat', icon: Bot },
 ];
 
 export const RIGHT_BUTTONS = [

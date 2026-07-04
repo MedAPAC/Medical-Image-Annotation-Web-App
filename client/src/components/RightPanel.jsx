@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { CircleHelp, Images, Tags, X, ZoomIn } from 'lucide-react';
+import { CircleHelp, Images, Tags, X, ZoomIn, Bot } from 'lucide-react';
 import ClassificationPanel from './ClassificationPanel';
 import SlicesPanel from './SlicesPanel';
 import ZoomPanel from './ZoomPanel';
 import HelpPanel from './HelpPanel';
+import AssistantPanel from './AssistantPanel';
 
 const PANEL_META = {
   classification: {
@@ -25,6 +26,11 @@ const PANEL_META = {
     title: 'Help and guidance',
     description: 'Quick reference for annotation and review workflows.',
     icon: CircleHelp,
+  },
+  assistant: {
+    title: 'AI Assistant Chat',
+    description: 'Ask questions about guidelines and log tickets.',
+    icon: Bot,
   },
 };
 
@@ -49,6 +55,9 @@ const RightPanel = ({
   zoomRegion,
   setZoomRegion,
   projectAttributes,
+  aiChatMessages,
+  handleSendAiChatMessage,
+  handleCreateDeveloperTicket,
 }) => {
   const [showSlices, setShowSlices] = useState(false);
   const slicesRef = useRef(null);
@@ -143,6 +152,15 @@ const RightPanel = ({
         )}
 
         {rightPanelOpen === 'help' && <HelpPanel t={t} />}
+
+        {rightPanelOpen === 'assistant' && (
+          <AssistantPanel
+            t={t}
+            messages={aiChatMessages}
+            onSubmitMessage={handleSendAiChatMessage}
+            onCreateTicket={handleCreateDeveloperTicket}
+          />
+        )}
       </div>
     </aside>
   );

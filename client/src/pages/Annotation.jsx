@@ -238,6 +238,7 @@ function Annotation() {
   const [aiTextPrompt, setAiTextPrompt] = useState("");
   const [aiPromptIsPositive, setAiPromptIsPositive] = useState(true);
   const [activeAIPrompts, setActiveAIPrompts] = useState({ points: [], box: null });
+  const [aiChatMessages, setAiChatMessages] = useState([]);
 
   const collaborationClientIdRef = useRef(
     `annotation-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -671,6 +672,42 @@ function Annotation() {
     }
   }, [selectedFileName, annotationRefs, showPageAlert]);
 
+  const handleSendAiChatMessage = useCallback(async (text) => {
+    setAiChatMessages((prev) => [...prev, { sender: "user", text }]);
+
+    try {
+      const response = await axios.post(
+        apiUrl("/api/ai/chat"),
+        { message: text },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const reply = response.data?.reply || "No response from AI assistant.";
+      setAiChatMessages((prev) => [...prev, { sender: "ai", text: reply }]);
+    } catch (error) {
+      console.error(error);
+      const errorMsg = error.response?.data?.error || error.message || "Failed to contact assistant.";
+      setAiChatMessages((prev) => [...prev, { sender: "ai", text: `Error: ${errorMsg}` }]);
+    }
+  }, [token]);
+
+  const handleCreateDeveloperTicket = useCallback(async ({ title, description }) => {
+    try {
+      const chatContext = aiChatMessages
+        .map((m) => `${m.sender.toUpperCase()}: ${m.text}`)
+        .join("\n");
+      const response = await axios.post(
+        apiUrl("/api/tickets/create"),
+        { title, description, chatContext },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showPageAlert("success", `Developer ticket created successfully! Ticket ID: ${response.data.ticketId}`);
+    } catch (error) {
+      console.error(error);
+      const errorMsg = error.response?.data?.error || error.message || "Failed to create ticket.";
+      showPageAlert("error", `Failed to create developer ticket: ${errorMsg}`);
+    }
+  }, [token, aiChatMessages, showPageAlert]);
+
   // ── Save ──────────────────────────────────────────────────────────
   const handleSaveAll = useCallback(async () => {
     if (!selectedFileName) {
@@ -920,6 +957,9 @@ function Annotation() {
               zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
               zoomRegion={zoomRegion} setZoomRegion={setZoomRegion}
               projectAttributes={projectAttributes}
+              aiChatMessages={aiChatMessages}
+              handleSendAiChatMessage={handleSendAiChatMessage}
+              handleCreateDeveloperTicket={handleCreateDeveloperTicket}
             />
           </main>
         </>

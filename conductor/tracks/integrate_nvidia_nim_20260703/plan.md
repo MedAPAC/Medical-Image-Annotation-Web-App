@@ -14,7 +14,7 @@ This document outlines the phased plan to implement the Nvidia NIM AI assistant 
 - [x] Task: Conductor - User Manual Verification 'Backend proxy route and Nvidia NIM Service' (Protocol in workflow.md)
 
 ## Phase 2: React RightPanel Chat Interface and States [checkpoint: TBD]
-- [ ] Task: UI Chat Tab and Messaging Layout
+- [~] Task: UI Chat Tab and Messaging Layout
     - [ ] Write component tests for rendering chat messages, inputs, and tab navigation
     - [ ] Add the `assistant` panel tab in `RightPanel.jsx` and `ToolbarRight.jsx`
     - [ ] Implement scrollable message thread list with Markdown parser support
