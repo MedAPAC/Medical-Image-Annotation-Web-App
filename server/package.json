@@ -7,7 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon --ext js,ts,json index.js",
     "check:syntax": "node --check index.js && node --check src/config/constants.js && node --check src/config/database.js && node --check src/config/secrets.js && node --check src/config/uploads.js && node --check src/middleware/access.js && node --check src/middleware/audit.js && node --check src/middleware/auth.js && node --check src/middleware/security.js && node --check src/realtime/annotationEvents.js && node --check src/routes/annotationRoutes.js && node --check src/routes/authRoutes.js && node --check src/routes/googleDriveRoutes.js && node --check src/routes/index.js && node --check src/routes/profileRoutes.js && node --check src/routes/projectRoutes.js && node --check src/routes/taskRoutes.js && node --check src/routes/teamRoutes.js && node --check src/security/tokenCipher.js && node --check src/services/googleDriveService.js && node --check src/services/userTeamService.js && node --check src/utils/errors.js && node --check src/utils/fileTypes.js && node --check src/utils/storedFiles.js && node --check src/routes/inferenceRoutes.js && node --check src/routes/aiRoutes.js && node --check src/routes/ticketRoutes.js",
-    "test:security": "node --test test/security.test.js test/inference.test.js test/aiChat.test.js test/tickets.test.js"
+    "test:security": "node --test test/security.test.js test/inference.test.js test/aiChat.test.js test/tickets.test.js test/exportConverters.test.js"
   },
   "keywords": [],
   "author": "",
