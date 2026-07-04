@@ -9,6 +9,7 @@ import {
   X,
   CircleDot,
   Wand2,
+  Download,
 } from 'lucide-react';
 
 const PANEL_META = {
@@ -69,6 +70,7 @@ const LeftDrawer = ({
   onClearAIPrompts,
   onConvertPolygonToMask,
   onConvertMaskToPolygon,
+  onExportDataset,
 }) => {
   const meta = PANEL_META[openSection] || PANEL_META.labels;
   const PanelIcon = meta.icon;
@@ -413,6 +415,15 @@ const LeftDrawer = ({
                 style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: '1px solid #475569', color: '#cbd5e1', cursor: 'pointer', backgroundColor: 'transparent' }}
               >
                 {t('Convert Mask to Polygon')}
+              </button>
+              <button
+                type='button'
+                className='drawer-secondary-button'
+                onClick={onExportDataset}
+                style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: 'none', color: '#fff', cursor: 'pointer', backgroundColor: '#2563eb', marginTop: '8px' }}
+              >
+                <Download size={16} />
+                {t('Export Annotations')}
               </button>
             </div>
           </section>

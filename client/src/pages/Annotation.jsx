@@ -24,6 +24,7 @@ import TaskInfoBar from "../components/TaskInfoBar";
 import FileUploadSection from "../components/FileUploadSection";
 import ToolbarLeft from "../components/ToolbarLeft";
 import LeftDrawer from "../components/LeftDrawer";
+import ExportModal from "../components/ExportModal";
 import MainViewer from "../components/MainViewer";
 import ToolbarRight from "../components/ToolbarRight";
 import RightPanel from "../components/RightPanel";
@@ -250,6 +251,7 @@ function Annotation() {
 
   const alertTimerRef = useRef(null);
   const [pageAlert, setPageAlert] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const showPageAlert = useCallback((type, message) => {
     if (alertTimerRef.current) {
@@ -892,6 +894,7 @@ function Annotation() {
               onClearAIPrompts={clearAIPrompts}
               onConvertPolygonToMask={handleConvertPolygonToMask}
               onConvertMaskToPolygon={handleConvertMaskToPolygon}
+              onExportDataset={() => setShowExportModal(true)}
             />
 
             <section className="annotation-stage" aria-label="Medical image annotation viewer">
@@ -1006,6 +1009,14 @@ function Annotation() {
         }}
         onLeaveWithoutSaving={handleConfirmLeave}
         onCancel={handleCancelLeave}
+      />
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        projectId={taskData?.projectId}
+        taskId={taskId}
+        labelOptions={labelOptions}
       />
     </div>
   );

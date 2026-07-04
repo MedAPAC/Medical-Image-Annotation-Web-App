@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import axios from 'axios';
 import Header from '../components/Header';
+import ExportModal from '../components/ExportModal';
 import { 
   ArrowLeft,
   Edit3,
@@ -63,6 +64,7 @@ const ProjectDetail = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDisableDriveConfirm, setShowDisableDriveConfirm] = useState(false);
   const [showRemoveOwnerConfirm, setShowRemoveOwnerConfirm] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
   const [pageNotice, setPageNotice] = useState(null);
@@ -835,6 +837,16 @@ const ProjectDetail = () => {
                           Export Config
                         </button>
                         <button
+                          onClick={() => {
+                            setShowExportModal(true);
+                            setShowActionsMenu(false);
+                          }}
+                          className="dropdown-item"
+                        >
+                          <Download size={14} />
+                          Export Dataset
+                        </button>
+                        <button
                           onClick={() => document.getElementById('config-upload')?.click()}
                           className="dropdown-item"
                         >
@@ -1547,6 +1559,13 @@ const ProjectDetail = () => {
           </div>
         </div>
       )}
+      
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        projectId={id}
+        labelOptions={project?.labels || []}
+      />
     </div>
   );
 };
