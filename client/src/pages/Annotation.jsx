@@ -684,7 +684,11 @@ function Annotation() {
     try {
       const response = await axios.post(
         apiUrl("/api/ai/chat"),
-        { message: text },
+        {
+          message: text,
+          taskDescription: taskData?.description,
+          taskLabels: taskData?.labels ? taskData.labels.map((l) => l.name).join(", ") : ""
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const reply = response.data?.reply || "No response from AI assistant.";
@@ -694,7 +698,7 @@ function Annotation() {
       const errorMsg = error.response?.data?.error || error.message || "Failed to contact assistant.";
       setAiChatMessages((prev) => [...prev, { sender: "ai", text: `Error: ${errorMsg}` }]);
     }
-  }, [token]);
+  }, [token, taskData]);
 
   const handleCreateDeveloperTicket = useCallback(async ({ title, description }) => {
     try {

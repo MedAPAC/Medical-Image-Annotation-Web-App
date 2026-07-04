@@ -255,24 +255,53 @@ const AssistantPanel = ({
                 <p style={{ margin: 0, fontSize: '13px' }}>{t('Ask me questions about medical terms, active task guidelines, or logging developer tickets.')}</p>
               </div>
             ) : (
-              messages.map((msg, index) => (
-                <div
-                  key={index}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    maxWidth: '85%',
-                    fontSize: '13px',
-                    lineHeight: '1.4',
-                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                    backgroundColor: msg.sender === 'user' ? '#2563eb' : '#1e293b',
-                    color: msg.sender === 'user' ? '#fff' : '#e2e8f0',
-                    border: msg.sender === 'user' ? 'none' : '1px solid #334155',
-                  }}
-                >
-                  {parseMarkdown(msg.text)}
-                </div>
-              ))
+              messages.map((msg, index) => {
+                const hasTicketAction = msg.sender === 'ai' && msg.text.includes('[action:create_ticket]');
+                const cleanText = msg.text.replace('[action:create_ticket]', '').trim();
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      maxWidth: '85%',
+                      fontSize: '13px',
+                      lineHeight: '1.4',
+                      alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                      backgroundColor: msg.sender === 'user' ? '#2563eb' : '#1e293b',
+                      color: msg.sender === 'user' ? '#fff' : '#e2e8f0',
+                      border: msg.sender === 'user' ? 'none' : '1px solid #334155',
+                    }}
+                  >
+                    <div>{parseMarkdown(cleanText)}</div>
+                    {hasTicketAction && (
+                      <button
+                        type="button"
+                        onClick={handleToggleTicket}
+                        className="message-ticket-action-btn"
+                        style={{
+                          marginTop: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          backgroundColor: '#e11d48',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          transition: 'background-color 0.2s',
+                        }}
+                      >
+                        <Ticket size={14} />
+                        {t('Create Developer Ticket')}
+                      </button>
+                    )}
+                  </div>
+                );
+              })
             )}
             <div ref={messagesEndRef} />
           </div>

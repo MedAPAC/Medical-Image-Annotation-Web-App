@@ -90,7 +90,7 @@ describe('Annotation Page AI Assistant integration', () => {
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringContaining('/api/ai/chat'),
-        { message: 'Guideline question' },
+        expect.objectContaining({ message: 'Guideline question' }),
         expect.any(Object)
       );
     });
