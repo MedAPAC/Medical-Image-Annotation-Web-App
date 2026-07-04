@@ -604,6 +604,30 @@ const syncProjectToDrive = async (project) => {
   return summary;
 };
 
+  const syncProjectExportToDrive = async (projectId, zipBuffer, filename) => {
+    const queryId = ObjectId.isValid(projectId) ? new ObjectId(projectId) : projectId;
+    const project = await collections.projectsCollection.findOne({ _id: queryId });
+    if (!project) {
+      throw makeRequestError('Project not found', 404);
+    }
+    if (!isDriveBackupEnabled(project)) {
+      throw makeRequestError('Google Drive backup is not enabled for this project.', 400);
+    }
+
+    const connectedBy = getDriveBackupActorId(project);
+    const driveBackup = await ensureProjectDriveBackupFolders(project);
+    const folderId = driveBackup?.subfolders?.exports || driveBackup?.folderId;
+
+    const driveFile = await uploadContentToDrive(connectedBy, {
+      parentId: folderId,
+      name: filename,
+      mimeType: 'application/zip',
+      content: zipBuffer
+    });
+
+    return driveFile;
+  };
+
   return {
     GOOGLE_DRIVE_SCOPES,
     GOOGLE_DRIVE_API_BASE,
@@ -637,6 +661,7 @@ const syncProjectToDrive = async (project) => {
     backupAnnotationSnapshotToDrive,
     buildProjectExportPayload,
     syncProjectToDrive,
+    syncProjectExportToDrive,
   };
 };
 
