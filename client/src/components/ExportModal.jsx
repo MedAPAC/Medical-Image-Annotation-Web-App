@@ -77,16 +77,205 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
     }
   };
 
+  // Inline CSS Styles for robust rendering without Tailwind
+  const overlayStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+    padding: '16px',
+    boxSizing: 'border-box'
+  };
+
+  const modalStyle = {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    maxWidth: '500px',
+    width: '100%',
+    maxHeight: '90vh',
+    overflow: 'hidden',
+    border: '1px solid #cbd5e1',
+    display: 'flex',
+    flexDirection: 'column',
+    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    boxSizing: 'border-box'
+  };
+
+  const headerStyle = {
+    padding: '16px 24px',
+    backgroundColor: '#f8fafc',
+    borderBottom: '1px solid #e2e8f0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    boxSizing: 'border-box'
+  };
+
+  const titleStyle = {
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#1e293b',
+    margin: 0
+  };
+
+  const closeButtonStyle = {
+    color: '#94a3b8',
+    backgroundColor: 'transparent',
+    border: 'none',
+    fontSize: '24px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    padding: '4px',
+    lineHeight: 1
+  };
+
+  const bodyStyle = {
+    padding: '24px',
+    overflowY: 'auto',
+    maxHeight: '60vh',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    fontSize: '14px',
+    color: '#475569',
+    boxSizing: 'border-box'
+  };
+
+  const alertStyle = (isError) => ({
+    padding: '12px',
+    borderRadius: '8px',
+    fontSize: '12px',
+    border: '1px solid',
+    backgroundColor: isError ? '#fef2f2' : '#f0fdf4',
+    borderColor: isError ? '#fee2e2' : '#dcfce7',
+    color: isError ? '#b91c1c' : '#15803d'
+  });
+
+  const formGroupStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  };
+
+  const labelStyle = {
+    fontWeight: '600',
+    color: '#334155'
+  };
+
+  const inputStyle = {
+    padding: '10px 12px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '8px',
+    backgroundColor: '#f8fafc',
+    fontSize: '14px',
+    color: '#1e293b',
+    outline: 'none',
+    boxSizing: 'border-box'
+  };
+
+  const toggleRowStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '12px 14px',
+    backgroundColor: '#f8fafc',
+    borderRadius: '8px',
+    border: '1px solid #f1f5f9',
+    boxSizing: 'border-box'
+  };
+
+  const toggleLabelStyle = {
+    fontWeight: '600',
+    color: '#1e293b',
+    cursor: 'pointer'
+  };
+
+  const toggleSubStyle = {
+    fontSize: '11px',
+    color: '#94a3b8'
+  };
+
+  const filterHeadingStyle = {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginTop: '8px',
+    borderTop: '1px solid #f1f5f9',
+    paddingTop: '16px',
+    margin: '10px 0 4px 0'
+  };
+
+  const pillButtonStyle = (isActive) => ({
+    padding: '6px 12px',
+    borderRadius: '9999px',
+    fontSize: '12px',
+    border: '1px solid',
+    cursor: 'pointer',
+    backgroundColor: isActive ? '#eff6ff' : '#f8fafc',
+    borderColor: isActive ? '#bfdbfe' : '#e2e8f0',
+    color: isActive ? '#1d4ed8' : '#64748b',
+    fontWeight: isActive ? '600' : '400',
+    transition: 'all 0.2s'
+  });
+
+  const footerStyle = {
+    padding: '16px 24px',
+    backgroundColor: '#f8fafc',
+    borderTop: '1px solid #e2e8f0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    boxSizing: 'border-box'
+  };
+
+  const primaryButtonStyle = {
+    padding: '10px 18px',
+    backgroundColor: loading ? '#93c5fd' : '#2563eb',
+    color: '#ffffff',
+    fontWeight: '600',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: loading ? 'default' : 'pointer',
+    fontSize: '13px',
+    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  };
+
+  const secondaryButtonStyle = {
+    padding: '10px 18px',
+    backgroundColor: 'transparent',
+    color: '#475569',
+    fontWeight: '500',
+    border: '1px solid #cbd5e1',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px'
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+    <div style={overlayStyle}>
+      <div style={modalStyle}>
         
         {/* Header */}
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800">Export Dataset</h2>
+        <div style={headerStyle}>
+          <h2 style={titleStyle}>Export Dataset</h2>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors text-xl font-medium"
+            style={closeButtonStyle}
             aria-label="Close dialog"
           >
             &times;
@@ -94,26 +283,26 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto max-h-[70vh] space-y-5 text-sm text-gray-700">
+        <div style={bodyStyle}>
           {error && (
-            <div className="p-3 bg-red-50 text-red-700 rounded-lg border border-red-100 text-xs">
+            <div style={alertStyle(true)}>
               {error}
             </div>
           )}
           {successMsg && (
-            <div className="p-3 bg-green-50 text-green-700 rounded-lg border border-green-100 text-xs">
+            <div style={alertStyle(false)}>
               {successMsg}
             </div>
           )}
 
           {/* Format Selection */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="exportFormat" className="font-semibold text-gray-700">Export Format</label>
+          <div style={formGroupStyle}>
+            <label htmlFor="exportFormat" style={labelStyle}>Export Format</label>
             <select
               id="exportFormat"
               value={format}
               onChange={(e) => setFormat(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              style={inputStyle}
             >
               <option value="YOLO">YOLO (classes.txt + normalizations)</option>
               <option value="COCO">COCO (JSON categories + annotations)</option>
@@ -123,8 +312,12 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
           </div>
 
           {/* Custom Template Input */}
-          <div className={`flex flex-col gap-1.5 transition-all duration-200 ${format !== 'CUSTOM' ? 'opacity-40' : ''}`}>
-            <label htmlFor="customTemplate" className="font-semibold text-gray-700">Custom Template String</label>
+          <div style={{
+            ...formGroupStyle,
+            opacity: format !== 'CUSTOM' ? 0.4 : 1,
+            transition: 'opacity 0.2s'
+          }}>
+            <label htmlFor="customTemplate" style={labelStyle}>Custom Template String</label>
             <textarea
               id="customTemplate"
               value={customTemplate}
@@ -132,55 +325,55 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
               placeholder="e.g. {{filename}},{{label}},{{x_min}},{{y_min}},{{x_max}},{{y_max}}"
               rows={2}
               disabled={format !== 'CUSTOM'}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono text-xs"
+              style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '12px' }}
             />
-            <span className="text-[10px] text-gray-400 leading-tight">
+            <span style={{ fontSize: '10px', color: '#94a3b8', lineHeight: 1.3 }}>
               Available placeholders: {"{{filename}}"}, {"{{label}}"}, {"{{x_min}}"}, {"{{y_min}}"}, {"{{x_max}}"}, {"{{y_max}}"}, {"{{width}}"}, {"{{height}}"}, {"{{image_width}}"}, {"{{image_height}}"}
             </span>
           </div>
 
           {/* Include Images */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/50 transition-colors">
-            <div className="flex flex-col gap-0.5">
-              <label htmlFor="includeImages" className="font-semibold text-gray-800 cursor-pointer">Include Raw Medical Images</label>
-              <span className="text-[11px] text-gray-400">Include source files (DICOM, NIfTI, PNG) in ZIP package</span>
+          <div style={toggleRowStyle}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <label htmlFor="includeImages" style={toggleLabelStyle}>Include Raw Medical Images</label>
+              <span style={toggleSubStyle}>Include source files (DICOM, NIfTI, PNG) in ZIP package</span>
             </div>
             <input
               id="includeImages"
               type="checkbox"
               checked={includeImages}
               onChange={(e) => setIncludeImages(e.target.checked)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
           </div>
 
           {/* Sync to Drive */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100/50 transition-colors">
-            <div className="flex flex-col gap-0.5">
-              <label htmlFor="syncToDrive" className="font-semibold text-gray-800 cursor-pointer">Sync Export to Google Drive</label>
-              <span className="text-[11px] text-gray-400">Save directly to project exports folder on Google Drive</span>
+          <div style={toggleRowStyle}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <label htmlFor="syncToDrive" style={toggleLabelStyle}>Sync Export to Google Drive</label>
+              <span style={toggleSubStyle}>Save directly to project exports folder on Google Drive</span>
             </div>
             <input
               id="syncToDrive"
               type="checkbox"
               checked={syncToDrive}
               onChange={(e) => setSyncToDrive(e.target.checked)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
           </div>
 
           {/* Filters Section */}
-          <div className="border-t border-gray-100 pt-4 space-y-4">
-            <h3 className="font-semibold text-gray-800 text-xs uppercase tracking-wider">Filters</h3>
+          <div>
+            <h3 style={filterHeadingStyle}>Filters</h3>
             
             {/* Status Filter */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="statusFilter" className="font-medium text-gray-700">Filter by Task Status</label>
+            <div style={{ ...formGroupStyle, marginTop: '8px' }}>
+              <label htmlFor="statusFilter" style={{ ...labelStyle, fontSize: '13px' }}>Filter by Task Status</label>
               <select
                 id="statusFilter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
+                style={{ ...inputStyle, padding: '8px 10px', fontSize: '12px' }}
               >
                 <option value="">All Tasks</option>
                 <option value="completed">Completed only</option>
@@ -190,9 +383,9 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
 
             {/* Labels Filter */}
             {labelOptions.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <span className="font-medium text-gray-700">Filter by Annotation Labels</span>
-                <div className="flex flex-wrap gap-2 pt-1">
+              <div style={{ ...formGroupStyle, marginTop: '12px' }}>
+                <span style={{ ...labelStyle, fontSize: '13px' }}>Filter by Annotation Labels</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
                   {labelOptions.map(opt => {
                     const labelName = opt.name || opt.value;
                     const isChecked = selectedLabels.includes(labelName);
@@ -201,11 +394,7 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
                         key={opt.id || opt.value}
                         type="button"
                         onClick={() => handleLabelToggle(labelName)}
-                        className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
-                          isChecked 
-                            ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium' 
-                            : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                        }`}
+                        style={pillButtonStyle(isChecked)}
                       >
                         {labelName}
                       </button>
@@ -219,17 +408,17 @@ export default function ExportModal({ isOpen, onClose, projectId, taskId, labelO
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+        <div style={footerStyle}>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 font-medium rounded-lg transition-all text-xs cursor-pointer"
+            style={secondaryButtonStyle}
           >
             Cancel
           </button>
           <button
             onClick={handleExport}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm hover:shadow-md transition-all text-xs disabled:bg-blue-400 cursor-pointer"
+            style={primaryButtonStyle}
           >
             {loading ? 'Exporting...' : 'Export Now'}
           </button>

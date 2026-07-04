@@ -420,7 +420,7 @@ const LeftDrawer = ({
                 type='button'
                 className='drawer-secondary-button'
                 onClick={onExportDataset}
-                style={{ width: '100%', display: 'flex', justifyContext: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: 'none', color: '#fff', cursor: 'pointer', backgroundColor: '#2563eb', marginTop: '8px' }}
+                style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '10px', borderRadius: '4px', border: 'none', color: '#fff', cursor: 'pointer', backgroundColor: '#2563eb', marginTop: '8px' }}
               >
                 <Download size={16} />
                 {t('Export Annotations')}
