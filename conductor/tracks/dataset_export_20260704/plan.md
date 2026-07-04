@@ -12,10 +12,10 @@ This document outlines the phased plan to implement the Dataset Export Framework
     - [x] Implement Pascal VOC XML writer
     - [x] Write unit tests for Custom Template parser
     - [x] Implement Custom Template parser using regex placeholder substitution
-- [~] Task: Export API Route and Packaging
-    - [ ] Write integration tests for `POST /api/export/dataset` verifying filters and settings
-    - [ ] Implement Express route `POST /api/export/dataset` compiling ZIP file containing annotations (and optionally images)
-    - [ ] Integrate Google Drive sync upload for exported ZIP files
+- [x] Task: Export API Route and Packaging (11abbb5)
+    - [x] Write integration tests for `POST /api/export/dataset` verifying filters and settings
+    - [x] Implement Express route `POST /api/export/dataset` compiling ZIP file containing annotations (and optionally images)
+    - [x] Integrate Google Drive sync upload for exported ZIP files
 - [ ] Task: Conductor - User Manual Verification 'Backend Format Exporters and ZIP Packaging' (Protocol in workflow.md)
 
 ## Phase 2: React Export Modals and HMI Actions [checkpoint: TBD]
