@@ -10,5 +10,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Implement semi-supervised annotation using a custom model or specific API**
   *Link: [./tracks/semi_supervised_20260703/](./tracks/semi_supervised_20260703/)*
 
-- [~] **Track: Integrate AI assistant using Nvidia NIM**
+- [x] **Track: Integrate AI assistant using Nvidia NIM**
   *Link: [./tracks/integrate_nvidia_nim_20260703/](./tracks/integrate_nvidia_nim_20260703/)*
