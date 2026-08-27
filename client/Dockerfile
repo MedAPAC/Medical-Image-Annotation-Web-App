@@ -13,7 +13,7 @@ COPY public ./public
 COPY src ./src
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.29.4-alpine
+FROM nginxinc/nginx-unprivileged:1.31.4-alpine
 
 ENV API_UPSTREAM=http://server:5000 \
     NGINX_ENVSUBST_FILTER=API_UPSTREAM
